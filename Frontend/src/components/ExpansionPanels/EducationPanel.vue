@@ -1,6 +1,6 @@
 <template>
   <v-expansion-panel value="education">
-    <v-expansion-panel-title>Education</v-expansion-panel-title>
+    <v-expansion-panel-title color="secondary"><h2>Education</h2></v-expansion-panel-title>
     <v-expansion-panel-text
       >Lorem ipsum dolor sit amet consectetur adipisicing elit. Reprehenderit magni rem iusto
       blanditiis ad quibusdam, repudiandae sint iure ut quasi fugit cum dicta doloribus. Dolor,

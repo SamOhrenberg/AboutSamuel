@@ -1,6 +1,6 @@
 <template>
   <v-expansion-panel value="projects">
-    <v-expansion-panel-title>Projects</v-expansion-panel-title>
+    <v-expansion-panel-title color="secondary"><h2>Projects</h2></v-expansion-panel-title>
     <v-expansion-panel-text
       >Lorem ipsum dolor sit amet consectetur adipisicing elit. Reprehenderit magni rem iusto
       blanditiis ad quibusdam, repudiandae sint iure ut quasi fugit cum dicta doloribus. Dolor,

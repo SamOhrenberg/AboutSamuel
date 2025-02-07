@@ -6,6 +6,10 @@ import EducationPanel from '@/components/ExpansionPanels/EducationPanel.vue'
 
 import { ref } from 'vue'
 
+import { useTheme } from 'vuetify'
+
+const theme = useTheme()
+
 const panel = ref(['workHistory', 'education', 'projects', 'aboutSamuel'])
 </script>
 
@@ -45,7 +49,7 @@ const panel = ref(['workHistory', 'education', 'projects', 'aboutSamuel'])
     <v-expansion-panels
       class="my-4"
       variant="accordion"
-      theme="dark"
+      :theme="theme.global.current.value.dark ? 'dark' : 'light'"
       ripple="true"
       multiple
       v-model="panel"

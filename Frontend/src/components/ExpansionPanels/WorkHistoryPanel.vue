@@ -1,6 +1,6 @@
 <template>
   <v-expansion-panel value="workHistory">
-    <v-expansion-panel-title>Work History</v-expansion-panel-title>
+    <v-expansion-panel-title color="primary"><h2>Work History</h2></v-expansion-panel-title>
     <v-expansion-panel-text>
       <p>
         Lorem ipsum dolor sit amet consectetur adipisicing elit. Reprehenderit magni rem iusto

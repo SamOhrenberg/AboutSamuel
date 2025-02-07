@@ -11,6 +11,9 @@ import * as directives from 'vuetify/directives' // Import Vuetify directives
 import 'vuetify/styles' // Import Vuetify styles
 import '@mdi/font/css/materialdesignicons.css'
 
+import { dark } from './themes/dark'
+import { light } from './themes/light'
+
 const app = createApp(App)
 
 app.use(createPinia())
@@ -19,6 +22,13 @@ app.use(
   createVuetify({
     components,
     directives,
+    theme: {
+      defaultTheme: 'dark',
+      themes: {
+        dark,
+        light,
+      },
+    },
   }),
 )
 
