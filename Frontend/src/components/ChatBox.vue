@@ -2,9 +2,13 @@
 import { ref, watch, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chatStore' // Import Pinia store
 import { formatDateTime } from '@/utilities/dateUtils'
+import { useTheme } from 'vuetify/lib/framework.mjs'
 
 const store = useChatStore()
 const chatContainer = ref(null)
+
+const theme = useTheme()
+const activeTheme = ref(theme.global.name.value)
 
 // Watch for new messages and scroll to bottom
 watch(
@@ -16,10 +20,18 @@ watch(
     }
   },
 )
+
+const changeTheme = () => {
+  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
+}
 </script>
 
 <template>
-  <v-card v-if="store.isOpen" class="chatbox-container h-100 d-flex flex-column pr-3 px-3">
+  <v-card
+    v-if="store.isOpen"
+    class="chatbox-container h-100 d-flex flex-column pr-3 px-3"
+    color="surface"
+  >
     <v-card-title class="d-flex justify-space-between align-center">
       Talk to me
       <v-btn icon @click="store.isOpen = false">
@@ -59,20 +71,37 @@ watch(
 
     <v-divider></v-divider>
 
-    <v-card-actions class="chat-controls" v-if="!store.isLoading">
+    <v-card-actions class="d-flex flex-row">
       <v-text-field
         v-model="store.message"
         label="Type a message..."
         dense
         hide-details
+        color="primary"
         class="chat-input"
         @keyup.enter="store.sendMessage"
       ></v-text-field>
-      <v-btn @click="store.sendMessage" color="primary" variant="tonal">SEND</v-btn>
+      <v-btn @click="store.sendMessage" color="primary" variant="tonal" v-if="!store.isLoading"
+        >SEND</v-btn
+      >
+      <v-progress-circular indeterminate v-else />
     </v-card-actions>
 
-    <v-card-actions v-else>
-      <v-progress-circular indeterminate />
+    <v-card-actions
+      class="d-flex flex-row justify-content-center align-items-center"
+      bg-color="background"
+    >
+      <v-switch
+        v-model="activeTheme"
+        :label="`Lights are ${activeTheme == 'dark' ? 'off' : 'on'}`"
+        class="ma-0 pa-0"
+        direction="vertical"
+        true-value="light"
+        false-value="dark"
+        base-color="background"
+        @change="changeTheme"
+        color="primary"
+      ></v-switch>
     </v-card-actions>
   </v-card>
 
@@ -82,28 +111,7 @@ watch(
   </v-btn>
 </template>
 
-<style scoped>
-/* .chatbox-container {
-  position: fixed;
-  width: 400px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  right: 0;
-  bottom: 0;
-}
-
-@media (max-width: 600px) {
-  .chatbox-container {
-    position: fixed;
-    left: 0;
-    top: 0;
-    display: flex;
-    flex-direction: column;
-    width: 100vw;
-    height: 100vh;
-  }
-} */
+<style>
 #chat-history {
   flex-grow: 1;
   overflow-y: auto;
@@ -114,11 +122,6 @@ watch(
 .chat-message {
   margin-bottom: 1rem;
   font-size: 0.8rem;
-  /* background-color: rgb(189, 233, 248);
-  padding: 6px; */
-  /* border: 1px solid rgb(114, 142, 151);
-  border-radius: 3px;
-  box-shadow: rgba(114, 142, 151, 0.8) 0px 2px 2px; */
 }
 
 .message-header {
@@ -133,13 +136,6 @@ watch(
 .message-text {
   margin-left: 10px;
 }
-
-.chat-controls {
-  display: flex;
-  padding: 10px;
-  background: white; /* Ensures the input stays visible */
-}
-
 .chat-input {
   flex: 1;
 }
@@ -179,5 +175,9 @@ watch(
     width: 100vw !important;
     height: 100vh !important;
   }
+}
+
+.v-switch div.v-input__details {
+  display: none;
 }
 </style>
