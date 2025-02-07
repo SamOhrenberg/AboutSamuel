@@ -15,6 +15,18 @@ namespace PortfolioWebsite.Api
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpClient();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowLocalhost",
+                    builder => builder
+                        .AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .WithExposedHeaders("X-Token-Limit-Reached")
+                );
+            });
+
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -25,6 +37,9 @@ namespace PortfolioWebsite.Api
             }
 
             app.UseHttpsRedirection();
+
+            app.UseCors("AllowLocalhost");
+
 
             app.UseAuthorization();
 
