@@ -1,13 +1,11 @@
 <script setup>
 import { RouterView } from 'vue-router'
-import ChatBox from './components/ChatBox/ChatBox.vue'
+import ChatBox from './components/ChatBox.vue'
 </script>
 
 <template>
-  <main class="w-75">
+  <main class="d-flex flex-row">
     <RouterView />
-  </main>
-  <div>
     <ChatBox />
-  </div>
+  </main>
 </template>
