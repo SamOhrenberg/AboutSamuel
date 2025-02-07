@@ -19,7 +19,7 @@ watch(
 </script>
 
 <template>
-  <v-card v-if="store.isOpen" class="chatbox-container h-100 d-flex flex-column pr-3">
+  <v-card v-if="store.isOpen" class="chatbox-container h-100 d-flex flex-column pr-3 px-3">
     <v-card-title class="d-flex justify-space-between align-center">
       Talk to me
       <v-btn icon @click="store.isOpen = false">
@@ -68,7 +68,7 @@ watch(
         class="chat-input"
         @keyup.enter="store.sendMessage"
       ></v-text-field>
-      <v-btn @click="store.sendMessage" color="primary">SEND</v-btn>
+      <v-btn @click="store.sendMessage" color="primary" variant="tonal">SEND</v-btn>
     </v-card-actions>
 
     <v-card-actions v-else>

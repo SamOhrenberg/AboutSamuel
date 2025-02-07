@@ -5,8 +5,9 @@ import ChatBox from './components/ChatBox.vue'
 
 <template>
   <main class="d-flex flex-row h-screen">
-    <div class="flex-grow-1">
+    <div class="flex-grow-1 overflow-y-auto" id="main-view">
       <RouterView />
+      <div id="buffer"><br /><br /><br /><br /><br /><br />&nbsp;</div>
     </div>
     <div id="chat-box">
       <ChatBox />
@@ -23,6 +24,7 @@ import ChatBox from './components/ChatBox.vue'
 
 @media (max-width: 780px) {
   #chat-box {
+    z-index: 1000;
   }
 }
 </style>

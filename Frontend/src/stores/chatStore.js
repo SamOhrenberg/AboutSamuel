@@ -4,7 +4,7 @@ import { v6 as uuid } from 'uuid'
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
-    isOpen: true,
+    isOpen: window.innerWidth > 1080,
     isExpanded: false,
     isLoading: false,
     width: 250, // Default min width
@@ -15,7 +15,7 @@ export const useChatStore = defineStore('chat', {
         sentBy: 'System',
         sentAt: new Date(),
         message:
-          'Hello, I am an AI chatbot developed by Samuel to help answer any questions you might have about him. Please feel free to ask me anything.',
+          'Hello, there! My name is SamuelLM. I am an AI assistant developed by Samuel to help answer any questions you might have about him. Please feel free to ask me anything.',
       },
     ],
     message: '',

@@ -23,9 +23,9 @@ a,
 }
 
 @media (max-width: 1024px) {
-  body {
+  /* body {
     font-size: 24px;
-  }
+  } */
 }
 
 html {
