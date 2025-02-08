@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using PortfolioWebsite.Api.Services;
 using PortfolioWebsite.Common;
 using System.Data;
 using System.Text.Json;
@@ -13,21 +14,22 @@ namespace PortfolioWebsite.Api.Controllers
     {
         private readonly ILogger<ChatController> _logger;
         private readonly HttpClient _httpClient;
+        private readonly ChatService _chatService;
 
         public record ChatHistory(string Role, string Content);
         public record ChatLog(string Message, IEnumerable<ChatHistory> History);
 
-        public ChatController(ILogger<ChatController> logger, HttpClient httpClient)
+        public ChatController(ILogger<ChatController> logger, HttpClient httpClient, ChatService chatService)
         {
             _logger = logger;
             _httpClient = httpClient;
+            _chatService = chatService;
         }
 
         [HttpPost]
         public async Task<string> Post(ChatLog chat)
         {
-            var tokens = Tokenizer.Tokenize(chat.Message);
-
+            var chatResponse = await _chatService.QueryChat(chat);
             string model = "mistral-nemo-instruct-2407";
             var completion = new
             {
