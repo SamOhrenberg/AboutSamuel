@@ -1,43 +1,20 @@
-import './assets/main.css'
+/**
+ * main.js
+ *
+ * Bootstraps Vuetify and other plugins then mounts the App`
+ */
 
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+// Plugins
+import { registerPlugins } from '@/plugins'
 
+// Components
 import App from './App.vue'
-import router from './router'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components' // Import all Vuetify components
-import * as directives from 'vuetify/directives' // Import Vuetify directives
-import 'vuetify/styles' // Import Vuetify styles
-import '@mdi/font/css/materialdesignicons.css'
-import { useConfigStore } from './stores/configStore'
 
-import { dark } from './themes/dark'
-import { light } from './themes/light'
+// Composables
+import { createApp } from 'vue'
 
-fetch('/config.json')
-  .then((response) => response.json())
-  .then((config) => {
-    const app = createApp(App)
+const app = createApp(App)
 
-    app.use(createPinia())
-    app.use(router)
-    app.use(
-      createVuetify({
-        components,
-        directives,
-        theme: {
-          defaultTheme: 'dark',
-          themes: {
-            dark,
-            light,
-          },
-        },
-      }),
-    )
+registerPlugins(app)
 
-    const configStore = useConfigStore()
-    configStore.setConfig(config)
-
-    app.mount('#app')
-  })
+app.mount('#app')
