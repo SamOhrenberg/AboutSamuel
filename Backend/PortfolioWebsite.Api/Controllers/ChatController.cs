@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using PortfolioWebsite.Common;
 using System.Data;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -13,18 +14,20 @@ namespace PortfolioWebsite.Api.Controllers
         private readonly ILogger<ChatController> _logger;
         private readonly HttpClient _httpClient;
 
+        public record ChatHistory(string Role, string Content);
+        public record ChatLog(string Message, IEnumerable<ChatHistory> History);
+
         public ChatController(ILogger<ChatController> logger, HttpClient httpClient)
         {
             _logger = logger;
             _httpClient = httpClient;
         }
 
-        public record ChatHistory(string Role, string Content);
-        public record ChatLog(string Message, IEnumerable<ChatHistory> History);
-
         [HttpPost]
         public async Task<string> Post(ChatLog chat)
         {
+            var tokens = Tokenizer.Tokenize(chat.Message);
+
             string model = "mistral-nemo-instruct-2407";
             var completion = new
             {
@@ -37,7 +40,7 @@ namespace PortfolioWebsite.Api.Controllers
                                                         
                             You were created by Samuel Ohrenberg, who also goes by Sam or Sammy.
                         
-                            You are built off of the {model } model. You are hosted off of Sam's computer to provide a chat bot for his portfolio website. 
+                            You are built off of the {model} model. You are hosted off of Sam's computer to provide a chat bot for his portfolio website. 
                             
                             I am interfacing with you via an ASP.NET Core Web API and a Vue.js web application. 
                             You should field any questions that I have about Sam. You should make him sound great while also making him sound down to earth. If I
