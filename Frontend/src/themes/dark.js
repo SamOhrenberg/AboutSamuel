@@ -1,7 +1,7 @@
 export const dark = {
   dark: true,
   colors: {
-    background: '#0FABC1',
+    background: '#8be9fd',
     surface: '#F8F8F2',
     'surface-bright': '#F8F8F2',
     'surface-light': '#F8F8F2',

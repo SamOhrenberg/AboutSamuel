@@ -1,30 +1,32 @@
 <template>
   <v-app>
-    <v-switch
-      v-model="activeTheme"
-      :label="`Lights are ${activeTheme == 'dark' ? 'off' : 'on'}`"
-      class="ma-0 pa-0"
-      direction="vertical"
-      true-value="light"
-      false-value="dark"
-      base-color="background"
-      color="primary"
-      @change="changeTheme"
-    />
-
-    <router-view />
+    <main class="d-flex flex-row h-screen">
+      <div class="flex-grow-1 overflow-y-auto" id="main-view">
+        <RouterView />
+        <div id="buffer"><br /><br /><br /><br /><br /><br />&nbsp;</div>
+      </div>
+      <div id="chat-box">
+        <ChatBox />
+      </div>
+    </main>
   </v-app>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-
-import { useTheme } from 'vuetify/lib/framework.mjs'
-
-const theme = useTheme()
-const activeTheme = ref(theme.global.name.value)
-
-const changeTheme = () => {
-  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
-}
+import { RouterView } from 'vue-router'
+import ChatBox from './components/ChatBox.vue'
 </script>
+
+<style scoped>
+@media (min-width: 780px) {
+  #chat-box {
+    height: 100vh;
+  }
+}
+
+@media (max-width: 780px) {
+  #chat-box {
+    z-index: 1000;
+  }
+}
+</style>
