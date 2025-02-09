@@ -1,3 +1,4 @@
 .vs
 bin
 obj
+Backend/PortfolioWebsite.Api/appsettings.json
