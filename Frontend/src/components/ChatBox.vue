@@ -67,15 +67,16 @@ watch(
     <v-divider></v-divider>
 
     <v-card-actions class="d-flex flex-row card-action">
-      <v-text-field
+      <v-textarea
         v-model="store.message"
-        label="Type a message..."
-        dense
-        hide-details
-        color="primary"
+        placeholder="Type a message..."
+        :rows="2"
         class="chat-input"
         @keyup.enter="store.sendMessage"
-      ></v-text-field>
+        no-resize="true"
+        >
+
+      </v-textarea>
       <v-btn @click="store.sendMessage" color="primary" variant="tonal" v-if="!store.isLoading"
         >SEND</v-btn
       >
@@ -119,6 +120,7 @@ watch(
 }
 .chat-input {
   flex: 1;
+  resize: none !important;
 }
 
 #chatbox{
@@ -149,6 +151,17 @@ font-family: "Raleway";
     background-color: #1976d2;
     color: white;
   }
+
+  /* .v-input__details{
+
+    grid-area: control-start !important;
+  }
+
+  #input-4-messages{
+    grid-area: control-start !important;
+
+
+  } */
 
   .chatbox-container {
     position: fixed;

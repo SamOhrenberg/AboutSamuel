@@ -7,7 +7,7 @@ export const dark = {
     'surface-light': '#F8F8F2',
     'surface-variant': '#F8F8F2',
     'on-surface-variant': '#F8F8F2',
-    primary: '#6272A4',
+    primary: '#001e1e',
     'primary-darken-1': '#44475A',
     secondary: '#8BE9FD',
     'secondary-darken-1': '#8BE9FD',
@@ -15,6 +15,10 @@ export const dark = {
     info: '#F1FA8C',
     success: '#50FA7B',
     warning: '#FFB86C',
+    accent: '001e1e',
+    navbar_links: '#FFF',
+    blue_green:'##00acac',
+    yellow: '#fdb831'
   },
   variables: {
     'border-color': '#F8F8F2',
@@ -33,5 +37,6 @@ export const dark = {
     'theme-on-kbd': '#FFFFFF',
     'theme-code': '#F5F5F5',
     'theme-on-code': '#000000',
+    'glow': '#00FFFF'
   },
 }

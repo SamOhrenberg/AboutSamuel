@@ -1,8 +1,5 @@
 import axios from 'axios'
-import { useConfigStore } from '../stores/configStore'
-
 export async function getResponse(message, messageHistory) {
-  const configStore = useConfigStore()
 
   try {
     var request = {
@@ -14,7 +11,7 @@ export async function getResponse(message, messageHistory) {
           content: msg.message,
         })),
     }
-    const response = await axios.post(`${configStore.apiUrl}/Chat`, request)
+    const response = await axios.post(`https://192.168.0.89:8443/Chat`, request)
 
     return {
       text: response.data,

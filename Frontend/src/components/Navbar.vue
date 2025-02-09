@@ -29,16 +29,20 @@ const changeTheme = () => {
   <nav class="navbar">
     <v-switch
         v-model="activeTheme"
-        :label="`Turn Lights ${activeTheme == 'dark' ? 'On' : 'Off'}`"
         class="ma-0 pa-0"
         direction="vertical"
         true-value="light"
         false-value="dark"
-        base-color="white"
+        base-color="navbar_links"
         @change="changeTheme"
-        color="primary"
-      ></v-switch>
-    <ul class="nav-links">
+        color="navbar_links"
+      >
+
+      <template v-slot:label>
+      <span class="text-navbar_links">Turn Lights {{activeTheme == 'dark' ? 'On' : 'Off'}}</span>
+      </template>
+    </v-switch>
+    <ul class="nav-links text-navbar_links">
       <li><a>Resume</a></li>
       <li>Testimonial</li>
       <li>Contact</li>
@@ -85,4 +89,6 @@ ul{
 .v-switch div.v-input__details {
   display: none;
 }
+
+
 </style>

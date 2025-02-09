@@ -1,16 +1,16 @@
 <template>
   <div id="main-div">
-    <div id="top-content">
+    <div id="top-content" class="bg-primary">
 
-        <img src="@/assets/Adobe Express - file-3.png" class="glow-image">
+        <img src="@/assets/Adobe Express - file-3.png" class="glow-image" id="header-img">
       <div id="top-content-panel-1">
-        <h1>Nice to Meet You!</h1>
+        <h1 class="text-blue_green">Nice to Meet You!</h1>
         <Header>I'm Samuel Ohrenberg</Header>
-        <h2>And I'm <span id="emphasize">Fullstack Developer</span> From Oklahoma</h2>
+        <h2>And I'm <span class="text-yellow">Fullstack Developer</span> From Oklahoma</h2>
         <h3>I'm a passionate, solution-oriented programmer who loves solving problems. Please speak with my chatbot to learn more about me.</h3>
       </div>
     </div>
-    <div id="bottom-content" >
+    <div id="bottom-content"  class="bg-background">
       <div id="content-wrapper-2">
         <div id="item-wrapper">
           <div id="image-wrapper">
@@ -60,16 +60,16 @@ margin: auto;
 img{
   max-width: 28rem;
   transform: scaleX(-1);
-  height: fit-content;
   align-self: flex-end;
+}
+#header-img{
+  height: fit-content;
+
 }
 #main-div {
   display: flex;
   flex-direction: column;
   height: 100vh;
-}
-#emphasize{
-  color: #fdb831;
 }
 #top-content {
   display: flex;
@@ -114,7 +114,6 @@ header, h1, h2, h3 {
 } */
 
 header {
-  color: white;
   font-size: 4rem;
   font-weight: 600;
   padding: .5rem 0;
@@ -134,13 +133,12 @@ h2 {
 }
 
 h3{
-
   font-size: 1rem;
   font-weight: 100;
 }
 /* Glow effect on image */
 .glow-image {
-  filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.7)); /* Cyan glow */
+  filter: drop-shadow(0 0 15px rgba(var(--v-glow), 0.7));
   position: relative;
 }
 
