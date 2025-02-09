@@ -1,4 +1,8 @@
 
+using Microsoft.EntityFrameworkCore;
+using PortfolioWebsite.Api.Data;
+using PortfolioWebsite.Api.Services;
+
 namespace PortfolioWebsite.Api
 {
     public class Program
@@ -26,6 +30,13 @@ namespace PortfolioWebsite.Api
                 );
             });
 
+            builder.Services.AddDbContext<SqlDbContext>(options =>
+            {
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+            });
+            builder.Services.AddScoped<ChatService>();
+            builder.Services.AddScoped<ContactService>();
+            builder.Services.AddSingleton<MailgunService>();
 
             var app = builder.Build();
 
