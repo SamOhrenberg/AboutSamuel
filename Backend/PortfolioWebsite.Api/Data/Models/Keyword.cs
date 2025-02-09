@@ -2,6 +2,15 @@
 
 public class Keyword
 {
-    public Guid KeywordId { get; set; } = Guid.NewGuid();
+    public Keyword() { }
+
+    public Keyword(string token, Information information)
+    {
+        Text = token;
+        Information = information;
+    }
+
+    public Guid KeywordId { get; set; }
     public string Text { get; set; }
+    public virtual Information Information { get; set; }
 }
