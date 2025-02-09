@@ -15,5 +15,10 @@ namespace PortfolioWebsite.Api.Services.Entities
             Role = role;
             Content = content;
         }
+
+        public override string ToString()
+        {
+            return $"{Role}: {Content}";
+        }
     }
 }

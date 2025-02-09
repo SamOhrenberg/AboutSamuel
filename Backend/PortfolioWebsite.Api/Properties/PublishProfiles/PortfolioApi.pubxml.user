@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+https://go.microsoft.com/fwlink/?LinkID=208121.
+-->
+<Project>
+  <PropertyGroup>
+    <_PublishTargetUrl>C:\PortfolioApi</_PublishTargetUrl>
+    <History>True|2025-02-09T22:04:04.8694837Z||;False|2025-02-09T16:03:53.8557935-06:00||;True|2025-02-09T15:21:12.7703908-06:00||;False|2025-02-09T15:20:57.1508873-06:00||;False|2025-02-09T15:20:49.6847566-06:00||;False|2025-02-09T15:20:35.6685745-06:00||;False|2025-02-09T15:19:39.4197387-06:00||;True|2025-02-09T14:48:07.2466329-06:00||;</History>
+    <LastFailureDetails />
+    <TimeStampOfAssociatedLegacyPublishXmlFile />
+  </PropertyGroup>
+  <ItemGroup>
+    <DestinationConnectionStrings Include="ProdConnection">
+      <Value>Server=SAMDESKTOP\SQLEXPRESS%3bDatabase=Portfolio%3bTrusted_Connection=True%3bTrustServerCertificate=yes</Value>
+    </DestinationConnectionStrings>
+  </ItemGroup>
+  <ItemGroup>
+    <EFMigrations Include="PortfolioWebsite.Api.Data.SqlDbContext">
+      <Value>Server=SAMDESKTOP\SQLEXPRESS%3bDatabase=Portfolio-Prod%3bTrusted_Connection=True%3bTrustServerCertificate=yes</Value>
+    </EFMigrations>
+  </ItemGroup>
+</Project>
