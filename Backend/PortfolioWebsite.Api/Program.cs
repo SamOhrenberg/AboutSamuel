@@ -35,6 +35,8 @@ namespace PortfolioWebsite.Api
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
             builder.Services.AddScoped<ChatService>();
+            builder.Services.AddScoped<ContactService>();
+            builder.Services.AddSingleton<MailgunService>();
 
             var app = builder.Build();
 

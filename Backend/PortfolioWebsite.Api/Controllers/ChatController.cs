@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using PortfolioWebsite.Api.Services;
+using PortfolioWebsite.Api.Services.Entities;
 using PortfolioWebsite.Common;
 using System.Data;
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace PortfolioWebsite.Api.Controllers
@@ -16,8 +18,7 @@ namespace PortfolioWebsite.Api.Controllers
         private readonly ILogger<ChatController> _logger;
         private readonly ChatService _chatService;
 
-        public record ChatHistory(string Role, string Content);
-        public record ChatLog(string Message, IEnumerable<ChatHistory> History);
+        public record ChatLog(string Message, IEnumerable<ChatMessage> History);
 
         public ChatController(ILogger<ChatController> logger, ChatService chatService)
         {
