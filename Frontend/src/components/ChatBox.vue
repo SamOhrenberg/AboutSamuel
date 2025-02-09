@@ -2,13 +2,9 @@
 import { ref, watch, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chatStore' // Import Pinia store
 import { formatDateTime } from '@/utilities/dateUtils'
-import { useTheme } from 'vuetify/lib/framework.mjs'
 
 const store = useChatStore()
 const chatContainer = ref(null)
-
-const theme = useTheme()
-const activeTheme = ref(theme.global.name.value)
 
 // Watch for new messages and scroll to bottom
 watch(
@@ -21,15 +17,14 @@ watch(
   }
 )
 
-const changeTheme = () => {
-  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
-}
+
 </script>
 
 <template>
   <v-card
     v-if="store.isOpen"
-    class="chatbox-container h-100 d-flex flex-column pr-3 px-3"
+    class="chatbox-container h-100 d-flex flex-column pr-3 px-3 rounded-0"
+    id="chatbox"
     color="surface"
   >
     <v-card-title class="d-flex justify-space-between align-center">
@@ -71,7 +66,7 @@ const changeTheme = () => {
 
     <v-divider></v-divider>
 
-    <v-card-actions class="d-flex flex-row">
+    <v-card-actions class="d-flex flex-row card-action">
       <v-text-field
         v-model="store.message"
         label="Type a message..."
@@ -86,27 +81,10 @@ const changeTheme = () => {
       >
       <v-progress-circular indeterminate v-else />
     </v-card-actions>
-
-    <v-card-actions
-      class="d-flex flex-row justify-content-center align-items-center"
-      bg-color="background"
-    >
-      <v-switch
-        v-model="activeTheme"
-        :label="`Lights are ${activeTheme == 'dark' ? 'off' : 'on'}`"
-        class="ma-0 pa-0"
-        direction="vertical"
-        true-value="light"
-        false-value="dark"
-        base-color="background"
-        @change="changeTheme"
-        color="primary"
-      ></v-switch>
-    </v-card-actions>
   </v-card>
 
   <!-- Floating Chat Button -->
-  <v-btn v-if="!store.isOpen" class="chatbox-fab" @click="store.isOpen = true">
+  <v-btn v-if="!store.isOpen" class="chatbox-fab rounded-0" @click="store.isOpen = true">
     <v-icon size="x-large">mdi-chat</v-icon>
   </v-btn>
 </template>
@@ -118,7 +96,9 @@ const changeTheme = () => {
   padding: 10px;
   height: calc(100% - 100px);
 }
-
+.card-action{
+  padding: 1rem 0.5rem !important;
+}
 .chat-message {
   margin-bottom: 1rem;
   font-size: 0.8rem;
@@ -131,6 +111,7 @@ const changeTheme = () => {
   font-weight: bold;
   font-style: italic;
   border-bottom: 1px solid rgba(0, 0, 0, 0.75);
+  margin-bottom: .5rem;
 }
 
 .message-text {
@@ -140,6 +121,9 @@ const changeTheme = () => {
   flex: 1;
 }
 
+#chatbox{
+font-family: "Raleway";
+}
 @media (min-width: 780px) {
   .chatbox-fab {
     width: 2rem;
@@ -177,7 +161,5 @@ const changeTheme = () => {
   }
 }
 
-.v-switch div.v-input__details {
-  display: none;
-}
+
 </style>

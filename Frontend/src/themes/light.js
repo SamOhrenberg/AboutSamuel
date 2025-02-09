@@ -1,13 +1,13 @@
 export const light = {
   dark: false,
   colors: {
-    background: '#FFFFFF',
+    background: '#e6eeee',
     surface: '#FFFFFF',
     'surface-bright': '#FFFFFF',
     'surface-light': '#EEEEEE',
     'surface-variant': '#424242',
     'on-surface-variant': '#EEEEEE',
-    primary: '#1867C0',
+    primary: '#001e1e',
     'primary-darken-1': '#1F5592',
     secondary: '#48A9A6',
     'secondary-darken-1': '#018786',
@@ -15,6 +15,7 @@ export const light = {
     info: '#2196F3',
     success: '#4CAF50',
     warning: '#FB8C00',
+    accent: '#003131'
   },
   variables: {
     'border-color': '#000000',
