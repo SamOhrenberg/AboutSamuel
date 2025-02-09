@@ -2,3 +2,6 @@
 bin
 obj
 Backend/PortfolioWebsite.Api/appsettings.json
+Logs
+*.pubxml
+*.pubxml.user

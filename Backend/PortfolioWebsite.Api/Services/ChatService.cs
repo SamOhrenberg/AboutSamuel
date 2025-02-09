@@ -186,11 +186,13 @@ public class ChatService
         if (relevantInfo is null || relevantInfo.Length == 0)
         {
             await CreateInformationRequest(tokens);
-            return new ChatResponse("I'm sorry, I don't have that information. I've made a note of it and will work to get it added.", true);
+            return new ChatResponse("I'm sorry, I don't have that information. I've made a note of it and will work to get it added.", false);
         }
 
         // add the new
         completion.messages.Insert(1, new ChatMessage("system", $"Use the following information from Samuel Ohrenberg's resume to answer any questions about him. Please note, this is only a small selection from his resume and there is likely even more that would be relevant: \r\n{ relevantInfo }"));
+        completion.messages.Insert(2, new ChatMessage("system", $"Please respond very concisely and professionally, as if you were in an interview. Keep your response below 100 words and keep focused. "));
+
         var response = await GetChatResponse(completion);
 
         return response;

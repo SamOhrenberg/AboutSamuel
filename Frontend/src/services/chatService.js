@@ -1,6 +1,6 @@
 import axios from 'axios'
-export async function getResponse(message, messageHistory) {
 
+export async function getResponse(message, messageHistory) {
   try {
     var request = {
       message: message,
@@ -11,7 +11,7 @@ export async function getResponse(message, messageHistory) {
           content: msg.message,
         })),
     }
-    const response = await axios.post(`https://192.168.0.89:8443/Chat`, request)
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/Chat`, request)
 
     return {
       text: response.data,

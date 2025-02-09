@@ -16,8 +16,6 @@ watch(
     }
   }
 )
-
-
 </script>
 
 <template>
@@ -47,7 +45,7 @@ watch(
         <div class="message-text">{{ messageItem.message }}</div>
       </div>
 
-      <div v-if="store.archivedMessageHistory.length > 0" class="my-2 py-2">
+      <div v-if="store.archivedMessageHistory.length > 1" class="my-2 py-2">
         <v-divider :thickness="3" color="error"></v-divider>
         <p class="text-body-2 text-error">
           Conversation size limit reached. New messages will be part of a new conversation.
@@ -74,8 +72,7 @@ watch(
         class="chat-input"
         @keyup.enter="store.sendMessage"
         no-resize="true"
-        >
-
+      >
       </v-textarea>
       <v-btn @click="store.sendMessage" color="primary" variant="tonal" v-if="!store.isLoading"
         >SEND</v-btn
@@ -97,7 +94,7 @@ watch(
   padding: 10px;
   height: calc(100% - 100px);
 }
-.card-action{
+.card-action {
   padding: 1rem 0.5rem !important;
 }
 .chat-message {
@@ -112,7 +109,7 @@ watch(
   font-weight: bold;
   font-style: italic;
   border-bottom: 1px solid rgba(0, 0, 0, 0.75);
-  margin-bottom: .5rem;
+  margin-bottom: 0.5rem;
 }
 
 .message-text {
@@ -123,8 +120,8 @@ watch(
   resize: none !important;
 }
 
-#chatbox{
-font-family: "Raleway";
+#chatbox {
+  font-family: 'Raleway';
 }
 @media (min-width: 780px) {
   .chatbox-fab {
@@ -173,6 +170,4 @@ font-family: "Raleway";
     height: 100vh !important;
   }
 }
-
-
 </style>
