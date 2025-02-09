@@ -10,9 +10,15 @@ public class SqlDbContext : DbContext
 
     public DbSet<Information> Information { get; set; } = null!;
     public DbSet<Keyword> Keywords { get; set; } = null!;
+    public DbSet<Chat> Chats { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Chat>()
+            .Property(i => i.ChatId)
+            .HasValueGenerator<SequentialGuidValueGenerator>()
+            .ValueGeneratedOnAdd();
+
         modelBuilder.Entity<Information>()
             .Property(i => i.InformationId)
             .HasValueGenerator<SequentialGuidValueGenerator>()

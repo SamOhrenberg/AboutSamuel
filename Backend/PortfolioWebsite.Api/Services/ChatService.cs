@@ -4,9 +4,11 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PortfolioWebsite.Api.Data;
 using PortfolioWebsite.Api.Data.Models;
+using PortfolioWebsite.Api.Dtos;
 using PortfolioWebsite.Api.Services.Entities;
 using PortfolioWebsite.Common;
 using System;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -37,6 +39,11 @@ public class ChatService
 
     internal async Task<ChatResponse> QueryChat(ChatLog chat)
     {
+        DateTimeOffset receivedAt = DateTimeOffset.Now;
+        Stopwatch stopwatch = new();
+        stopwatch.Start();
+
+
         var completion = new
         {
             model = _model,
@@ -116,9 +123,30 @@ public class ChatService
             }
         }
 
-
+        // save the chat log
+        stopwatch.Stop();
+        _logger.LogInformation($"Chat query took {stopwatch.ElapsedMilliseconds}ms");
+        await SaveChatLog(chat, response.Message, response.Error, response.TokenLimitReached, receivedAt, stopwatch.ElapsedMilliseconds);
 
         return response;
+    }
+
+    private async Task SaveChatLog(ChatLog chatLog, string message, bool error, bool tokenLimitReached, DateTimeOffset receivedAt, long elapsedMilliseconds)
+    {
+        var chat = new Chat
+        {
+            History = chatLog.PrintHistory(),
+            Message = chatLog.Message,
+            Response = message,
+            ReceivedAt = receivedAt,
+            ResponseTookMs = elapsedMilliseconds,
+            Error = error,
+            TokenLimitReached = tokenLimitReached,
+            SessionTrackingId = chatLog.UserTrackingId
+        };
+
+        await _dbContext.AddAsync(chat);
+        await _dbContext.SaveChangesAsync();
     }
 
     private async Task<ChatResponse> GetChatResponse(dynamic completion)
