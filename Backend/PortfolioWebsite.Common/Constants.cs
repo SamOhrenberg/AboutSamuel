@@ -16,4 +16,85 @@ public static class Constants
         "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"
     ];
 
+    public static readonly object[] SupportedTools =
+    [
+        new
+        {
+            type = "function",
+            function = new
+            {
+                name = "contactSamuel",
+                description = "Accepts the email of the user and an optional message from the user that generates a contact request for Samuel Ohrenberg. This allows users to contact Samuel in case they have further questions or wish to discuss something",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        email = new
+                        {
+                            type = "string",
+                            description = "The user's email address that Samuel will use to contact them"
+                        },
+                        message = new
+                        {
+                            type = "string",
+                            description = "An optional short message from the user explaining what the contact request is for."
+                        }
+                    }
+                }
+            }
+        },
+        new 
+        {
+            type = "function",
+            function = new
+            {
+                name = "redirectToPage",
+                description = "Checks if the user is wanting information that can be found on one of the following pages: 'Contact', 'Work History', 'Projects', 'Education'",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        page = new
+                        {
+                            type = "string",
+                            description = "The page that the user is wanting to be redirected to"
+                        }
+                    }
+                }
+            }
+        },
+        new
+        {
+            type = "function",
+            function = new
+            {
+                name = "getResume",
+                description = "Returns the resume of Samuel Ohrenberg in PDF format"
+            }
+        },
+        new 
+        {
+            type = "function",
+            function = new
+            {
+                name = "askQuestion",
+                description = "Accepts a question from the user and returns an answer based on the information provided in Samuel Ohrenberg's professional history and knowledge",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        question = new
+                        {
+                            type = "string",
+                            description = "The question that the user is asking about Samuel Ohrenberg"
+                        }
+                    }
+                }
+            }
+        }
+    ];
+
 }
