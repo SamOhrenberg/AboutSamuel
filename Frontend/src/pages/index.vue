@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div id="parent">
     <div id="top-content">
       <div class="header-content">
@@ -97,31 +97,36 @@ bottom: 11rem;
   padding: 1.5rem;
   background: #3e7b7b;;
 }
-</style>
+</style> -->
 
-<!-- <template>
+<template>
   <div id="main-div">
     <div id="top-content" class="bg-primary">
-
-        <img src="@/assets/Adobe Express - file-3.png" class="glow-image" id="header-img">
+      <img src="@/assets/Adobe Express - file-3.png" class="glow-image" id="header-img" />
       <div id="top-content-panel-1">
         <h1 class="text-blue_green">Nice to Meet You!</h1>
         <Header>I'm Samuel Ohrenberg</Header>
         <h2>And I'm <span class="text-yellow">Fullstack Developer</span> From Oklahoma</h2>
-        <h3>I'm a passionate, solution-oriented programmer who loves solving problems. Please speak with my chatbot to learn more about me.</h3>
+        <h3>
+          I'm a passionate, solution-oriented programmer who loves solving problems. Please speak
+          with my chatbot to learn more about me.
+        </h3>
       </div>
     </div>
-    <div id="bottom-content"  class="bg-background">
+    <div id="bottom-content" class="bg-background">
       <div id="content-wrapper-2">
         <div id="item-wrapper">
           <div id="image-wrapper">
-            <img id="about-me-image" src="@/assets/photo.jpg">
+            <img id="about-me-image" src="@/assets/photo.jpg" />
           </div>
           <div id="about-me-wrapper">
             <header>So, Who Am I?</header>
-            <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Quia facilis magni voluptate consectetur, voluptatum ullam rerum adipisci eligendi enim explicabo tenetur cupiditate, culpa aperiam in accusamus deserunt amet tempora dicta?</p>
+            <p>
+              Lorem, ipsum dolor sit amet consectetur adipisicing elit. Quia facilis magni voluptate
+              consectetur, voluptatum ullam rerum adipisci eligendi enim explicabo tenetur
+              cupiditate, culpa aperiam in accusamus deserunt amet tempora dicta?
+            </p>
           </div>
-
         </div>
       </div>
     </div>
@@ -129,43 +134,43 @@ bottom: 11rem;
 </template>
 
 <script setup>
-  //
+//
 </script>
 
 <style>
 /* Reset and global styles */
-body, html {
-  font-family: "Patua One", Cochin, Georgia, Times, serif, Arial, sans-serif;
+body,
+html {
+  font-family: 'Patua One', Cochin, Georgia, Times, serif, Arial, sans-serif;
   box-sizing: border-box;
   height: 100%;
-  margin: 0;               /* Remove default margins */
-  padding: 0;              /* Remove default paddings */
+  margin: 0; /* Remove default margins */
+  padding: 0; /* Remove default paddings */
 }
 
-#content-wrapper-2{
-display: flex;
-width: 75%;
-margin: auto;
+#content-wrapper-2 {
+  display: flex;
+  width: 75%;
+  margin: auto;
 }
-#item-wrapper{
+#item-wrapper {
   display: flex;
   flex-direction: row;
   gap: 3rem;
   justify-content: center;
   align-content: center;
 }
-#about-me-wrapper{
+#about-me-wrapper {
   display: flex;
   flex-direction: column;
 }
-img{
+img {
   max-width: 28rem;
   transform: scaleX(-1);
   align-self: flex-end;
 }
-#header-img{
+#header-img {
   height: fit-content;
-
 }
 #main-div {
   display: flex;
@@ -175,29 +180,32 @@ img{
 #top-content {
   display: flex;
   flex-direction: row;
-  width: 100%;             /* Take full width */
+  width: 100%; /* Take full width */
   height: auto;
-  gap: 3rem;               /* Add space between panels */
+  gap: 3rem; /* Add space between panels */
   background: #001e1e;
-  position:relative;
+  position: relative;
   top: 0;
   justify-content: center;
 }
-header, h1, h2, h3 {
+header,
+h1,
+h2,
+h3 {
   padding: 0;
   margin: 0;
 }
-#top-content-panel-1{
+#top-content-panel-1 {
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 5rem 0;
 }
 
-#top-content-panel-2{
+#top-content-panel-2 {
   display: flex;
 }
-#bottom-content{
+#bottom-content {
   width: 100%;
   flex-grow: 1; /* This makes the bottom content take up the remaining space */
   display: flex;
@@ -217,14 +225,14 @@ header, h1, h2, h3 {
 header {
   font-size: 4rem;
   font-weight: 600;
-  padding: .5rem 0;
+  padding: 0.5rem 0;
   margin-top: -15px;
 }
 
 h1 {
   margin-top: -10px;
   font-size: 3rem;
-  color: #00acac;;
+  color: #00acac;
   font-weight: 500;
 }
 
@@ -233,7 +241,7 @@ h2 {
   padding-bottom: 2rem;
 }
 
-h3{
+h3 {
   font-size: 1rem;
   font-weight: 100;
 }
@@ -243,11 +251,8 @@ h3{
   position: relative;
 }
 
-#about-me-image{
-
+#about-me-image {
   padding: 5px;
   border: 1px white solid;
 }
-
-
-</style> -->
+</style>
