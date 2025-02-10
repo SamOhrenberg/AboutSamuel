@@ -11,7 +11,7 @@ export async function getResponse(message, messageHistory) {
           content: msg.message,
         })),
     }
-    const response = await axios.post(`${import.meta.env.VITE_API_URL}/Chat`, request)
+    const response = await axios.post(`https://api.aboutsamuel.com/Chat`, request)
 
     return {
       text: response.data,
