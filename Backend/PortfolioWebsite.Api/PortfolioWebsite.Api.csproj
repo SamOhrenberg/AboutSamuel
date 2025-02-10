@@ -28,4 +28,10 @@
     <ProjectReference Include="..\PortfolioWebsite.Common\PortfolioWebsite.Common.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="DeployToIIS.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
