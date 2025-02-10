@@ -1,4 +1,105 @@
 <template>
+  <div id="parent">
+    <div id="top-content">
+      <div class="header-content">
+        <header>Samuel Ohrenberg</header>
+      <h1>Fullstack Developer | Software Engineer</h1>
+      <h2>Okalhoma City, Oklahoma</h2>
+      </div>
+    </div>
+    <div id="middle-content">
+    </div>
+    <div id="bottom-content">
+      <div class="img-wrapper">
+        <img src="@/assets/photo.jpg">
+      </div>
+
+      <div class="text-container">
+        <span>Lorem</span>
+      <span>Ipsum</span>
+      <span>Dolor</span>
+      </div>
+
+
+    </div>
+    <div id="actual-bottom-content">
+      <div>
+        <header>About Sam</header>
+        <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorum, dolor enim ducimus in aperiam laboriosam ad quae doloremque quasi vel quaerat corrupti veritatis consequuntur ipsam, ut dolores harum eaque nisi.</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+html,body{
+  font-family: "Patua One", Cochin, Georgia, Times, serif, Arial, sans-serif;
+
+}
+
+header{
+
+  font-size: 2.8rem;
+  font-weight: bold;
+}
+h1{
+  font-weight: 200;
+  padding-bottom: .5rem;
+  font-size: 1.7rem;
+}
+h2{
+  font-weight: 100;
+}
+#parent{
+  display: flex;
+  flex-direction: column;
+}
+
+  #top-content{
+    background: #003131;;
+    padding: 3rem 0 14rem 0;
+    text-align: center;
+  }
+
+  .text-container{
+    display: flex;
+  justify-content: space-evenly;
+  position: relative;
+  bottom: 99px;
+  font-size: 3rem;
+}
+
+  #middle-content{
+
+  }
+  img{
+    width: 20rem;
+height: 20rem;
+border-radius: 50%;
+object-fit: cover;
+border: 3px white solid;
+box-shadow: 10px 10px #003131;
+  }
+  #bottom-content{
+    display: flex;
+  flex-direction: column;
+  background: #c1d9d9;
+  }
+
+  .img-wrapper{display: flex;
+align-items: center;
+justify-content: center;
+position: relative;
+bottom: 11rem;
+}
+
+#actual-bottom-content{
+  padding: 1.5rem;
+  background: #3e7b7b;;
+}
+</style>
+
+<!-- <template>
   <div id="main-div">
     <div id="top-content" class="bg-primary">
 
@@ -149,4 +250,4 @@ h3{
 }
 
 
-</style>
+</style> -->

@@ -4,12 +4,13 @@
       <div id="page-wrapper">
         <Navbar />
         <div id="content-wrapper">
-          <div class="flex-grow-1 overflow-y-auto" id="main-view">
-            <RouterView />
-          </div>
           <div id="chat-box">
             <ChatBox />
           </div>
+          <div class="flex-grow-1 overflow-y-auto" id="main-view">
+            <RouterView />
+          </div>
+          
         </div>
       </div>
     </main>
@@ -46,5 +47,6 @@ width: 100%;
 #content-wrapper{
   display: flex;
   overflow: hidden;
+  flex-direction: column;
 }
 </style>
