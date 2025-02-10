@@ -36,10 +36,14 @@ watch(
       <div
         v-for="messageItem in store.archivedMessageHistory"
         :key="messageItem"
-        class="chat-message"
+        :class="{
+          'SamuelLM': messageItem.sentBy === 'SamuelLM',
+          'User': messageItem.sentBy !== 'SamuelLM',
+          'chat-message': true
+        }"
       >
         <div class="message-header">
-          <span>{{ messageItem.sentBy }}</span>
+          <span class="sent-by">{{ messageItem.sentBy }}</span>
           <span class="message-time">{{ formatDateTime(messageItem.sentAt) }}</span>
         </div>
         <div class="message-text">{{ messageItem.message }}</div>
@@ -53,9 +57,13 @@ watch(
         <v-divider :thickness="3" color="error"></v-divider>
       </div>
 
-      <div v-for="messageItem in store.messageHistory" :key="messageItem" class="chat-message">
+      <div v-for="messageItem in store.messageHistory" :key="messageItem"  :class="{
+          'SamuelLM': messageItem.sentBy === 'SamuelLM',
+          'User': messageItem.sentBy !== 'SamuelLM',
+          'chat-message': true
+        }">
         <div class="message-header">
-          <span>{{ messageItem.sentBy }}</span>
+          <span class="sent-by">{{ messageItem.sentBy }}</span>
           <span class="message-time">{{ formatDateTime(messageItem.sentAt) }}</span>
         </div>
         <div class="message-text">{{ messageItem.message }}</div>
@@ -100,20 +108,29 @@ watch(
 .chat-message {
   margin-bottom: 1rem;
   font-size: 0.8rem;
+  width: 65%;
 }
 
 .message-header {
   display: flex;
-  justify-content: space-between;
-  font-size: 0.9rem;
+justify-content: space-between;
+margin-bottom: 0.1rem;
+margin-left: .2rem;
+}
+
+.sent-by{
   font-weight: bold;
-  font-style: italic;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.75);
-  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.message-time{
+  color: grey;
+  font-family: Calibri, 'Trebuchet MS', sans-serif;
+  font-size: 0.8rem;
 }
 
 .message-text {
-  margin-left: 10px;
+  padding: .7rem;
 }
 .chat-input {
   flex: 1;
@@ -136,6 +153,31 @@ watch(
     max-width: 500px;
     transition: all 0.25s;
   }
+}
+
+.samuelLM{
+
+  color: red;
+  margin-right: auto;
+}
+
+.User{
+  margin-left: auto;
+}
+
+.message-text{
+  border-radius: 10px;
+
+}
+.SamuelLM .message-text{
+  margin-right: auto;
+  background-color: rgb(198, 198, 198);
+}
+
+.User .message-text{
+margin-left: auto;
+background-color: #00acac;
+color: white;
 }
 
 @media (max-width: 780px) {

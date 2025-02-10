@@ -17,7 +17,7 @@ export const dark = {
     warning: '#FFB86C',
     accent: '001e1e',
     navbar_links: '#FFF',
-    blue_green:'##00acac',
+    blue_green:'#00acac',
     yellow: '#fdb831'
   },
   variables: {
