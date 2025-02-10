@@ -21,7 +21,7 @@ watch(
 <template>
   <v-card
     v-if="store.isOpen"
-    class="chatbox-container h-100 d-flex flex-column pr-3 px-3 rounded-0"
+    class="chatbox-container fill-height d-flex flex-column pr-3 px-3 rounded-0"
     id="chatbox"
     color="surface"
   >
@@ -139,6 +139,7 @@ margin-left: .2rem;
 
 #chatbox {
   font-family: 'Raleway';
+  height: 100% !important;
 }
 @media (min-width: 780px) {
   .chatbox-fab {
