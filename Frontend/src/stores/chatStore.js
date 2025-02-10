@@ -1,10 +1,10 @@
 import { getResponse } from '@/services/chatService'
 import { defineStore } from 'pinia'
-import { v6 as uuid } from 'uuid'
+import { v6 as   uuid } from 'uuid'
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
-    isOpen: window.innerWidth > 1080,
+    isOpen: true,
     isExpanded: false,
     isLoading: false,
     width: 250, // Default min width
