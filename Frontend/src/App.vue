@@ -4,13 +4,12 @@
       <div id="page-wrapper">
         <Navbar />
         <div id="content-wrapper">
-          <div id="chat-box">
-            <ChatBox />
-          </div>
           <div class="flex-grow-1 overflow-y-auto" id="main-view">
             <RouterView />
           </div>
-          
+          <div id="chat-box">
+            <ChatBox />
+          </div>
         </div>
       </div>
     </main>
@@ -20,9 +19,7 @@
 <script setup>
 import { RouterView } from 'vue-router'
 import ChatBox from './components/ChatBox.vue'
-import Navbar from './components/Navbar.vue';
-
-
+import Navbar from './components/Navbar.vue'
 </script>
 
 <style scoped>
@@ -38,13 +35,13 @@ import Navbar from './components/Navbar.vue';
   }
 }
 
-#page-wrapper{
-display: flex;
-flex-direction: column;
-width: 100%;
+#page-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
-#content-wrapper{
+#content-wrapper {
   display: flex;
   overflow: hidden;
   flex-direction: column;
