@@ -1,6 +1,6 @@
 import { getResponse } from '@/services/chatService'
 import { defineStore } from 'pinia'
-import { v6 as   uuid } from 'uuid'
+import { v6 as uuid } from 'uuid'
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
@@ -18,28 +18,28 @@ export const useChatStore = defineStore('chat', {
       },
     ],
     messageHistory: [
-      {
-        sentBy: 'You',
-        sentAt: new Date(),
-        message: 'What do you know about API?',
-      },
-      {
-        sentBy: 'SamuelLM',
-        sentAt: new Date(),
-        message:
-          "I've led the development of ASP.NET Core Web APIs, like our Experience API. I understand API architecture, HTTP requests, data aggregation, integration with ERP systems using SDKs, CI/CD pipelines with GitHub Actions, and securing APIs with JWT for authentication and authorization.",
-      },
-      {
-        sentBy: 'You',
-        sentAt: new Date(),
-        message: 'I want to know more about your ASP.NET Core Web API projects.',
-      },
-      {
-        sentBy: 'SamuelLM',
-        sentAt: new Date(),
-        message:
-          "I've developed multiple ASP.NET Core Web APIs, including our Experience API at OKCCC. This API integrates with Ellucian Ethos ERP system using SDKs, aggregating data for various services like student information, course catalog, and faculty directories. It follows RESTful architecture, utilizes HTTPS for secure communication, and implements JWT for authentication and authorization. The API is built on .NET 5.0, uses Entity Framework Core for database operations, and employs unit tests with xUnit and integration tests with Postman. Additionally, I've set up CI/CD pipelines using GitHub Actions for automated testing and deployment.",
-      },
+      // {
+      //   sentBy: 'You',
+      //   sentAt: new Date(),
+      //   message: 'What do you know about API?',
+      // },
+      // {
+      //   sentBy: 'SamuelLM',
+      //   sentAt: new Date(),
+      //   message:
+      //     "I've led the development of ASP.NET Core Web APIs, like our Experience API. I understand API architecture, HTTP requests, data aggregation, integration with ERP systems using SDKs, CI/CD pipelines with GitHub Actions, and securing APIs with JWT for authentication and authorization.",
+      // },
+      // {
+      //   sentBy: 'You',
+      //   sentAt: new Date(),
+      //   message: 'I want to know more about your ASP.NET Core Web API projects.',
+      // },
+      // {
+      //   sentBy: 'SamuelLM',
+      //   sentAt: new Date(),
+      //   message:
+      //     "I've developed multiple ASP.NET Core Web APIs, including our Experience API at OKCCC. This API integrates with Ellucian Ethos ERP system using SDKs, aggregating data for various services like student information, course catalog, and faculty directories. It follows RESTful architecture, utilizes HTTPS for secure communication, and implements JWT for authentication and authorization. The API is built on .NET 5.0, uses Entity Framework Core for database operations, and employs unit tests with xUnit and integration tests with Postman. Additionally, I've set up CI/CD pipelines using GitHub Actions for automated testing and deployment.",
+      // },
     ],
     message: '',
   }),
