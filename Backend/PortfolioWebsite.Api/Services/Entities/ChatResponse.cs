@@ -7,13 +7,15 @@ public class ChatResponse
     public bool TokenLimitReached { get; set;  }
     public bool ReturnResume { get; set;  }
     public string? RedirectToPage { get; set; }
+    public IEnumerable<ToolCall>? ToolCalls { get; set; }
 
-    public ChatResponse(string message, bool error, bool tokenLimitReached = false, bool returnResume = false, string? redirectToPage = null)
+    public ChatResponse(string message, bool error, bool tokenLimitReached = false, bool returnResume = false, string? redirectToPage = null, IEnumerable<ToolCall>? toolCalls = null)
     {
         Message = message;
         Error = error;
         TokenLimitReached = tokenLimitReached;
         ReturnResume = returnResume;
         RedirectToPage = redirectToPage;
+        ToolCalls = toolCalls;
     }
 }

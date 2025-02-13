@@ -40,7 +40,8 @@ public static class Constants
                             type = "string",
                             description = "An optional short message from the user explaining what the contact request is for."
                         }
-                    }
+                    },
+                    required = new [] { "email" }
                 }
             }
         },
@@ -80,7 +81,7 @@ public static class Constants
             function = new
             {
                 name = "askQuestion",
-                description = "Accepts a question from the user and returns an answer based on the information provided in Samuel Ohrenberg's professional history and knowledge",
+                description = "Accepts a technical or interview question from the user and returns an answer",
                 parameters = new
                 {
                     type = "object",
@@ -89,7 +90,7 @@ public static class Constants
                         question = new
                         {
                             type = "string",
-                            description = "The question that the user is asking about Samuel Ohrenberg"
+                            description = "The question that the user is asking"
                         }
                     }
                 }

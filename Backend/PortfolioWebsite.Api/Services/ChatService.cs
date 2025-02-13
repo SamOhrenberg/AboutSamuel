@@ -22,9 +22,11 @@ public class ChatService
     private readonly SqlDbContext _dbContext;
     private readonly HttpClient _httpClient;
     private readonly ContactService _contactService;
-    private readonly string _model;
-    private readonly float _temperature;
+    private readonly ModelSettings _toolUse;
+    private readonly ModelSettings _questions;
     private readonly string _lmUrl;
+
+    private record ModelSettings(string Model, float Temperature);
 
     public ChatService(IConfiguration configuration, ILogger<ChatService> logger, SqlDbContext dbContext, HttpClient httpClient, ContactService contactService)
     {
@@ -32,9 +34,18 @@ public class ChatService
         _dbContext = dbContext;
         _httpClient = httpClient;
         _contactService = contactService;
-        _model = configuration.GetValue<string>("ChatSettings:Model") ?? throw new NullReferenceException("ChatSettings:Model must be populated in settings");
-        _temperature = configuration.GetValue<float?>("ChatSettings:Temperature") ?? throw new NullReferenceException("ChatSettings:Temperature must be populated in settings");
         _lmUrl = configuration.GetValue<string>("ChatSettings:Url") ?? throw new NullReferenceException("ChatSettings:Url must be populated in settings");
+
+        string model = configuration.GetValue<string>("ChatSettings:ToolUse:Model") ?? throw new NullReferenceException("ChatSettings:ToolUse:Model must be populated in settings");
+        float temperature = configuration.GetValue<float?>("ChatSettings:ToolUse:Temperature") ?? throw new NullReferenceException("ChatSettings:ToolUse:Temperature must be populated in settings");
+
+        _toolUse = new ModelSettings(model, temperature);
+
+        model = configuration.GetValue<string>("ChatSettings:Question:Model") ?? throw new NullReferenceException("ChatSettings:Question:Model must be populated in settings");
+        temperature = configuration.GetValue<float?>("ChatSettings:Question:Temperature") ?? throw new NullReferenceException("ChatSettings:Question:Temperature must be populated in settings");
+
+        _questions = new ModelSettings(model, temperature);
+
     }
 
     internal async Task<ChatResponse> QueryChat(ChatLog chat)
@@ -46,8 +57,8 @@ public class ChatService
 
         var completion = new
         {
-            model = _model,
-            temperature = _temperature,
+            model = _toolUse.Model,
+            temperature = _toolUse.Temperature,
             messages = new List<ChatMessage>
             {
                 new ChatMessage("system", $"""
@@ -55,11 +66,10 @@ public class ChatService
                         Context:  
                             You are an AI chatbot. Your name is SamuelLM.                         
                             You were created by Samuel Ohrenberg, who also goes by Sam or Sammy.
-                            You are a Large Language Model, or LLM, using { _model }.
+                            You are a Large Language Model, or LLM.
                             You are hosted off of Sam's computer to provide an AI assistant for his portfolio. 
                             I am interfacing with you via an ASP.NET Core Web API and a Vue.js web application. 
-                            
-                        For now, the word "you" is referring to Samuel Ohrenberg. Any questions about you should be answered as if you were Samuel Ohrenberg.
+                            You are answering on behalf of Samuel.
 
                     """
                 )
@@ -76,42 +86,38 @@ public class ChatService
         // request the chat
         var response = await GetChatResponse(completion);
 
-        var toolCallsMatch = Regex.Match(response.Message, @"\[TOOL_CALLS\](\[.*?\])(.*)");
-        if (toolCallsMatch.Success)
+        if (response.ToolCalls is not null)
         {
-            string toolCallsJson = toolCallsMatch.Groups[1].Value;
-            var toolCalls = JArray.Parse(toolCallsJson);
-
-            foreach (var toolCall in toolCalls)
+            foreach (var toolCall in response.ToolCalls)
             {
-                switch (toolCall["name"]?.ToString())
+                switch (toolCall.Name)
                 {
                     case "contactSamuel":
-                        var email = toolCall["arguments"]?["email"]?.ToString();
-                        var msg = toolCall["arguments"]?["message"]?.ToString();
+                        var email = toolCall.Arguments?["email"]?.ToString();
+                        var msg = toolCall.Arguments?["message"]?.ToString();
                         if (!string.IsNullOrEmpty(email))
                         {
                             await _contactService.SendContactRequest(email, msg);
                         }
-                        response.Message = toolCallsMatch.Groups[2].Value;
+                        response.Message = response.Message;
                         break;
                     case "getResume":
                         response.ReturnResume = true;
                         response.Message = "Of course. Here is Sam's resume!";
                         break;
                     case "redirectToPage":
-                        response.RedirectToPage = toolCall["arguments"]?["page"]?.ToString();
-                        response.Message = toolCallsMatch.Groups[2].Value;
+                        response.RedirectToPage = toolCall.Arguments?["page"]?.ToString();
+                        response.Message = response.Message;
                         break;
                     case "askQuestion":
-                        string? question = toolCall["arguments"]?["question"]?.ToString();
+                        string? question = toolCall.Arguments?["question"]?.ToString();
                         if (!string.IsNullOrEmpty(question))
                         {
                             var questionCompletion = new
                             {
-                                completion.model,
+                                model = _questions.Model,
                                 completion.messages,
-                                completion.temperature
+                                temperature = _questions.Temperature
                             };
                             var questionResponse = await AskQuestion(questionCompletion, question);
                             response.Message = questionResponse.Message;
@@ -122,6 +128,7 @@ public class ChatService
                 }
             }
         }
+        
 
         // save the chat log
         stopwatch.Stop();
@@ -163,13 +170,27 @@ public class ChatService
         }
 
         var jsonObject = JObject.Parse(responseText);
-        responseText = Regex.Replace((jsonObject["choices"] as JArray).First()["message"]["content"].ToString().Replace("*", ""), @"\s+", " ");
+        IEnumerable<ToolCall> toolCalls = null;
+        var responseMessage = jsonObject["choices"]?[0]?["message"];
+        if (responseMessage is not null && responseMessage["content"] is not null)
+        {
+            responseText = responseMessage["content"]?.ToString() ?? string.Empty;
+        }
+        else
+        {
+            responseText = string.Empty;
+        }
         if (responseText.Contains("</think>"))
         {
-            responseText = responseText.Split("</think>")[1];
+            responseText = responseText.Split("</think>")[1].Trim(' ', '\r', '\n');
         }
 
-        return new ChatResponse(responseText, false, Convert.ToInt32(jsonObject["usage"]["total_tokens"]) > 2500);
+        if (responseMessage is not null && responseMessage["tool_calls"] is not null && responseMessage["tool_calls"] is JArray toolCallsObj)
+        {
+            toolCalls = toolCallsObj.Select(a => new ToolCall(a?["function"]?["name"]?.ToString(), a?["function"]?["arguments"]?.ToString()));
+        }
+
+        return new ChatResponse(responseText, false, Convert.ToInt32(jsonObject["usage"]["total_tokens"]) > 2500, toolCalls: toolCalls); ;
     }
 
     private async Task<ChatResponse> AskQuestion(dynamic completion, string? question)
