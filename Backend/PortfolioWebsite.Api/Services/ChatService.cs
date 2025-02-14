@@ -13,6 +13,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using static PortfolioWebsite.Api.Controllers.ChatController;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace PortfolioWebsite.Api.Services;
 
@@ -128,7 +129,10 @@ public class ChatService
                         break;
                     case "redirectToPage":
                         response.RedirectToPage = toolCall.Arguments?["page"]?.ToString();
-                        response.Message = response.Message;
+                        if (string.IsNullOrEmpty(response.Message))
+                        {
+                            response.Message = await GetPageRedirectMessage(chat.Message, response.RedirectToPage);
+                        }
                         break;
                     case "askQuestion":
                         string? question = toolCall.Arguments?["question"]?.ToString();
@@ -157,6 +161,41 @@ public class ChatService
         await SaveChatLog(chat, response.Message, response.Error, response.TokenLimitReached, receivedAt, stopwatch.ElapsedMilliseconds);
 
         return response;
+    }
+
+    private async Task<string> GetPageRedirectMessage(string message, string? redirectToPage)
+    {
+        var completion = new
+        {
+            model = _questions.Model,
+            temperature = _questions.Temperature,
+            messages = new List<ChatMessage>
+            {
+                new ChatMessage("system", $"""
+                            
+                        Context:  
+                            You are an AI chatbot.
+                            In a chat window, the end user has posted a message that has been determined there is a page on my website that contains information about their post.
+                            The target audience that you generate responses for is the user that is sending the contact request.
+                            You should be friendly, professional, and helpful.
+                            You should be concise and to the point.
+                            You should generate messages that are intended for posting in a chat window.
+                            I will provide you with the message from the user and the page that they are being directed to.
+                            You should generate a fairly standard message explaining them the redirect.
+                            You do not need to worry about generating a link for the user. The webpage is redirecting them automatically.
+
+                    """
+                ),
+                new ChatMessage("user", $"""
+                    User's message that was redirect to a page: { message }
+                    Page they are being directed to: { redirectToPage }
+                    """
+                )
+            },
+        };
+
+        var response = await GetChatResponse(completion);
+        return response.Message;
     }
 
     private async Task<string> GetContactRequestMessage(string? email, string? msg, string? error)
