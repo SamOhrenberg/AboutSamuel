@@ -57,7 +57,7 @@ namespace PortfolioWebsite.Api.Migrations
 
                     b.HasKey("ChatId");
 
-                    b.ToTable("Chats");
+                    b.ToTable("Chats", (string)null);
                 });
 
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.Information", b =>
@@ -71,7 +71,7 @@ namespace PortfolioWebsite.Api.Migrations
 
                     b.HasKey("InformationId");
 
-                    b.ToTable("Information");
+                    b.ToTable("Information", (string)null);
                 });
 
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.Keyword", b =>
@@ -91,7 +91,7 @@ namespace PortfolioWebsite.Api.Migrations
 
                     b.HasIndex("InformationId");
 
-                    b.ToTable("Keywords");
+                    b.ToTable("Keywords", (string)null);
                 });
 
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.Keyword", b =>
