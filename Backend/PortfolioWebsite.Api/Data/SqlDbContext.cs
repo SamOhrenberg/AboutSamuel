@@ -28,8 +28,5 @@ public class SqlDbContext : DbContext
             .Property(k => k.KeywordId)
             .HasValueGenerator<SequentialGuidValueGenerator>()
             .ValueGeneratedOnAdd();
-
-        modelBuilder.Entity<Synonym>()
-            .HasKey(s => new { s.TextIn, s.TextOut });
     }
 }
