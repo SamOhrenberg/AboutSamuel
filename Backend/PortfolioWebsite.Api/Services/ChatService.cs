@@ -131,7 +131,17 @@ public class ChatService
                         response.RedirectToPage = toolCall.Arguments?["page"]?.ToString();
                         if (string.IsNullOrEmpty(response.Message))
                         {
-                            response.Message = await GetPageRedirectMessage(chat.Message, response.RedirectToPage);
+                            var questionCompletion = new
+                            {
+                                model = _questions.Model,
+                                completion.messages,
+                                temperature = _questions.Temperature
+                            };
+
+                            var questionResponse = await AskQuestion(questionCompletion);
+                            response.Message = questionResponse.Message;
+                            response.Error = response.Error || questionResponse.Error;
+                            response.TokenLimitReached = response.TokenLimitReached || questionResponse.TokenLimitReached;
                         }
                         break;
                     case "askQuestion":
@@ -144,7 +154,7 @@ public class ChatService
                                 completion.messages,
                                 temperature = _questions.Temperature
                             };
-                            var questionResponse = await AskQuestion(questionCompletion, question);
+                            var questionResponse = await AskQuestion(questionCompletion);
                             response.Message = questionResponse.Message;
                             response.Error = response.Error || questionResponse.Error;
                             response.TokenLimitReached = response.TokenLimitReached || questionResponse.TokenLimitReached;
@@ -289,7 +299,7 @@ public class ChatService
         return new ChatResponse(responseText, false, Convert.ToInt32(jsonObject["usage"]["total_tokens"]) > 2500, toolCalls: toolCalls); ;
     }
 
-    private async Task<ChatResponse> AskQuestion(dynamic completion, string? question)
+    private async Task<ChatResponse> AskQuestion(dynamic completion)
     {
         var fullUserChatLogBuilder = new StringBuilder();
         foreach (var entry in completion.messages)
