@@ -13,11 +13,11 @@ iisreset /stop
 echo Copying files...
 xcopy /E /I /Y C:\Deployable\PortfolioApi C:\PortfolioApi
 
-echo Deleting files in C:\Deployable\PortfolioApi...
-del /F /Q C:\Deployable\PortfolioApi\*
-rmdir /S /Q C:\Deployable\PortfolioApi
-
 echo Starting IIS...
 iisreset /start
 
 echo Deployment completed.
+
+echo Deleting files in C:\Deployable\PortfolioApi...
+del /F /Q C:\Deployable\PortfolioApi\*
+rmdir /S /Q C:\Deployable\PortfolioApi
