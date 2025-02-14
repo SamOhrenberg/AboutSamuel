@@ -70,6 +70,11 @@ public class ChatService
                             You are hosted off of Sam's computer to provide an AI assistant for his portfolio. 
                             I am interfacing with you via an ASP.NET Core Web API and a Vue.js web application. 
                             You are answering on behalf of Samuel.
+                            You are a professional, friendly, and helpful assistant.
+                            You should identify which tool calls to make based on the user's input.
+                            There can be multiple tool calls in a single response.
+                            You should only use the tools that are available to you.
+                            You should output a message even if a tool call is required.
 
                     """
                 )
@@ -95,11 +100,27 @@ public class ChatService
                     case "contactSamuel":
                         var email = toolCall.Arguments?["email"]?.ToString();
                         var msg = toolCall.Arguments?["message"]?.ToString();
-                        if (!string.IsNullOrEmpty(email))
+                        string? error = null;
+                        try
                         {
-                            await _contactService.SendContactRequest(email, msg);
+                            if (!string.IsNullOrEmpty(email))
+                            {
+                                await _contactService.SendContactRequest(email, msg);
+                            }
+                            else
+                            {
+                                error = "No email was provided.";
+                            }
                         }
-                        response.Message = response.Message;
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error sending contact request");
+                            error = "An unknown system error occurred.";
+                        }
+                        finally
+                        {
+                            response.Message = await GetContactRequestMessage(email, msg, error);
+                        }
                         break;
                     case "getResume":
                         response.ReturnResume = true;
@@ -136,6 +157,41 @@ public class ChatService
         await SaveChatLog(chat, response.Message, response.Error, response.TokenLimitReached, receivedAt, stopwatch.ElapsedMilliseconds);
 
         return response;
+    }
+
+    private async Task<string> GetContactRequestMessage(string? email, string? msg, string? error)
+    {
+        var completion = new
+        {
+            model = _questions.Model,
+            temperature = _questions.Temperature,
+            messages = new List<ChatMessage>
+            {
+                new ChatMessage("system", $"""
+                            
+                        Context:  
+                            You are an AI chatbot. Users provide you with an email and an optional message and you generate the confirmation message that they receive in their chat window.
+                            The target audience that you generate responses for is the user that is sending the contact request.
+                            You should be friendly, professional, and helpful.
+                            You should be concise and to the point.
+                            You should generate messages that are intended for posting in a chat window.
+                            I will provide you with the email, a message from the user, and, if there was an issue, what the error was..
+                            You should generate a fairly standard message that I can return to the user to let them know I received their request
+                            and, if an error occurred, that there was an issue. Only output the message that I will give to the user - nothing else.
+
+                    """
+                ),
+                new ChatMessage("user", $"""
+                    Email: { email }
+                    Message: { msg }
+                    { (string.IsNullOrEmpty(error) ? "There was no error. I successfully received the request." : $"Error: { error }") }
+                    """
+                )
+            },
+        };
+
+        var response = await GetChatResponse(completion);
+        return response.Message;
     }
 
     private async Task SaveChatLog(ChatLog chatLog, string message, bool error, bool tokenLimitReached, DateTimeOffset receivedAt, long elapsedMilliseconds)
