@@ -11,7 +11,6 @@ public class SqlDbContext : DbContext
     public DbSet<Information> Information { get; set; } = null!;
     public DbSet<Keyword> Keywords { get; set; } = null!;
     public DbSet<Chat> Chats { get; set; } = null!;
-    public DbSet<Synonym> Synonyms { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
