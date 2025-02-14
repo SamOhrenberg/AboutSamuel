@@ -17,6 +17,4 @@ const app = createApp(App)
 
 registerPlugins(app)
 
-console.log(import.meta.env)
-
 app.mount('#app')
