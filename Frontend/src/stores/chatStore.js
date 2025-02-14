@@ -50,7 +50,7 @@ export const useChatStore = defineStore('chat', {
         this.isLoading = true
         try {
           var response = await getResponse(this.message, this.messageHistory)
-
+          console.log(response)
           if (response.tokenLimitReached) {
             console.warn('token limit reached')
             this.archivedMessageHistory = [...this.archivedMessageHistory, ...this.messageHistory]
@@ -71,7 +71,12 @@ export const useChatStore = defineStore('chat', {
           })
 
           this.message = ''
-        } catch {
+
+          if (response.redirectToPage && response.redirectToPage != '') {
+            return response.redirectToPage.replace(' ', '')
+          }
+        } catch (error) {
+          console.error(error)
           this.messageHistory.pop()
           this.messageHistory.push({
             key: uuid(),

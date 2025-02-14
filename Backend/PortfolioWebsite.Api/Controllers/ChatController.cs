@@ -26,7 +26,7 @@ namespace PortfolioWebsite.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<string> Post(ChatLog chat)
+        public async Task<SamuelLMResponse> Post(ChatLog chat)
         {
             var chatResponse = await _chatService.QueryChat(chat);
 
@@ -40,7 +40,12 @@ namespace PortfolioWebsite.Api.Controllers
                 Response.StatusCode = (int)HttpStatusCode.BadRequest;
             }
 
-            return chatResponse.Message;
+            return new SamuelLMResponse
+            {
+                Message = chatResponse.Message,
+                DisplayResume = chatResponse.ReturnResume,
+                RedirectToPage = chatResponse.RedirectToPage
+            };
         }
     }
 }

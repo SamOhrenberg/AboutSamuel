@@ -11,11 +11,14 @@ export async function getResponse(message, messageHistory) {
           content: msg.message,
         })),
     }
-    const response = await axios.post(`https://api.aboutsamuel.com/Chat`, request)
+    //const response = await axios.post(`https://api.aboutsamuel.com/Chat`, request)
+    const response = await axios.post(`https://localhost:7276/Chat`, request)
 
     return {
-      text: response.data,
+      text: response.data.message,
       tokenLimitReached: response.headers['x-token-limit-reached'],
+      redirectToPage: response.data.redirectToPage,
+      displayResume: response.data.displayResume,
     }
   } catch (error) {
     console.error('Error fetching response:', error)

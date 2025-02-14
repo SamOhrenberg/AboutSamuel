@@ -2,7 +2,9 @@
 import { ref, watch, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chatStore' // Import Pinia store
 import { formatDateTime } from '@/utilities/dateUtils'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const store = useChatStore()
 const chatContainer = ref(null)
 
@@ -16,6 +18,14 @@ watch(
     }
   }
 )
+
+async function sendMessage() {
+  let redirectToPage = await store.sendMessage()
+
+  if (redirectToPage) {
+    router.push(`/${redirectToPage}`)
+  }
+}
 </script>
 
 <template>
@@ -37,9 +47,9 @@ watch(
         v-for="messageItem in store.archivedMessageHistory"
         :key="messageItem"
         :class="{
-          'SamuelLM': messageItem.sentBy === 'SamuelLM',
-          'User': messageItem.sentBy !== 'SamuelLM',
-          'chat-message': true
+          SamuelLM: messageItem.sentBy === 'SamuelLM',
+          User: messageItem.sentBy !== 'SamuelLM',
+          'chat-message': true,
         }"
       >
         <div class="message-header">
@@ -57,11 +67,15 @@ watch(
         <v-divider :thickness="3" color="error"></v-divider>
       </div>
 
-      <div v-for="messageItem in store.messageHistory" :key="messageItem"  :class="{
-          'SamuelLM': messageItem.sentBy === 'SamuelLM',
-          'User': messageItem.sentBy !== 'SamuelLM',
-          'chat-message': true
-        }">
+      <div
+        v-for="messageItem in store.messageHistory"
+        :key="messageItem"
+        :class="{
+          SamuelLM: messageItem.sentBy === 'SamuelLM',
+          User: messageItem.sentBy !== 'SamuelLM',
+          'chat-message': true,
+        }"
+      >
         <div class="message-header">
           <span class="sent-by">{{ messageItem.sentBy }}</span>
           <span class="message-time">{{ formatDateTime(messageItem.sentAt) }}</span>
@@ -78,11 +92,11 @@ watch(
         placeholder="Type a message..."
         :rows="2"
         class="chat-input"
-        @keyup.enter="store.sendMessage"
+        @keyup.enter="sendMessage"
         no-resize="true"
       >
       </v-textarea>
-      <v-btn @click="store.sendMessage" color="primary" variant="tonal" v-if="!store.isLoading"
+      <v-btn @click="sendMessage" color="primary" variant="tonal" v-if="!store.isLoading"
         >SEND</v-btn
       >
       <v-progress-circular indeterminate v-else />
@@ -113,24 +127,24 @@ watch(
 
 .message-header {
   display: flex;
-justify-content: space-between;
-margin-bottom: 0.1rem;
-margin-left: .2rem;
+  justify-content: space-between;
+  margin-bottom: 0.1rem;
+  margin-left: 0.2rem;
 }
 
-.sent-by{
+.sent-by {
   font-weight: bold;
   font-size: 0.9rem;
 }
 
-.message-time{
+.message-time {
   color: grey;
   font-family: Calibri, 'Trebuchet MS', sans-serif;
   font-size: 0.8rem;
 }
 
 .message-text {
-  padding: .7rem;
+  padding: 0.7rem;
 }
 .chat-input {
   flex: 1;
@@ -156,29 +170,27 @@ margin-left: .2rem;
   }
 }
 
-.samuelLM{
-
+.samuelLM {
   color: red;
   margin-right: auto;
 }
 
-.User{
+.User {
   margin-left: auto;
 }
 
-.message-text{
+.message-text {
   border-radius: 10px;
-
 }
-.SamuelLM .message-text{
+.SamuelLM .message-text {
   margin-right: auto;
   background-color: rgb(198, 198, 198);
 }
 
-.User .message-text{
-margin-left: auto;
-background-color: #00acac;
-color: white;
+.User .message-text {
+  margin-left: auto;
+  background-color: #00acac;
+  color: white;
 }
 
 @media (max-width: 780px) {
