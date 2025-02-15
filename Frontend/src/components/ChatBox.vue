@@ -177,6 +177,7 @@ async function sendMessage() {
 }
 .message-text {
   padding: 0.7rem;
+  width: fit-content;
 }
 .chat-input {
   flex: 1;
