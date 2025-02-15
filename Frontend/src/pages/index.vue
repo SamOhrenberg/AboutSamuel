@@ -106,7 +106,7 @@ bottom: 11rem;
       <div id="top-content-panel-1">
         <h1 class="text-blue_green">Nice to Meet You!</h1>
         <Header>I'm Samuel Ohrenberg</Header>
-        <h2>And I'm a <span class="text-yellow">Fullstack Developer</span> From Oklahoma</h2>
+        <h2>And I'm A <span class="text-yellow">Fullstack Developer</span> From Oklahoma</h2>
         <h3>
           I'm a passionate, solution-oriented programmer who loves solving problems. Please speak
           with my chatbot to learn more about me.

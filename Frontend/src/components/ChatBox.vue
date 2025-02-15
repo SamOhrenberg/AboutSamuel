@@ -77,8 +77,21 @@ async function sendMessage() {
         }"
       >
         <div class="message-header">
-          <span class="sent-by">{{ messageItem.sentBy }}</span>
-          <span class="message-time">{{ formatDateTime(messageItem.sentAt) }}</span>
+          <span
+            :class="{
+              message_sent_by_SamuelLM: messageItem.sentBy === 'SamuelLM',
+              message_sent_by_User: messageItem.sentBy !== 'SamuelLM',
+            }"
+          >
+            {{ messageItem.sentBy }}</span
+          >
+          <span
+            :class="{
+              message_time_for_User: messageItem.sentBy !== 'SamuelLM',
+              'message-time': true,
+            }"
+            >{{ formatDateTime(messageItem.sentAt) }}</span
+          >
         </div>
         <div class="message-text">{{ messageItem.message }}</div>
       </div>
@@ -133,9 +146,12 @@ async function sendMessage() {
   margin-left: 0.2rem;
 }
 
-.sent-by {
+.message_sent_by_SamuelLM {
   font-weight: bold;
   font-size: 0.9rem;
+}
+.message_sent_by_SamuelLM {
+  display: none;
 }
 
 .message-time {
@@ -143,7 +159,9 @@ async function sendMessage() {
   font-family: Calibri, 'Trebuchet MS', sans-serif;
   font-size: 0.8rem;
 }
-
+.message_time_for_User {
+  margin-left: auto;
+}
 .message-text {
   padding: 0.7rem;
 }
