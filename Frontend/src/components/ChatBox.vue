@@ -122,7 +122,8 @@ async function sendMessage() {
 .chat-message {
   margin-bottom: 1rem;
   font-size: 0.8rem;
-  width: 65%;
+  max-width: 65%;
+  width: fit-content;
 }
 
 .message-header {
