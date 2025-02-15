@@ -25,7 +25,6 @@ import Navbar from './components/Navbar.vue'
 <style scoped>
 @media (min-width: 780px) {
   #chat-box {
-    height: 100vh;
   }
 }
 
@@ -35,6 +34,9 @@ import Navbar from './components/Navbar.vue'
   }
 }
 
+#chat-box {
+  height: 100%;
+}
 #page-wrapper {
   display: flex;
   flex-direction: column;
@@ -44,5 +46,6 @@ import Navbar from './components/Navbar.vue'
 #content-wrapper {
   display: flex;
   overflow: hidden;
+  height: 100vh;
 }
 </style>
