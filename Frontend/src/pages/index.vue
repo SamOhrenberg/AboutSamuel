@@ -206,6 +206,7 @@ img {
 }
 #header-img {
   height: fit-content;
+  padding: 1rem 0 0 0;
 }
 
 header,
@@ -219,7 +220,6 @@ h3 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 14rem 0;
 }
 
 #desktop #top-content-panel-2 {
