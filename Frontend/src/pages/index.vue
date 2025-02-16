@@ -279,14 +279,50 @@ body {
   font-family: 'Patua One', Cochin, Georgia, Times, serif, Arial, sans-serif;
 }
 
+@media (max-width: 449px) {
+  #mobile header {
+    font-size: 2rem;
+  }
+  #mobile h1 {
+    font-size: 2.5rem;
+  }
+
+  #mobile span {
+    font-size: 2.5rem;
+  }
+}
+
+@media (min-width: 450px) {
+  #mobile header {
+    font-size: 2.5rem;
+  }
+  #mobile h1 {
+    font-size: 2.8rem;
+  }
+
+  #mobile span {
+    font-size: 2.5rem;
+  }
+}
+
+@media (min-width: 491px) {
+  #mobile header {
+    font-size: 3rem;
+  }
+  #mobile h1 {
+    font-size: 3.5rem;
+  }
+
+  #mobile span {
+    font-size: 3rem;
+  }
+}
 #mobile header {
-  font-size: 2.8rem;
   font-weight: bold;
 }
 #mobile h1 {
   font-weight: 200;
   padding-bottom: 0.5rem;
-  font-size: 3.5rem;
 }
 #mobile h2 {
   font-weight: 100;
@@ -307,7 +343,6 @@ body {
   justify-content: space-evenly;
   position: relative;
   bottom: 99px;
-  font-size: 3rem;
 }
 
 #mobile img {

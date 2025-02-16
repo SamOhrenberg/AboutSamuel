@@ -37,7 +37,7 @@ import Navbar from './components/Navbar.vue'
     flex-direction: column;
   }
   #page-wrapper {
-    min-width: 500px;
+    min-width: 350px;
     overflow-x: scroll;
   }
 }
