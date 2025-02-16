@@ -106,10 +106,25 @@ bottom: 11rem;
       <div id="top-content-panel-1">
         <h1 class="text-blue_green">Nice to Meet You!</h1>
         <Header>I'm Samuel Ohrenberg</Header>
-        <h2>And I'm A <span class="text-yellow">Fullstack Developer</span> From Oklahoma</h2>
+        <h2>
+          And I'm A<span class="group">
+            <span class="cycle-text" :class="{ fade: !isVisible }">{{ currentAoran }}&nbsp;</span>
+            <span
+              class="cycle-text text-yellow noun"
+              :class="{
+                fade: !isVisible,
+                api_dev: currentNoun === 'API Developer',
+                software_engineer: currentNoun === 'Software Engineer',
+                backend_dev: currentNoun === 'Backend Developer',
+              }"
+              >{{ currentNoun }}</span
+            >
+          </span>
+          From Oklahoma
+        </h2>
         <h3>
-          I'm a passionate, solution-oriented programmer who loves solving problems. Please speak
-          with my chatbot to learn more about me.
+          I'm a passionate, solution-oriented programmer who loves solving problems. If you'd like
+          to learn more about me, please speak with my chatbot, SamuelLM
         </h3>
       </div>
     </div>
@@ -134,7 +149,26 @@ bottom: 11rem;
 </template>
 
 <script setup>
-//
+import { ref, computed, onMounted } from 'vue'
+
+const aoran = ['', '', 'n']
+const nouns = ['Software Engineer', 'Backend Developer', 'API Developer']
+const index = ref(0)
+const isVisible = ref(true)
+
+const currentNoun = computed(() => nouns[index.value])
+const currentAoran = computed(() => aoran[index.value])
+
+onMounted(() => {
+  setInterval(() => {
+    isVisible.value = false // Start fade out
+
+    setTimeout(() => {
+      index.value = (index.value + 1) % nouns.length // Change word
+      isVisible.value = true // Start fade in
+    }, 500) // Delay change until mid-fade (adjust timing if needed)
+  }, 4000)
+})
 </script>
 
 <style>
@@ -147,10 +181,47 @@ html {
   margin: 0; /* Remove default margins */
   padding: 0; /* Remove default paddings */
 }
+@keyframes fadeInOut {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
 
+.cycle-text {
+  transition: opacity 0.5s ease-in-out;
+  opacity: 1;
+}
+
+.fade {
+  opacity: 0;
+}
 #content-wrapper-2 {
   display: flex;
   width: 75%;
+  margin: auto;
+}
+
+/* .api_dev {
+  letter-spacing: 0.086rem;
+}
+
+.backend_dev {
+  letter-spacing: -0.131rem;
+}
+
+.software_engineer {
+  letter-spacing: -0.099rem;
+} */
+
+.group {
+  display: inline-flex;
+  min-width: 18.5rem;
+}
+.noun {
   margin: auto;
 }
 #item-wrapper {
@@ -187,6 +258,7 @@ img {
   position: relative;
   top: 0;
   justify-content: center;
+  padding: 0 2rem;
 }
 header,
 h1,
@@ -199,7 +271,7 @@ h3 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 5rem 0;
+  padding: 15rem 0;
 }
 
 #top-content-panel-2 {
