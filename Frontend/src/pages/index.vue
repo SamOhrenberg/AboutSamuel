@@ -219,7 +219,7 @@ h3 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 15rem 0;
+  padding: 14rem 0;
 }
 
 #desktop #top-content-panel-2 {
@@ -234,11 +234,6 @@ h3 {
   background-color: #003131;
   padding: 10rem 0;
   z-index: 1;
-}
-
-#desktop #top-content-panel-1,
-#desktop #top-content-panel-2 {
-  padding: 1rem 0.5rem;
 }
 
 #desktop header {
