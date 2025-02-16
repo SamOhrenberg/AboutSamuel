@@ -130,7 +130,11 @@ async function sendMessage() {
   </v-card>
 
   <!-- Floating Chat Button -->
-  <v-btn v-if="!store.isOpen" class="chatbox-fab rounded-0" @click="store.isOpen = true">
+  <v-btn
+    v-if="!store.isOpen"
+    class="chatbox-fab rounded-0 collapsed-chat-box"
+    @click="store.isOpen = true"
+  >
     <v-icon size="x-large">mdi-chat</v-icon>
   </v-btn>
 </template>
@@ -151,7 +155,28 @@ async function sendMessage() {
   max-width: 65%;
   width: fit-content;
 }
+@media (max-width: 570px) {
+  .collapsed-chat-box {
+    padding: 0.5rem 0rem 2rem 0rem !important;
+    width: 100%;
+  }
+  #chatbox {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+  }
+}
 
+@media (min-width: 571px) {
+  .collapsed-chat-box {
+    padding: 1rem;
+  }
+  .chatbox-fab {
+    height: 100vh !important;
+  }
+}
 .message-header {
   display: flex;
   justify-content: space-between;
@@ -192,7 +217,6 @@ async function sendMessage() {
 @media (min-width: 780px) {
   .chatbox-fab {
     width: 2rem;
-    height: 100vh !important;
     background-color: #1976d2;
     color: white;
   }
@@ -233,7 +257,6 @@ async function sendMessage() {
     bottom: 0;
     right: 0;
     left: 0;
-    height: 4rem !important;
     background-color: #1976d2;
     color: white;
   }

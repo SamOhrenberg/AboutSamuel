@@ -27,6 +27,26 @@ import Navbar from './components/Navbar.vue'
   #chat-box {
   }
 }
+@media (max-width: 570px) {
+  #chat-box {
+    height: 10%;
+    width: auto;
+    max-width: 100%;
+  }
+  #content-wrapper {
+    flex-direction: column;
+  }
+  #page-wrapper {
+    min-width: 500px;
+    overflow-x: scroll;
+  }
+}
+
+@media (min-width: 571px) {
+  #chat-box {
+    height: 100%;
+  }
+}
 
 @media (max-width: 780px) {
   #chat-box {
@@ -34,9 +54,6 @@ import Navbar from './components/Navbar.vue'
   }
 }
 
-#chat-box {
-  height: 100%;
-}
 #page-wrapper {
   display: flex;
   flex-direction: column;
