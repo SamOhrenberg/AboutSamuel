@@ -6,15 +6,16 @@
         <h1 class="text-blue_green">Nice to Meet You!</h1>
         <Header>I'm Samuel Ohrenberg</Header>
         <h2>
-          And I'm A<span class="group">
-            <span class="cycle-text" :class="{ fade: !isVisible }">{{ currentAoran }}&nbsp;</span>
+          And I'm
+          <span class="group">
+            <span>A</span
+            ><span class="cycle-text" :class="{ fade: !isVisible }">{{ currentAoran }}&nbsp;</span>
             <span
               class="cycle-text text-yellow noun"
               :class="{
                 fade: !isVisible,
-                api_dev: currentNoun === 'API Developer',
-                software_engineer: currentNoun === 'Software Engineer',
-                backend_dev: currentNoun === 'Backend Developer',
+                remove_margin_auto: store.isOpen,
+                add_margin_auto: !store.isOpen,
               }"
               >{{ currentNoun }}</span
             >
@@ -90,7 +91,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useChatStore } from '@/stores/chatStore' // Import Pinia store
 
+const store = useChatStore()
 const aoran = ['', '', 'n']
 const nouns = ['Software Engineer', 'Backend Developer', 'API Developer']
 const index = ref(0)
@@ -149,6 +152,21 @@ html {
   }
 }
 
+@media (max-width: 1402px) {
+  .add_margin_auto {
+    margin: auto;
+  }
+  .remove_margin_auto {
+    margin: none;
+  }
+}
+
+@media (min-width: 1403px) {
+  .noun {
+    margin: auto;
+  }
+}
+
 #desktop {
   display: flex;
   flex-direction: column;
@@ -183,11 +201,9 @@ html {
 
 .group {
   display: inline-flex;
-  min-width: 18.5rem;
+  min-width: 19.5rem;
 }
-.noun {
-  margin: auto;
-}
+
 #item-wrapper {
   display: flex;
   flex-direction: row;
