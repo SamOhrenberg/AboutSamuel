@@ -13,4 +13,9 @@ public class Keyword
     public Guid KeywordId { get; set; }
     public string Text { get; set; }
     public virtual Information Information { get; set; }
+
+    public override string ToString()
+    {
+        return Text;
+    }
 }

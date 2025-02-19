@@ -14,21 +14,12 @@ namespace PortfolioWebsite.Api.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class ChatController : ControllerBase
+    public class ChatController(ILogger<ChatController> logger, ChatService chatService) : ControllerBase
     {
-        private readonly ILogger<ChatController> _logger;
-        private readonly ChatService _chatService;
-
-        public ChatController(ILogger<ChatController> logger, ChatService chatService)
-        {
-            _logger = logger;
-            _chatService = chatService;
-        }
-
         [HttpPost]
         public async Task<SamuelLMResponse> Post(ChatLog chat)
         {
-            var chatResponse = await _chatService.QueryChat(chat);
+            var chatResponse = await chatService.QueryChat(chat);
 
             if (chatResponse.TokenLimitReached)
             {

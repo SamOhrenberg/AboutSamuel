@@ -19,6 +19,7 @@ namespace PortfolioWebsite.Api.Services;
 
 public class ChatService
 {
+    private const int MatchWeight = 60;
     private readonly ILogger<ChatService> _logger;
     private readonly SqlDbContext _dbContext;
     private readonly HttpClient _httpClient;
@@ -327,19 +328,41 @@ public class ChatService
 
     private async Task<string> GetRelevantInformation(IEnumerable<string> tokens)
     {
-
-        var informations = await _dbContext.Keywords
+        // Fetch the data from the database
+        var keywords = await _dbContext.Keywords
             .Include(ik => ik.Information)
-            .Where(ik => !string.IsNullOrEmpty(ik.Information.Text) && tokens.Contains(ik.Text))
+            .Where(ik => !string.IsNullOrEmpty(ik.Information.Text))
+            .ToListAsync();
+
+        // Filter the data based on the similarity percentage
+        var informations = keywords
+            .Where(ik => tokens.Any(token => Utility.LevenshteinDifference(ik.Text, token) <= 30))
             .Select(ik => ik.Information)
             .Distinct()
-            .ToListAsync();
+            .ToList();
+
+        foreach (var info in informations)
+        {
+            info.Keywords = await _dbContext.Keywords.Where(k => k.Information == info).ToListAsync();
+        }
 
 
         // reduce the informations to 3 to prevent overflowing the LLM
         if (informations.Count > 3)
         {
-            informations = Utility.Shuffle(informations).Take(Utility.TrueRandom(2,5)).ToList();
+            var countedInformations = informations.Select(i => new
+            {
+                Information = i,
+                NumberofMatches = i.Keywords.Count(k => tokens.Any(token => Utility.LevenshteinDifference(k.Text.ToLower(), token) <= 30))
+            }).ToList();
+            float max = countedInformations.Max(a => a.NumberofMatches);
+            float min = countedInformations.Min(a => a.NumberofMatches);
+            var scoredInformation = countedInformations.Select(i => new
+            {
+                Information = i.Information,
+                Score = ((i.NumberofMatches - min) / (max - min) * MatchWeight) + (Utility.TrueRandom(1, (100 - MatchWeight)))
+            }).ToList();
+            informations = scoredInformation.OrderByDescending(a => a.Score).Take(Utility.TrueRandom(2,5)).Select(a => a.Information).ToList();
         }
 
         StringBuilder infoBuilder = new();
