@@ -28,29 +28,28 @@ const changeTheme = () => {
 <template>
   <nav class="navbar">
     <v-switch
-        v-model="activeTheme"
-        class="ma-0 pa-0"
-        direction="vertical"
-        true-value="light"
-        false-value="dark"
-        base-color="navbar_links"
-        @change="changeTheme"
-        color="navbar_links"
-      >
-
+      v-model="activeTheme"
+      class="ma-0 pa-0"
+      direction="vertical"
+      true-value="light"
+      false-value="dark"
+      base-color="navbar_links"
+      @change="changeTheme"
+      color="navbar_links"
+    >
       <template v-slot:label>
-      <span class="text-navbar_links">Turn Lights {{activeTheme == 'dark' ? 'On' : 'Off'}}</span>
+        <span class="text-navbar_links">
+          Turn Lights {{ activeTheme == 'dark' ? 'On' : 'Off' }}
+        </span>
       </template>
     </v-switch>
     <ul class="nav-links text-navbar_links">
-      <li><a>Resume</a></li>
-      <li>Testimonial</li>
-      <li>Contact</li>
+      <li><router-link to="/resume">Resume</router-link></li>
+      <li><router-link to="/testimonial">Testimonial</router-link></li>
+      <li><router-link to="/contact">Contact</router-link></li>
     </ul>
-
   </nav>
 </template>
-
 
 <style scoped>
 .navbar {
@@ -70,7 +69,7 @@ const changeTheme = () => {
   margin: 0;
 }
 
-li {
+li a {
   color: var(--v-theme-accent) !important;
 
   text-decoration: none;
@@ -80,15 +79,16 @@ li {
   text-decoration: underline;
 }
 
-ul{
+li a:visited {
+  color: var(--v-theme-accent) !important;
+}
+
+ul {
   display: flex;
   width: 100%;
   justify-content: flex-end;
-
 }
 .v-switch div.v-input__details {
   display: none;
 }
-
-
 </style>
