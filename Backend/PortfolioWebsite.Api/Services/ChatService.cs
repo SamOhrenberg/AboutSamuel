@@ -328,23 +328,25 @@ public class ChatService
 
     private async Task<string> GetRelevantInformation(IEnumerable<string> tokens)
     {
-        // Fetch the data from the database
-        var keywords = await _dbContext.Keywords
-            .Include(ik => ik.Information)
-            .Where(ik => !string.IsNullOrEmpty(ik.Information.Text))
-            .ToListAsync();
-
-        // Filter the data based on the similarity percentage
-        var informations = keywords
-            .Where(ik => tokens.Any(token => Utility.LevenshteinDifference(ik.Text, token) <= 30))
-            .Select(ik => ik.Information)
-            .Distinct()
-            .ToList();
-
+        var informations = await _dbContext.Information.Include(i => i.Keywords).ToListAsync();
         foreach (var info in informations)
         {
-            info.Keywords = await _dbContext.Keywords.Where(k => k.Information == info).ToListAsync();
+            info.Keywords.AddRange(Tokenizer.Tokenize(info.Text).Select(t => new Keyword(t, info)));
+            info.Keywords = info.Keywords.DistinctBy(k => k.Text).ToList(); 
         }
+
+        //// Fetch the data from the database
+        //var keywords = await _dbContext.Keywords
+        //    .Include(ik => ik.Information)
+        //    .Where(ik => !string.IsNullOrEmpty(ik.Information.Text))
+        //    .ToListAsync();
+
+        //// Filter the data based on the similarity percentage
+        //var informations = keywords
+        //    .Where(ik => tokens.Any(token => Utility.LevenshteinDifference(ik.Text, token) <= 30))
+        //    .Select(ik => ik.Information)
+        //    .Distinct()
+        //    .ToList();
 
 
         // reduce the informations to 3 to prevent overflowing the LLM
