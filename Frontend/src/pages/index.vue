@@ -61,7 +61,7 @@
         >
           {{ currentNoun }}
         </h1>
-        <h2>Okalhoma City, Oklahoma</h2>
+        <h2>Oklahoma City, Oklahoma</h2>
       </div>
     </div>
     <div id="middle-content"></div>
