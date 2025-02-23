@@ -51,7 +51,10 @@ public static class Constants
             function = new
             {
                 name = "redirectToPage",
-                description = "Checks if the user is wanting information that can be found on one of the following pages: 'Contact', 'Work History', 'Projects', 'Education'",
+                description = @"Checks if the user is wanting information that can be found on one of the following pages: 'Contact', 'Testimonial', 'Resume'. 
+                                The contact page contains a form that the user can use to reach out to Sam.
+                                The testimonial page contains testimonials from coworkers and past partners about Samuel.
+                                The resume page contains information about Sam's work history, projects, education, and skills.",
                 parameters = new
                 {
                     type = "object",
@@ -60,7 +63,7 @@ public static class Constants
                         page = new
                         {
                             type = "string",
-                            description = "The page that the user is wanting to be redirected to"
+                            description = "That page that contains actions or information pertinent to the user's query"
                         }
                     }
                 }
