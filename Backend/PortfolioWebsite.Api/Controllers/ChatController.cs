@@ -10,33 +10,32 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
-namespace PortfolioWebsite.Api.Controllers
+namespace PortfolioWebsite.Api.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+public class ChatController(ILogger<ChatController> logger, ChatService chatService) : ControllerBase
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class ChatController(ILogger<ChatController> logger, ChatService chatService) : ControllerBase
+    [HttpPost]
+    public async Task<SamuelLMResponse> Post(ChatLog chat)
     {
-        [HttpPost]
-        public async Task<SamuelLMResponse> Post(ChatLog chat)
+        var chatResponse = await chatService.QueryChat(chat);
+
+        if (chatResponse.TokenLimitReached)
         {
-            var chatResponse = await chatService.QueryChat(chat);
-
-            if (chatResponse.TokenLimitReached)
-            {
-                Response.Headers.Append("X-Token-Limit-Reached", "true");
-            }
-
-            if (chatResponse.Error)
-            {
-                Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            }
-
-            return new SamuelLMResponse
-            {
-                Message = chatResponse.Message,
-                DisplayResume = chatResponse.ReturnResume,
-                RedirectToPage = chatResponse.RedirectToPage
-            };
+            Response.Headers.Append("X-Token-Limit-Reached", "true");
         }
+
+        if (chatResponse.Error)
+        {
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        }
+
+        return new SamuelLMResponse
+        {
+            Message = chatResponse.Message,
+            DisplayResume = chatResponse.ReturnResume,
+            RedirectToPage = chatResponse.RedirectToPage
+        };
     }
 }
