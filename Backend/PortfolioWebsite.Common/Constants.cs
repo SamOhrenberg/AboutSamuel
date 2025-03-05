@@ -33,7 +33,7 @@ public static class Constants
                         email = new
                         {
                             type = "string",
-                            description = "The user's email address that Samuel will use to contact them"
+                            description = "The user's email address that Samuel will use to contact them. This is a required field and must be provided by the user."
                         },
                         message = new
                         {
@@ -41,7 +41,7 @@ public static class Constants
                             description = "An optional short message from the user explaining what the contact request is for."
                         }
                     },
-                    required = new [] { "email" }
+                    //required = new [] { "email" }
                 }
             }
         },

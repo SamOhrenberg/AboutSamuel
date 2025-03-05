@@ -68,6 +68,7 @@ public class ChatService
                         Context:  
                             You are an AI chatbot. Your name is SamuelLM.                         
                             You were created by Samuel Ohrenberg, who also goes by Sam or Sammy.
+                            Your URL is https://aboutsamuel.com/
                             You are a Large Language Model, or LLM.
                             You are hosted off of Sam's computer to provide an AI assistant for his portfolio. 
                             I am interfacing with you via an ASP.NET Core Web API and a Vue.js web application. 
@@ -77,6 +78,7 @@ public class ChatService
                             There can be multiple tool calls in a single response.
                             You should only use the tools that are available to you.
                             You should output a message even if a tool call is required.
+                            Do not output markdown. Only output raw text.
 
                     """
                 )
@@ -129,9 +131,8 @@ public class ChatService
                         response.Message = "Of course. Here is Sam's resume!";
                         break;
                     case "redirectToPage":
-                        response.RedirectToPage = toolCall.Arguments?["page"]?.ToString();
-                        if (string.IsNullOrEmpty(response.Message))
                         {
+                            response.RedirectToPage = toolCall.Arguments?["page"]?.ToString();
                             var questionCompletion = new
                             {
                                 model = _questions.Model,
@@ -296,8 +297,20 @@ public class ChatService
         {
             toolCalls = toolCallsObj.Select(a => new ToolCall(a?["function"]?["name"]?.ToString(), a?["function"]?["arguments"]?.ToString()));
         }
+        else
+        {
+            var toolCallsMatch = Regex.Match(responseText, @"\[TOOL_CALLS\](\[.*?\])(.*)");
+            if (toolCallsMatch.Success)
+            {
+                responseText = toolCallsMatch.Groups[2].Value;
+                string toolCallsJson = toolCallsMatch.Groups[1].Value;
+                JArray toolCallArray = JArray.Parse(toolCallsJson);
+                toolCalls = toolCallArray.Select(t => new ToolCall(t["name"]?.ToString(), t["arguments"]?.ToString()));
+            }
+        }
 
         return new ChatResponse(responseText, false, Convert.ToInt32(jsonObject["usage"]["total_tokens"]) > 2500, toolCalls: toolCalls); ;
+
     }
 
     private async Task<ChatResponse> AskQuestion(dynamic completion)
