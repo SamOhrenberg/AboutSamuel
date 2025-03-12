@@ -10,6 +10,7 @@ using PortfolioWebsite.Api.Services.Entities.Google;
 using PortfolioWebsite.Common;
 using System;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -30,7 +31,8 @@ public class ChatService
     private readonly string? _geminiApiKey;
     private readonly string _lmUrl;
 
-    public bool geminiOverLimit { get; private set; }
+    private DateTimeOffset? _geminiAvailableAt = null;
+
 
     private record ModelSettings(string Model, float Temperature);
 
@@ -65,7 +67,12 @@ public class ChatService
 
         ChatResponse response = null!;
 
-        if (!string.IsNullOrEmpty(_geminiApiKey) && !geminiOverLimit)
+        if (_geminiAvailableAt is not null && _geminiAvailableAt < DateTimeOffset.Now)
+        {
+            _geminiAvailableAt = null;
+        }
+
+        if (!string.IsNullOrEmpty(_geminiApiKey) && _geminiAvailableAt is null)
         {
             response = await QueryGemini(chat);
         }
@@ -160,7 +167,7 @@ public class ChatService
                                 },
                                 {
                                     "message"
-                                    , new FunctionProperty 
+                                    , new FunctionProperty
                                     {
                                         Type = "string",
                                         Description = "An optional short message from the user explaining what the contact request is for."
@@ -234,82 +241,89 @@ public class ChatService
             ]
         });
 
-        var response = await GetGoogleChatResponse(request) ?? throw new Exception("Something went wrong");
-
-        if (response.ToolCalls is not null)
+        try
         {
-            foreach (var toolCall in response.ToolCalls)
+            var response = await GetGoogleChatResponse(request) ?? throw new Exception("Something went wrong");
+
+            if (response.ToolCalls is not null)
             {
-                switch (toolCall.Name)
+                foreach (var toolCall in response.ToolCalls)
                 {
-                    case "contactSamuel":
-                        var email = toolCall.Arguments?["email"]?.ToString();
-                        var msg = toolCall.Arguments?["message"]?.ToString();
-                        string? error = null;
-                        try
-                        {
-                            if (!string.IsNullOrEmpty(email))
+                    switch (toolCall.Name)
+                    {
+                        case "contactSamuel":
+                            var email = toolCall.Arguments?["email"]?.ToString();
+                            var msg = toolCall.Arguments?["message"]?.ToString();
+                            string? error = null;
+                            try
                             {
-                                await _contactService.SendContactRequest(email, msg);
+                                if (!string.IsNullOrEmpty(email))
+                                {
+                                    await _contactService.SendContactRequest(email, msg);
+                                }
+                                else
+                                {
+                                    error = "No email was provided.";
+                                }
                             }
-                            else
+                            catch (Exception ex)
                             {
-                                error = "No email was provided.";
+                                _logger.LogError(ex, "Error sending contact request");
+                                error = "An unknown system error occurred.";
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error sending contact request");
-                            error = "An unknown system error occurred.";
-                        }
-                        finally
-                        {
-                            response.Message = await GetGoogleContactRequestMessage(email, msg, error);
-                        }
-                        break;
-                    case "getResume":
-                        response.ReturnResume = true;
-                        response.Message = "Of course. Here is Sam's resume!";
-                        break;
-                    case "redirectToPage":
-                        {
-                            response.RedirectToPage = toolCall.Arguments?["page"]?.ToString();
-                            GoogleChatRequest questionCompletion = new()
+                            finally
                             {
-                                SystemInstruction = request.SystemInstruction,
-                                Contents = request.Contents,
-                                GenerationConfig = request.GenerationConfig
-                            };
-
-                            questionCompletion.GenerationConfig.Temperature = 0.8;
-                            questionCompletion.GenerationConfig.MaxOutputTokens = 75;
-
-                            var questionResponse = await AskGoogleQuestion(questionCompletion);
-                            response.Message = questionResponse.Message;
-                            response.Error = response.Error || questionResponse.Error;
-                            response.TokenLimitReached = response.TokenLimitReached || questionResponse.TokenLimitReached;
-                        }
-                        break;
-                    case "askQuestion":
-                        string? question = toolCall.Arguments?["question"]?.ToString();
-                        if (!string.IsNullOrEmpty(question))
-                        {
-                            GoogleChatRequest questionCompletion = new()
+                                response.Message = await GetGoogleContactRequestMessage(email, msg, error);
+                            }
+                            break;
+                        case "getResume":
+                            response.ReturnResume = true;
+                            response.Message = "Of course. Here is Sam's resume!";
+                            break;
+                        case "redirectToPage":
                             {
-                                SystemInstruction = request.SystemInstruction,
-                                Contents = request.Contents,
-                                GenerationConfig = request.GenerationConfig
-                            };
-                            questionCompletion.GenerationConfig.Temperature = 0.8;
-                            questionCompletion.GenerationConfig.MaxOutputTokens = 200;
-                            var questionResponse = await AskGoogleQuestion(questionCompletion);
-                            response.Message = questionResponse.Message;
-                            response.Error = response.Error || questionResponse.Error;
-                            response.TokenLimitReached = response.TokenLimitReached || questionResponse.TokenLimitReached;
-                        }
-                        break;
+                                response.RedirectToPage = toolCall.Arguments?["page"]?.ToString();
+                                GoogleChatRequest questionCompletion = new()
+                                {
+                                    SystemInstruction = request.SystemInstruction,
+                                    Contents = request.Contents,
+                                    GenerationConfig = request.GenerationConfig
+                                };
+
+                                questionCompletion.GenerationConfig.Temperature = 0.8;
+                                questionCompletion.GenerationConfig.MaxOutputTokens = 75;
+
+                                var questionResponse = await AskGoogleQuestion(questionCompletion);
+                                response.Message = questionResponse.Message;
+                                response.Error = response.Error || questionResponse.Error;
+                                response.TokenLimitReached = response.TokenLimitReached || questionResponse.TokenLimitReached;
+                            }
+                            break;
+                        case "askQuestion":
+                            string? question = toolCall.Arguments?["question"]?.ToString();
+                            if (!string.IsNullOrEmpty(question))
+                            {
+                                GoogleChatRequest questionCompletion = new()
+                                {
+                                    SystemInstruction = request.SystemInstruction,
+                                    Contents = request.Contents,
+                                    GenerationConfig = request.GenerationConfig
+                                };
+                                questionCompletion.GenerationConfig.Temperature = 0.8;
+                                questionCompletion.GenerationConfig.MaxOutputTokens = 200;
+                                var questionResponse = await AskGoogleQuestion(questionCompletion);
+                                response.Message = questionResponse.Message;
+                                response.Error = response.Error || questionResponse.Error;
+                                response.TokenLimitReached = response.TokenLimitReached || questionResponse.TokenLimitReached;
+                            }
+                            break;
+                    }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+
         }
 
         return response;
@@ -389,14 +403,14 @@ public class ChatService
                 TopK = 40,
                 TopP = 0.95
             },
-            Contents = 
+            Contents =
             [
-                new() 
+                new()
                 {
                     Role = "user",
-                    Parts = 
+                    Parts =
                     [
-                        new() 
+                        new()
                         {
                             Text = $"""
                                 Email: { email }
@@ -417,7 +431,23 @@ public class ChatService
     {
         var requestJson = System.Text.Json.JsonSerializer.Serialize(request);
         var response = await _httpClient.PostAsync($"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_geminiApiKey}", new StringContent(requestJson, Encoding.UTF8, "application/json"));
-        response.EnsureSuccessStatusCode();
+        try
+        {
+            response.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException ex)
+        {
+            if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                _geminiAvailableAt = DateTimeOffset.Now.AddMinutes(1);
+                var convertedRequest = ConvertGoogleToLocalRequest(request);
+                return await GetChatResponse(convertedRequest);
+            }
+            else
+            {
+                throw;
+            }
+        }
         var responseText = await response.Content.ReadAsStringAsync();
         var responseJson = System.Text.Json.JsonSerializer.Deserialize<GoogleChatResponse>(responseText);
 
@@ -439,7 +469,7 @@ public class ChatService
                         Arguments = JObject.FromObject(part.FunctionCall.Args)
                     });
                 }
-                
+
                 if (part.Text is not null)
                 {
                     if (!string.IsNullOrEmpty(message))
@@ -455,6 +485,40 @@ public class ChatService
         ChatResponse chatResponse = new ChatResponse(message, error, tokenLimitReached, toolCalls: toolCall);
 
         return chatResponse;
+    }
+
+    private dynamic ConvertGoogleToLocalRequest(GoogleChatRequest request)
+    {
+        var isToolRequest = request.Tools is not null;
+
+        var messages = new List<ChatMessage>();
+
+        if (request.SystemInstruction is not null && request.SystemInstruction?.Parts?.FirstOrDefault()?.Text is string text)
+        {
+            messages.Add(new ChatMessage("system", text));
+        }
+
+        foreach (var content in request.Contents)
+        {
+            if (content.Parts is not null)
+            {
+                foreach (var part in content.Parts)
+                {
+                    if (part.Text is not null)
+                    {
+                        messages.Add(new ChatMessage(content.Role.Equals("model") ? "assistant" : content.Role, part.Text));
+                    }
+                }
+            }
+        }
+
+        return new
+        {
+            model = isToolRequest ? _toolUse.Model : _questions.Model,
+            temperature = isToolRequest ? _toolUse.Temperature : _questions.Temperature,
+            messages = messages,
+            tools = isToolRequest ? Constants.SupportedTools : null
+        };
     }
 
     private async Task<ChatResponse> QueryLocalChat(ChatLog chat)
