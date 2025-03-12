@@ -16,7 +16,7 @@ public static class Constants
         "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"
     ];
 
-    public static readonly object[] SupportedTools =
+    public static readonly dynamic[] SupportedTools =
     [
         new
         {
