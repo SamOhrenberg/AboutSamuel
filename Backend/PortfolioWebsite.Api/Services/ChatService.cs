@@ -320,13 +320,21 @@ public class ChatService
                     }
                 }
             }
+
+            return response;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-
+            if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                _geminiAvailableAt = DateTimeOffset.Now.AddMinutes(1);
+                return await QueryLocalChat(chat);
+            }
+            else
+            {
+                throw;
+            }
         }
-
-        return response;
     }
 
     private async Task<ChatResponse> AskGoogleQuestion(GoogleChatRequest completion)
@@ -431,23 +439,7 @@ public class ChatService
     {
         var requestJson = System.Text.Json.JsonSerializer.Serialize(request);
         var response = await _httpClient.PostAsync($"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_geminiApiKey}", new StringContent(requestJson, Encoding.UTF8, "application/json"));
-        try
-        {
-            response.EnsureSuccessStatusCode();
-        }
-        catch (HttpRequestException ex)
-        {
-            if (ex.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                _geminiAvailableAt = DateTimeOffset.Now.AddMinutes(1);
-                var convertedRequest = ConvertGoogleToLocalRequest(request);
-                return await GetChatResponse(convertedRequest);
-            }
-            else
-            {
-                throw;
-            }
-        }
+        response.EnsureSuccessStatusCode();
         var responseText = await response.Content.ReadAsStringAsync();
         var responseJson = System.Text.Json.JsonSerializer.Deserialize<GoogleChatResponse>(responseText);
 
