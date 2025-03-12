@@ -133,8 +133,8 @@ public class ChatService
             }).ToList(),
             Tools = new Tools
             {
-                FunctionDeclarations = new List<FunctionDeclaration>
-                {
+                FunctionDeclarations =
+                [
                     new() {
                         Name = "contactSamuel",
                         Description = "Accepts the email of the user and an optional message from the user that generates a contact request for Samuel Ohrenberg. This allows users to contact Samuel in case they have further questions or wish to discuss something",
@@ -210,7 +210,7 @@ public class ChatService
                             }
                         }
                     }
-                }
+                ]
 
             }
         };
@@ -424,7 +424,7 @@ public class ChatService
     private async Task<ChatResponse?> GetGoogleChatResponse(GoogleChatRequest request)
     {
         var requestJson = System.Text.Json.JsonSerializer.Serialize(request);
-        var response = await _httpClient.PostAsync("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyCTuAayFMiJ_SEULDXJTvrk6xxtXCy58zs", new StringContent(requestJson, Encoding.UTF8, "application/json"));
+        var response = await _httpClient.PostAsync($"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_geminiApiKey}", new StringContent(requestJson, Encoding.UTF8, "application/json"));
         response.EnsureSuccessStatusCode();
         var responseText = await response.Content.ReadAsStringAsync();
         var responseJson = System.Text.Json.JsonSerializer.Deserialize<GoogleChatResponse>(responseText);
