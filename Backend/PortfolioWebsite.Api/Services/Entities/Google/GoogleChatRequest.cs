@@ -15,6 +15,9 @@ public class GoogleChatRequest
 
     [JsonPropertyName("tools")]
     public Tools? Tools { get; set; }
+
+    [JsonPropertyName("tool_config")]
+    public ToolConfig? ToolConfig { get; set; }
 }
 
 public class UsageMetadata

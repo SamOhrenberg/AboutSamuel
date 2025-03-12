@@ -131,6 +131,13 @@ public class ChatService
                     }
                 }
             }).ToList(),
+            ToolConfig = new()
+            {
+                FunctionCallingConfig = new()
+                {
+                    Mode = "ANY"
+                }
+            },
             Tools = new Tools
             {
                 FunctionDeclarations =
@@ -193,7 +200,7 @@ public class ChatService
                     new()
                     {
                         Name = "askQuestion",
-                        Description = "Accepts any question from the user and returns an answer",
+                        Description = "Accepts any question from the user and returns an answer. This includes any technical question, personal question, interview question, or anything. ",
                         Parameters = new()
                         {
                             Type = "object",
@@ -204,7 +211,7 @@ public class ChatService
                                     new()
                                     {
                                         Type = "string",
-                                        Description = "The question that the user is asking"
+                                        Description = "The question that the user is asking, e.g. 'How do you ensure the code you write is maintainable and scalable?' or 'Do you know C#'?"
                                     }
                                 }
                             }
@@ -334,30 +341,15 @@ public class ChatService
         }
 
         // add the new
-        completion.Contents.Insert(1, new Content() 
-        { 
-            Role = "user", 
-            Parts = 
-            [
-                new() 
-                {
-                    Text = $"Use the following information from Samuel Ohrenberg's resume to answer any questions about him. Please note, this is only a small selection from his resume and there is likely even more that would be relevant: \r\n{relevantInfo}"
-                }
-            ]
-        });
-        completion.Contents.Insert(2, new Content()
-        {
-            Role = "user",
-            Parts =
-            [
-                new()
-                {
-                    Text = $"Please respond very concisely and professionally, as if you were in an interview. Keep your response below 100 words and keep focused. "
-                }
-            ]
-        });
+        completion.SystemInstruction.Parts.First().Text += $"""
+            Use the following information from Samuel Ohrenberg's resume to answer any questions about him. 
+            Please note, this is only a small selection from his resume and there is likely even more that would be relevant: 
+            {relevantInfo}
+        """;
 
-        var response = await GetChatResponse(completion);
+        completion.SystemInstruction.Parts.First().Text += $"\r\nPlease respond very concisely and professionally, as if you were in an interview. ";
+
+        var response = await GetGoogleChatResponse(completion);
 
         return response;
 
