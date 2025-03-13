@@ -1,0 +1,34 @@
+name: Deploy ASP.NET Core 8 API
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Publish PortfolioWebsite.Api
+      run: dotnet publish ./Backend/PortfolioWebsite.Api/PortfolioWebsite.Api.csproj --configuration Release --framework net8.0 --self-contained true --runtime win-x64 --output ./Backend/PortfolioWebsite.Api/publish
+
+    - name: Stop IIS
+      run: |
+        Stop-Service -Name 'W3SVC'
+      shell: pwsh
+
+    - name: Copy files to C:\PortfolioApi
+      run: |
+        Remove-Item -Recurse -Force C:\PortfolioApi\*
+        Copy-Item -Path ./Backend/PortfolioWebsite.Api/publish/* -Destination C:\PortfolioApi\ -Recurse
+      shell: pwsh
+
+    - name: Start IIS
+      if: always()
+      run: |
+        Start-Service -Name 'W3SVC'
+      shell: pwsh

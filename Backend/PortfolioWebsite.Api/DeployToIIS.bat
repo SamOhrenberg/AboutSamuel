@@ -10,6 +10,19 @@ if '%errorlevel%' NEQ '0' (
 echo Stopping IIS...
 iisreset /stop
 
+:: Delete appsettings.json if it exists
+if exist C:\Deployable\PortfolioApi\appsettings.json (
+    echo Deleting appsettings.json...
+    del /F /Q C:\Deployable\PortfolioApi\appsettings.json
+)
+
+:: Delete appsettings.production.json if it exists
+if exist C:\Deployable\PortfolioApi\appsettings.production.json (
+    echo Deleting appsettings.json...
+    del /F /Q C:\Deployable\PortfolioApi\appsettings.production.json
+)
+
+
 echo Copying files...
 xcopy /E /I /Y C:\Deployable\PortfolioApi C:\PortfolioApi
 
