@@ -85,7 +85,7 @@ public class ChatService
 
         // save the chat log
         stopwatch.Stop();
-        _logger.LogInformation($"Chat query took {stopwatch.ElapsedMilliseconds}ms");
+        _logger.LogInformation("Chat query took {milliseconds}ms", stopwatch.ElapsedMilliseconds);
         await SaveChatLog(chat, response.Message, response.Error, response.TokenLimitReached, receivedAt, stopwatch.ElapsedMilliseconds);
 
         return response;
