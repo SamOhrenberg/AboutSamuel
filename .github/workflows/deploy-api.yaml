@@ -23,8 +23,7 @@ jobs:
 
     - name: Copy files to C:\PortfolioApi
       run: |
-        Remove-Item -Recurse -Force C:\PortfolioApi\*
-        Copy-Item -Path ./Backend/PortfolioWebsite.Api/publish/* -Destination C:\PortfolioApi\ -Recurse
+        Copy-Item -Path ./Backend/PortfolioWebsite.Api/publish/* -Destination C:\PortfolioApi\ -Recurse -Force
       shell: powershell
 
     - name: Start IIS
