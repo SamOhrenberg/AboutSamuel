@@ -19,16 +19,16 @@ jobs:
     - name: Stop IIS
       run: |
         Stop-Service -Name 'W3SVC'
-      shell: pwsh
+      shell: powershell
 
     - name: Copy files to C:\PortfolioApi
       run: |
         Remove-Item -Recurse -Force C:\PortfolioApi\*
         Copy-Item -Path ./Backend/PortfolioWebsite.Api/publish/* -Destination C:\PortfolioApi\ -Recurse
-      shell: pwsh
+      shell: powershell
 
     - name: Start IIS
       if: always()
       run: |
         Start-Service -Name 'W3SVC'
-      shell: pwsh
+      shell: powershell
