@@ -24,3 +24,15 @@ export async function getResponse(message, messageHistory) {
     throw error
   }
 }
+
+export async function getResume() {
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/chat/resume/true`)
+    console.log(response);
+    console.log(response.data);
+    return response.data
+  } catch (error) {
+    console.error('Error fetching resume:', error)
+    throw error
+  }
+}
