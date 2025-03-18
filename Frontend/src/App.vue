@@ -20,6 +20,17 @@
 import { RouterView } from 'vue-router'
 import ChatBox from './components/ChatBox.vue'
 import Navbar from './components/Navbar.vue'
+
+import { useResumeStore } from '@/stores/resumeStore';
+import { onMounted } from 'vue';
+
+const resumeStore = useResumeStore();
+
+onMounted(() => {
+  if (!resumeStore.resumeContent) {
+    resumeStore.fetchResume();
+  }
+});
 </script>
 
 <style scoped>

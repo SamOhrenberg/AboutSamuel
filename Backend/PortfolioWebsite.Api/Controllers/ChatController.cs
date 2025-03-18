@@ -14,12 +14,12 @@ namespace PortfolioWebsite.Api.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class ChatController(ILogger<ChatController> logger, ChatService chatService) : ControllerBase
+public class ChatController(ILogger<ChatController> _logger, ChatService _chatService) : ControllerBase
 {
     [HttpPost]
     public async Task<SamuelLMResponse> Post(ChatLog chat)
     {
-        var chatResponse = await chatService.QueryChat(chat);
+        var chatResponse = await _chatService.QueryChat(chat);
 
         if (chatResponse.TokenLimitReached)
         {
@@ -37,5 +37,21 @@ public class ChatController(ILogger<ChatController> logger, ChatService chatServ
             DisplayResume = chatResponse.ReturnResume,
             RedirectToPage = chatResponse.RedirectToPage
         };
+    }
+
+    [HttpGet("resume/{jobTitle?}")]
+    public async Task<string?> GetResume(string? jobTitle)
+    {
+        try
+        {
+            string html = await _chatService.GenerateHtmlResume(jobTitle);
+            return html;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating HTML resume");
+            return null;
+        }
+
     }
 }

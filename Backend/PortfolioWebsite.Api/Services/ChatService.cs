@@ -850,4 +850,114 @@ public class ChatService
         await _dbContext.AddAsync(information);
         await _dbContext.SaveChangesAsync();
     }
+
+    public async Task<string?> GenerateHtmlResume(string? title)
+    {
+        string response = await GenerateResumeWithGemini(title);
+        return response;
+    }
+
+    private async Task<string?> GenerateResumeWithGemini(string? title)
+    {
+        var allInformation = await _dbContext.Information.OrderBy(t => t.Text).ToListAsync();
+        var textBlock = string.Join("\r\n\r\n\r\nNew Information: ", allInformation.Select(i => i.Text));
+
+        var request = new GoogleChatRequest
+        {
+            GenerationConfig = new GenerationConfig
+            {
+                Temperature = 2,
+                TopK = 40,
+                TopP = 0.95,
+                MaxOutputTokens = 8192,
+                ResponseMimeType = "application/json",
+                ResponseSchema = new ResponseSchema
+                {
+                    Type = "object",
+                    Properties = new Dictionary<string, ResponseProperty>
+                    {
+                        {
+                            "html",
+                            new ResponseProperty
+                            {
+                                Type = "string",
+                            }
+                        }
+                    }
+                }
+            },
+            SystemInstruction = new Content
+            {
+                Role = "user",
+                Parts =
+                [
+                    new()
+                            {
+                                Text = $"""
+                                    I will provide information about my professional experience and history. 
+                                    Utilize the information to generate the resume for my website that will slot within a vue.js <template></template>. 
+                                    {(!string.IsNullOrEmpty(title) ? $"Personalize the resume for a {title} job, only keeping the relevant and pertinent details" : "") }
+                                    Only output information you have. Do not leave any placeholders for me to fill. 
+                                    Do not include the <template> tags as this will be slotted into the HTML. 
+                                    Do not include a contact session.
+                                    Do not use <style> tags or classes - only use style attributes. 
+                                    feel free to paraphrase and summarize as needed and use your best judgement to create a concise, well-formatted, and visually appealing resume.
+                                    However also output as much information as you can.
+                                    Ensure there is a good contrast between foreground text and background colors.
+                                    Ensure that the resume is visually appealing and easy to read.
+                                    Ensure that the resume is accessible and can be read by screen readers.
+                                    Ensure that the resume is responsive and can be viewed on different devices.
+                                    Please make it stand out and look good on any background or style. 
+                                    Please make sure to include all of my jobs and all of my projects as well as my education  and the important details.
+                                    Please utilize this color theme:
+
+                                        background: '#e6eeee',
+                                        surface: '#FFFFFF',
+                                        'surface-bright': '#FFFFFF',
+                                        'surface-light': '#EEEEEE',
+                                        'surface-variant': '#424242',
+                                        'on-surface-variant': '#EEEEEE',
+                                        primary: '##ecf2f2',
+                                        'primary-darken-1': '#1F5592',
+                                        secondary: '#48A9A6',
+                                        'secondary-darken-1': '#018786',
+                                        error: '#B00020',
+                                        info: '#2196F3',
+                                        success: '#4CAF50',
+                                        warning: '#FB8C00',
+                                        accent: '#006a6a',
+                                        navbar_links: '#006a6a',
+                                        blue_green: '##007c7c',
+                                        yellow: '#eeae31'
+
+
+                                """
+                            }
+                ]
+            },
+            Contents = [
+                new Content
+                {
+                    Role = "user",
+                    Parts =
+                    [
+                        new Part
+                        {
+                            Text = textBlock
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var response = await GetGoogleChatResponse(request) ?? throw new Exception("Something went wrong");
+        
+        if (!string.IsNullOrEmpty(response.Message))
+        {
+            var jObj = JObject.Parse(response.Message);
+            return jObj["html"]?.ToString();
+        }
+
+        return response.Message;
+    }
 }

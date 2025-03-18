@@ -9,4 +9,5 @@ public class GenerationConfig
     [JsonPropertyName("topP")] public double TopP { get; set; }
     [JsonPropertyName("maxOutputTokens")] public int MaxOutputTokens { get; set; }
     [JsonPropertyName("responseMimeType")] public string ResponseMimeType { get; set; }
+    [JsonPropertyName("responseSchema")] public ResponseSchema ResponseSchema { get; set; }
 }
