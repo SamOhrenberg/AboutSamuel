@@ -851,16 +851,16 @@ public class ChatService
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task<string?> GenerateHtmlResume(bool force)
+    public async Task<string?> GenerateHtmlResume(string? title)
     {
-        string response = await GenerateResumeWithGemini();
+        string response = await GenerateResumeWithGemini(title);
         return response;
     }
 
-    private async Task<string?> GenerateResumeWithGemini()
+    private async Task<string?> GenerateResumeWithGemini(string? title)
     {
-        var allInformation = await _dbContext.Information.ToListAsync();
-        var textBlock = string.Join('\n', allInformation.Select(i => i.Text));
+        var allInformation = await _dbContext.Information.OrderBy(t => t.Text).ToListAsync();
+        var textBlock = string.Join("\r\n\r\n\r\nNew Information: ", allInformation.Select(i => i.Text));
 
         var request = new GoogleChatRequest
         {
@@ -893,10 +893,13 @@ public class ChatService
                 [
                     new()
                             {
-                                Text = """
-                                    The user will provide information about his professional experience and history. 
+                                Text = $"""
+                                    I will provide information about my professional experience and history. 
                                     Utilize the information to generate the resume for my website that will slot within a vue.js <template></template>. 
+                                    {(!string.IsNullOrEmpty(title) ? $"Personalize the resume for a {title} job, only keeping the relevant and pertinent details" : "") }
+                                    Only output information you have. Do not leave any placeholders for me to fill. 
                                     Do not include the <template> tags as this will be slotted into the HTML. 
+                                    Do not include a contact session.
                                     Do not use <style> tags or classes - only use style attributes. 
                                     feel free to paraphrase and summarize as needed and use your best judgement to create a concise, well-formatted, and visually appealing resume.
                                     However also output as much information as you can.

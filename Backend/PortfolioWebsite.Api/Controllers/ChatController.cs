@@ -39,12 +39,12 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
         };
     }
 
-    [HttpGet("resume/{force}")]
-    public async Task<string?> GetResume(bool? force)
+    [HttpGet("resume/{jobTitle?}")]
+    public async Task<string?> GetResume(string? jobTitle)
     {
         try
         {
-            string html = await _chatService.GenerateHtmlResume(force.GetValueOrDefault());
+            string html = await _chatService.GenerateHtmlResume(jobTitle);
             return html;
         }
         catch (Exception ex)
