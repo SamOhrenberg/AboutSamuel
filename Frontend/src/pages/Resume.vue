@@ -11,7 +11,7 @@
 
       <!-- Official Resume Link -->
       <a
-        href="/path-to-your-resume.pdf"
+        :href="pdfLink"
         target="_blank"
         class="d-flex align-center text-decoration-none mb-2 mb-md-0"
       >
@@ -70,6 +70,7 @@ import { useResumeStore } from '@/stores/resumeStore';
 const resumeStore = useResumeStore();
 const isExpanded = ref(false);
 const jobTitle = ref('');
+const pdfLink = ref(new URL('@/assets/samuel-ohrenberg-official-resume.pdf', import.meta.url).href);
 
 const toggleExpand = () => {
   isExpanded.value = !isExpanded.value;
