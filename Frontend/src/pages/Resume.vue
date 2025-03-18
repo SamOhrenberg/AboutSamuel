@@ -70,7 +70,7 @@ import { useResumeStore } from '@/stores/resumeStore';
 const resumeStore = useResumeStore();
 const isExpanded = ref(false);
 const jobTitle = ref('');
-const pdfLink = ref(new URL('@/assets/samuel-ohrenberg-official-resume.pdf', import.meta.url).href);
+const pdfLink = ref(import.meta.env.VITE_RESUME_PDF_LINK);
 
 const toggleExpand = () => {
   isExpanded.value = !isExpanded.value;
