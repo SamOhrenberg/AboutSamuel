@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container class="d-flex justify-center">
     <v-card class="pa-4" max-width="500px" elevation="2">
       <v-card-title>Contact Samuel</v-card-title>
       <v-card-text>

@@ -37,10 +37,10 @@
           <div id="about-me-wrapper">
             <header>So, Who Am I?</header>
             <p>
-              Lorem, ipsum dolor sit amet consectetur adipisicing elit. Quia facilis magni voluptate
-              consectetur, voluptatum ullam rerum adipisci eligendi enim explicabo tenetur
-              cupiditate, culpa aperiam in accusamus deserunt amet tempora dicta?
-            </p>
+              I'm a software engineer from Oklahoma passionate about building robust, scalable solutions while always learning
+              and exploring new technologies and strategies. When I'm not coding, I enjoy diving into sci-fi books and movies,
+              engaging in tabletop games, and spending quality time with my wife, our little one, and our cherished pets—a corgi
+              and a jack russell. Curious for more? Check out my chatbot, SamuelLM!            </p>
           </div>
         </div>
       </div>
