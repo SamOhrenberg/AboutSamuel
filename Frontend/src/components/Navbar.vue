@@ -44,8 +44,9 @@ const changeTheme = () => {
       </template>
     </v-switch>
     <ul class="nav-links text-navbar_links">
+      <li><router-link to="/">Home</router-link></li>
       <li><router-link to="/resume">Resume</router-link></li>
-      <li><router-link to="/testimonial">Testimonial</router-link></li>
+      <!-- <li><router-link to="/testimonial">Testimonial</router-link></li> -->
       <li><router-link to="/contact">Contact</router-link></li>
     </ul>
   </nav>
