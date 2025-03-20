@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using PortfolioWebsite.Api.Data;
+using PortfolioWebsite.Api.Middlewares;
 using PortfolioWebsite.Api.Services;
 using Serilog;
 
@@ -56,6 +57,8 @@ namespace PortfolioWebsite.Api
                     app.UseSwagger();
                     app.UseSwaggerUI();
                 }
+
+                app.UseMiddleware<ExceptionLoggerMiddleware>();
 
                 app.UseHttpsRedirection();
 

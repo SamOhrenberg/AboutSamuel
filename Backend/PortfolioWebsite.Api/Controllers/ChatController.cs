@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using PortfolioWebsite.Api.Data.Models;
 using PortfolioWebsite.Api.Dtos;
 using PortfolioWebsite.Api.Services;
 using PortfolioWebsite.Api.Services.Entities;
@@ -19,6 +20,8 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
     [HttpPost]
     public async Task<SamuelLMResponse> Post(ChatLog chat)
     {
+        _logger.LogInformation("POST /api/chat from {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
+        _logger.LogDebug("Payload: {chat}", JsonSerializer.Serialize(chat));
         var chatResponse = await _chatService.QueryChat(chat);
 
         if (chatResponse.TokenLimitReached)
@@ -42,16 +45,8 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
     [HttpGet("resume/{jobTitle?}")]
     public async Task<string?> GetResume(string? jobTitle)
     {
-        try
-        {
-            string html = await _chatService.GenerateHtmlResume(jobTitle);
-            return html;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating HTML resume");
-            return null;
-        }
-
+        _logger.LogInformation("POST /api/chat/resume/{jobTitle} from {RemoteIp}", jobTitle ?? "", HttpContext.Connection.RemoteIpAddress);
+        string? html = await _chatService.GenerateHtmlResume(jobTitle);
+        return html;
     }
 }
