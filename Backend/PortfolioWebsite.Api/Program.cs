@@ -1,4 +1,5 @@
 
+using Amazon.BedrockRuntime;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using PortfolioWebsite.Api.Data;
@@ -26,7 +27,13 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddEndpointsApiExplorer();
                 builder.Services.AddSwaggerGen();
                 builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-                builder.Services.AddAWSService<Amazon.BedrockRuntime.IAmazonBedrockRuntime>();
+                builder.Services.AddSingleton<IAmazonBedrockRuntime>(_ =>
+                {
+                    var region = Amazon.RegionEndpoint.GetBySystemName(
+                        Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1");
+
+                    return new AmazonBedrockRuntimeClient(region);
+                });
 
                 builder.Services.AddCors(options =>
                 {
