@@ -5,20 +5,23 @@ namespace PortfolioWebsite.Common;
 
 public static partial class Tokenizer
 {
-    public static IEnumerable<string> Tokenize(string text)
+    public static IEnumerable<string> Tokenize(string? text)
     {
+        if (string.IsNullOrWhiteSpace(text))
+            return [];
+
         string tokenString = text.ToLower();
 
-        tokenString.ReplaceLineEndings(" ");
+        tokenString = tokenString.ReplaceLineEndings(" ");
 
         tokenString = TrimSpaceEndingPunctuation().Replace(tokenString, " ");
         tokenString = TrimConsecutiveSpacesRegex().Replace(tokenString, " ");
 
         var tokens = tokenString
-                        .Split(' ')
-                        .Except(Constants.StopWords)
-                        .Where(a => a.Length > 0)
-                        .ToArray();
+            .Split(' ')
+            .Except(Constants.StopWords)
+            .Where(a => a.Length > 0)
+            .ToArray();
 
         return tokens;
     }
