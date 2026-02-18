@@ -182,6 +182,11 @@ public class ChatService
             - contactSamuel: when the user wants to get in touch with Sam
             - getResume: when the user wants to see or download Sam's resume
             - redirectToPage: when the user wants content best found on a specific page
+
+            IMPORTANT: Never describe, mention, narrate, or reference tool calls in your response.
+            Never say things like "I'll call askQuestion" or "askQuestion: ..." or "I'm going to use a tool".
+            Tool use happens silently behind the scenes. Your response to the user should only ever be
+            the final answer — never the process of getting there.
             """;
 
         // Build conversation history
