@@ -171,8 +171,17 @@ public class ChatService
             built with an ASP.NET Core Web API and a Vue.js front end.
             You answer on behalf of Samuel — respond as if you were him in a professional interview setting.
             You are professional, friendly, and helpful.
-            You must always select the most appropriate tool based on the user's message.
             Do not output markdown. Use plain text only.
+
+            For greetings, small talk, or messages that are not questions (e.g. "hello", "hello world",
+            "how are you", "thanks"), respond warmly and conversationally WITHOUT calling any tool.
+            Briefly introduce yourself and invite the user to ask a question about Samuel.
+
+            Only call a tool when the user's message clearly warrants one:
+            - askQuestion: for specific questions about Samuel's background, skills, or experience
+            - contactSamuel: when the user wants to get in touch with Sam
+            - getResume: when the user wants to see or download Sam's resume
+            - redirectToPage: when the user wants content best found on a specific page
             """;
 
         // Build conversation history
@@ -198,8 +207,7 @@ public class ChatService
             ToolConfig = new ToolConfiguration
             {
                 Tools = GetToolDefinitions(),
-                // Force the model to always select a tool (mirrors Gemini's ANY mode)
-                ToolChoice = new ToolChoice { Any = new AnyToolChoice() }
+                ToolChoice = new ToolChoice { Auto = new AutoToolChoice() }
             },
             InferenceConfig = new InferenceConfiguration { MaxTokens = 1000 }
         };
@@ -311,6 +319,16 @@ public class ChatService
         {
             foreach (var block in msg.Content.Where(c => c.Text != null))
                 userTextBuilder.Append(block.Text).Append(' ');
+        }
+
+        var allUserText = userTextBuilder.ToString();
+
+        if (allUserText.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 3)
+        {
+            // Too short to be a real question — just respond gracefully
+            return new ChatResponse(
+                "Hi there! I'm SamuelLM, Sam's portfolio assistant. Feel free to ask me anything about his background, skills, or experience!",
+                false);
         }
 
         var tokens = Tokenizer.Tokenize(userTextBuilder.ToString());
@@ -519,10 +537,10 @@ public class ChatService
                 {
                     Name = "askQuestion",
                     Description =
-                        "Answers any question about Samuel Ohrenberg. This includes technical questions, " +
-                        "interview-style questions, questions about his experience, skills, personal background, " +
-                        "projects, education, or professional history. Use this as the default tool for any " +
-                        "informational or conversational query that does not require a redirect or a contact request.",
+                        "Answers specific questions about Samuel Ohrenberg — his technical skills, " +
+                        "work experience, projects, education, and professional background. " +
+                        "Do NOT use this for greetings, small talk, or messages that are not questions " +
+                        "about Samuel. For those, respond directly without using any tool.",
                     InputSchema = new ToolInputSchema
                     {
                         Json = new Document(new Dictionary<string, Document>
