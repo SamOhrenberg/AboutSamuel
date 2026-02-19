@@ -2,10 +2,9 @@
   <div class="resume-page">
 
     <!-- Sticky toolbar -->
-    <div class="resume-toolbar" :class="{ 'resume-toolbar--expanded': isExpanded }">
+    <div class="resume-toolbar">
       <div class="resume-toolbar__main">
 
-        <!-- Info toggle -->
         <v-btn
           icon
           variant="text"
@@ -17,7 +16,6 @@
           <v-icon>{{ isExpanded ? 'mdi-information' : 'mdi-information-outline' }}</v-icon>
         </v-btn>
 
-        <!-- Official PDF link -->
         <a :href="pdfLink" target="_blank" rel="noopener noreferrer" class="toolbar-pdf-link">
           <v-icon size="18" class="mr-1">mdi-file-pdf-box</v-icon>
           Official Resume
@@ -25,7 +23,6 @@
 
         <v-divider vertical class="toolbar-divider mx-3 d-none d-sm-flex" />
 
-        <!-- Job title input + regenerate -->
         <div class="toolbar-regen">
           <v-text-field
             v-model="jobTitle"
@@ -35,14 +32,15 @@
             hide-details
             class="toolbar-input"
             color="secondary"
-            @keyup.enter="resumeStore.fetchResume(jobTitle)"
+            @keyup.enter="triggerFetch"
+            @input="onInput"
           />
           <v-btn
             color="secondary"
             variant="tonal"
             size="small"
             :loading="resumeStore.loading"
-            @click="resumeStore.fetchResume(jobTitle)"
+            @click="triggerFetch"
             class="regen-btn"
           >
             <v-icon size="16" class="mr-1">mdi-refresh</v-icon>
@@ -52,7 +50,6 @@
 
       </div>
 
-      <!-- Expandable explanation -->
       <v-expand-transition>
         <div v-if="isExpanded" class="resume-toolbar__info">
           <v-divider class="mb-3" />
@@ -84,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { useResumeStore } from '@/stores/resumeStore'
 
 const resumeStore = useResumeStore()
@@ -92,9 +89,32 @@ const isExpanded = ref(false)
 const jobTitle = ref('')
 const pdfLink = ref(import.meta.env.VITE_RESUME_PDF_LINK)
 
-const toggleExpand = () => {
+// Debounce: only auto-fetch 800ms after the user stops typing
+let debounceTimer = null
+
+function onInput() {
+  clearTimeout(debounceTimer)
+  // Auto-fetch only if there's a job title; don't auto-fetch blank input
+  if (jobTitle.value.trim()) {
+    debounceTimer = setTimeout(() => {
+      resumeStore.fetchResume(jobTitle.value)
+    }, 800)
+  }
+}
+
+// Immediate fetch on Enter or button click
+function triggerFetch() {
+  clearTimeout(debounceTimer)
+  resumeStore.fetchResume(jobTitle.value || undefined)
+}
+
+function toggleExpand() {
   isExpanded.value = !isExpanded.value
 }
+
+onBeforeUnmount(() => {
+  clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>
@@ -111,7 +131,7 @@ const toggleExpand = () => {
   top: 0;
   z-index: 10;
   background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(var(--v-theme-secondary), 0.15);
   padding: 0.6rem 1.25rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }
@@ -127,6 +147,12 @@ const toggleExpand = () => {
 .toolbar-icon-btn {
   color: rgba(var(--v-theme-on-surface), 0.6) !important;
   flex-shrink: 0;
+  /* Polished focus ring */
+  border-radius: 6px;
+}
+.toolbar-icon-btn:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-secondary));
+  outline-offset: 2px;
 }
 
 .toolbar-pdf-link {
@@ -138,9 +164,13 @@ const toggleExpand = () => {
   text-decoration: none;
   white-space: nowrap;
   flex-shrink: 0;
+  border-radius: 4px;
+  padding: 2px 4px;
 }
-.toolbar-pdf-link:hover {
-  text-decoration: underline;
+.toolbar-pdf-link:hover { text-decoration: underline; }
+.toolbar-pdf-link:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-secondary));
+  outline-offset: 2px;
 }
 
 .toolbar-divider {
@@ -166,6 +196,10 @@ const toggleExpand = () => {
   flex-shrink: 0;
   font-weight: 600;
 }
+.regen-btn:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-secondary));
+  outline-offset: 2px;
+}
 
 /* ── Expanded info ── */
 .resume-toolbar__info {
@@ -184,11 +218,13 @@ const toggleExpand = () => {
   color: rgb(var(--v-theme-secondary));
   text-decoration: none;
 }
-.info-link:hover {
-  text-decoration: underline;
+.info-link:hover { text-decoration: underline; }
+.info-link:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-secondary));
+  outline-offset: 2px;
 }
 
-/* ── Content area ── */
+/* ── Content ── */
 .resume-content {
   flex: 1;
   overflow-y: auto;

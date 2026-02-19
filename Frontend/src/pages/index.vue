@@ -5,22 +5,27 @@
       <v-row no-gutters align="center" justify="center" class="hero-row">
 
         <v-col cols="12" md="auto" class="hero-photo-col">
+          <!-- fetchpriority=high: browser loads this as top priority LCP image -->
           <img
             src="@/assets/sam-wedding-02.png"
             class="glow-image hero-photo"
             :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': photoVisible }"
             alt="Samuel Ohrenberg"
+            fetchpriority="high"
           />
         </v-col>
 
         <v-col cols="12" md="auto" class="hero-text-col">
+          <!-- v-once on static text: Vue skips diffing these after first render -->
           <p
+            v-once
             class="hero-greeting"
             :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': greetingVisible }"
           >
             Nice to Meet You!
           </p>
           <h1
+            v-once
             class="hero-name"
             :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': nameVisible }"
           >
@@ -38,6 +43,7 @@
             From Oklahoma
           </h2>
           <p
+            v-once
             class="hero-sub"
             :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': subVisible }"
           >
@@ -56,16 +62,18 @@
       <v-row align="center" justify="center" class="about-row">
 
         <v-col cols="12" sm="5" md="4" class="about-photo-col">
+          <!-- loading=lazy: below the fold, defer until user scrolls -->
           <img
             src="@/assets/photo.jpg"
             class="about-photo"
             alt="Samuel Ohrenberg headshot"
+            loading="lazy"
           />
         </v-col>
 
         <v-col cols="12" sm="7" md="6" class="about-text-col">
-          <h2 class="about-heading">So, Who Am I?</h2>
-          <p class="about-body">
+          <h2 v-once class="about-heading">So, Who Am I?</h2>
+          <p v-once class="about-body">
             I'm a software engineer from Oklahoma passionate about building robust, scalable
             solutions while always learning and exploring new technologies and strategies. When I'm
             not coding, I enjoy diving into sci-fi books and movies, engaging in tabletop games,
@@ -102,21 +110,15 @@ onMounted(() => {
 })
 
 // ── Hero animation logic ──────────────────────────────────
-// VITE_HERO_ANIMATE options:
-//   'always' — animate every visit to /
-//   'never'  — never animate
-//   (unset)  — animate on first page load only (default)
 const HERO_ANIMATE = import.meta.env.VITE_HERO_ANIMATE ?? 'first-load'
 const FIRST_LOAD_KEY = 'hero_animated'
 
 const shouldAnimate = computed(() => {
   if (HERO_ANIMATE === 'never') return false
   if (HERO_ANIMATE === 'always') return true
-  // 'first-load': only animate if we haven't yet this session
   return !sessionStorage.getItem(FIRST_LOAD_KEY)
 })
 
-// Individual element visibility refs for stagger
 const photoVisible    = ref(false)
 const greetingVisible = ref(false)
 const nameVisible     = ref(false)
@@ -125,16 +127,13 @@ const subVisible      = ref(false)
 
 onMounted(() => {
   if (!shouldAnimate.value) {
-    // Skip animation — make everything visible immediately
     photoVisible.value = greetingVisible.value = nameVisible.value =
       taglineVisible.value = subVisible.value = true
     return
   }
 
-  // Mark as animated for this session
   sessionStorage.setItem(FIRST_LOAD_KEY, '1')
 
-  // Stagger each element in
   setTimeout(() => { photoVisible.value    = true }, 100)
   setTimeout(() => { greetingVisible.value = true }, 250)
   setTimeout(() => { nameVisible.value     = true }, 380)
@@ -149,21 +148,20 @@ onMounted(() => {
   transition: opacity 0.5s ease-in-out;
   opacity: 1;
 }
-.fade {
-  opacity: 0;
-}
+.fade { opacity: 0; }
 
 /* ── Hero entrance animation ───────────────────── */
-/* Base hidden state — only applied when shouldAnimate is true */
 .hero-animate {
   opacity: 0;
   transform: translateY(18px);
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-/* Photo slides in from left instead of up */
 .hero-photo.hero-animate {
-  transform: translateX(-20px);
+  transform: scaleX(-1) translateX(20px);
+}
+.hero-photo.hero-animate--visible {
+  transform: scaleX(-1) translateX(0) !important;
 }
 
 .hero-animate--visible {
@@ -177,13 +175,9 @@ onMounted(() => {
   width: 100%;
 }
 
-.hero-container {
-  width: 100%;
-}
+.hero-container { width: 100%; }
 
-.hero-row {
-  min-height: 420px;
-}
+.hero-row { min-height: 420px; }
 
 .hero-photo-col {
   display: flex;
@@ -197,14 +191,6 @@ onMounted(() => {
   transform: scaleX(-1);
   align-self: flex-end;
   filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
-}
-
-/* When animating, we need scaleX(-1) AND translateX together */
-.hero-photo.hero-animate {
-  transform: scaleX(-1) translateX(20px);
-}
-.hero-photo.hero-animate--visible {
-  transform: scaleX(-1) translateX(0) !important;
 }
 
 @media (max-width: 959px) {
@@ -259,9 +245,7 @@ onMounted(() => {
 }
 
 @media (max-width: 959px) {
-  .hero-tagline {
-    justify-content: center;
-  }
+  .hero-tagline { justify-content: center; }
 }
 
 .hero-inline-group {
@@ -271,9 +255,7 @@ onMounted(() => {
 }
 
 @media (max-width: 959px) {
-  .hero-inline-group {
-    min-width: unset;
-  }
+  .hero-inline-group { min-width: unset; }
 }
 
 .hero-sub {
@@ -287,9 +269,7 @@ onMounted(() => {
 }
 
 @media (max-width: 959px) {
-  .hero-sub {
-    margin: 0 auto;
-  }
+  .hero-sub { margin: 0 auto; }
 }
 
 /* ── About section ─────────────────────────────── */
@@ -304,9 +284,7 @@ onMounted(() => {
 }
 
 @media (max-width: 599px) {
-  .about-container {
-    padding: 3rem 1.5rem;
-  }
+  .about-container { padding: 3rem 1.5rem; }
 }
 
 .about-photo-col {
@@ -335,9 +313,7 @@ onMounted(() => {
   }
 }
 
-.about-text-col {
-  padding: 1.5rem;
-}
+.about-text-col { padding: 1.5rem; }
 
 .about-heading {
   font-family: 'Patua One', serif;
