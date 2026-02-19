@@ -6,13 +6,18 @@
       <Navbar />
 
       <div id="content-wrapper">
-        <div role="main" id="main-content">
+
+        <!-- Scrollable page content + footer -->
+        <div id="main-content" role="main">
           <RouterView />
+          <Footer />
         </div>
 
+        <!-- Chat side panel (always mounted so FAB works on mobile) -->
         <aside id="chat-box" aria-label="AI Chat Assistant">
           <ChatBox />
         </aside>
+
       </div>
     </div>
 
@@ -23,6 +28,7 @@
 import { RouterView } from 'vue-router'
 import ChatBox from './components/ChatBox.vue'
 import Navbar from './components/Navbar.vue'
+import Footer from './components/Footer.vue'
 import { useResumeStore } from '@/stores/resumeStore'
 import { onMounted } from 'vue'
 
@@ -52,7 +58,6 @@ onMounted(() => {
   top: 0;
 }
 
-/* Full viewport column: navbar on top, content below */
 #app-shell {
   display: flex;
   flex-direction: column;
@@ -61,30 +66,37 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* Row beneath navbar — fills all remaining height exactly */
 #content-wrapper {
   display: flex;
   flex-direction: row;
   flex: 1;
-  min-height: 0; /* critical: allows flex children to shrink below content size */
+  min-height: 0;
   overflow: hidden;
   width: 100%;
 }
 
-/* Scrollable page content */
 #main-content {
   flex: 1;
   overflow-y: auto;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Chat panel */
+/* Push footer to the bottom even on short pages */
+#main-content > :deep(.v-main),
+#main-content > * {
+  flex: 1;
+}
+#main-content > footer {
+  flex: 0;
+}
+
 #chat-box {
   flex-shrink: 0;
   height: 100%;
 }
 
-/* Mobile: collapse to zero width but keep mounted for the FAB */
 @media (max-width: 599px) {
   #chat-box {
     width: 0;
