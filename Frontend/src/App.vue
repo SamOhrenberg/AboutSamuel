@@ -1,23 +1,21 @@
 <template>
   <v-app>
     <a href="#main-content" class="skip-link">Skip to main content</a>
-    <main class="d-flex flex-row h-screen">
-      <div id="page-wrapper">
-        <Navbar />
-        <div id="content-wrapper">
-          <div
-            class="flex-grow-1 overflow-y-auto"
-            role="main"
-            id="main-content"
-          >
-            <RouterView />
-          </div>
-          <aside id="chat-box" aria-label="AI Chat Assistant">
-            <ChatBox />
-          </aside>
+
+    <div id="app-shell">
+      <Navbar />
+
+      <div id="content-wrapper">
+        <div role="main" id="main-content">
+          <RouterView />
         </div>
+
+        <aside id="chat-box" aria-label="AI Chat Assistant">
+          <ChatBox />
+        </aside>
       </div>
-    </main>
+    </div>
+
   </v-app>
 </template>
 
@@ -25,21 +23,19 @@
 import { RouterView } from 'vue-router'
 import ChatBox from './components/ChatBox.vue'
 import Navbar from './components/Navbar.vue'
+import { useResumeStore } from '@/stores/resumeStore'
+import { onMounted } from 'vue'
 
-import { useResumeStore } from '@/stores/resumeStore';
-import { onMounted } from 'vue';
-
-const resumeStore = useResumeStore();
+const resumeStore = useResumeStore()
 
 onMounted(() => {
   if (!resumeStore.resumeContent) {
-    resumeStore.fetchResume();
+    resumeStore.fetchResume()
   }
-});
+})
 </script>
 
 <style scoped>
-/* Skip link — visually hidden until focused, for keyboard/screen reader users */
 .skip-link {
   position: absolute;
   top: -999px;
@@ -56,46 +52,43 @@ onMounted(() => {
   top: 0;
 }
 
-@media (min-width: 780px) {
-  #chat-box {
-  }
-}
-@media (max-width: 570px) {
-  #chat-box {
-    height: 10%;
-    width: auto;
-    max-width: 100%;
-  }
-  #content-wrapper {
-    flex-direction: column;
-  }
-  #page-wrapper {
-    min-width: 350px;
-    overflow-x: scroll;
-  }
-}
-
-@media (min-width: 571px) {
-  #chat-box {
-    height: 100%;
-  }
-}
-
-@media (max-width: 780px) {
-  #chat-box {
-    z-index: 1000;
-  }
-}
-
-#page-wrapper {
+/* Full viewport column: navbar on top, content below */
+#app-shell {
   display: flex;
   flex-direction: column;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Row beneath navbar — fills all remaining height exactly */
+#content-wrapper {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0; /* critical: allows flex children to shrink below content size */
+  overflow: hidden;
   width: 100%;
 }
 
-#content-wrapper {
-  display: flex;
-  overflow: hidden;
-  height: 100dvh;
+/* Scrollable page content */
+#main-content {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* Chat panel */
+#chat-box {
+  flex-shrink: 0;
+  height: 100%;
+}
+
+/* Mobile: collapse to zero width but keep mounted for the FAB */
+@media (max-width: 599px) {
+  #chat-box {
+    width: 0;
+    overflow: visible;
+  }
 }
 </style>
