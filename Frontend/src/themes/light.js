@@ -7,7 +7,7 @@ export const light = {
     'surface-light': '#EEEEEE',
     'surface-variant': '#424242',
     'on-surface-variant': '#EEEEEE',
-    primary: '##ecf2f2',
+    primary: '#ecf2f2',
     'primary-darken-1': '#1F5592',
     secondary: '#48A9A6',
     'secondary-darken-1': '#018786',
@@ -17,9 +17,8 @@ export const light = {
     warning: '#FB8C00',
     accent: '#006a6a',
     navbar_links: '#006a6a',
-    blue_green: '##007c7c',
-    yellow: '#eeae31'
-
+    blue_green: '#007c7c',
+    yellow: '#eeae31',
   },
   variables: {
     'border-color': '#000000',
@@ -38,6 +37,6 @@ export const light = {
     'theme-on-kbd': '#FFFFFF',
     'theme-code': '#F5F5F5',
     'theme-on-code': '#000000',
-    'glow':'#006a6a'
+    'glow': '#006a6a',
   },
 }

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { useChatStore } from '@/stores/chatStore' // Import Pinia store
+import { useChatStore } from '@/stores/chatStore'
 import { useTheme } from 'vuetify/lib/framework.mjs'
 
 const store = useChatStore()
@@ -9,11 +9,10 @@ const chatContainer = ref(null)
 const theme = useTheme()
 const activeTheme = ref(theme.global.name.value)
 
-// Watch for new messages and scroll to bottom
 watch(
   () => store.messageHistory.length,
   async () => {
-    await nextTick() // Wait for DOM update
+    await nextTick()
     if (chatContainer.value) {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight
     }
@@ -26,7 +25,7 @@ const changeTheme = () => {
 </script>
 
 <template>
-  <nav class="navbar">
+  <nav class="navbar" aria-label="Main navigation">
     <v-switch
       v-model="activeTheme"
       class="ma-0 pa-0"
@@ -36,6 +35,7 @@ const changeTheme = () => {
       base-color="navbar_links"
       @change="changeTheme"
       color="navbar_links"
+      :aria-label="`Switch to ${activeTheme === 'dark' ? 'light' : 'dark'} mode`"
     >
       <template v-slot:label>
         <span class="text-navbar_links">
@@ -43,11 +43,12 @@ const changeTheme = () => {
         </span>
       </template>
     </v-switch>
-    <ul class="nav-links text-navbar_links">
+    <ul class="nav-links text-navbar_links" role="list">
       <li><router-link to="/">Home</router-link></li>
       <li><router-link to="/resume">Resume</router-link></li>
-      <!-- <li><router-link to="/testimonial">Testimonial</router-link></li> -->
+      <li><router-link to="/projects">Projects</router-link></li>
       <li><router-link to="/contact">Contact</router-link></li>
+      <!-- Testimonial page hidden until content is ready -->
     </ul>
   </nav>
 </template>
@@ -72,7 +73,6 @@ const changeTheme = () => {
 
 li a {
   color: var(--v-theme-accent) !important;
-
   text-decoration: none;
 }
 
@@ -82,6 +82,13 @@ li a {
 
 li a:visited {
   color: var(--v-theme-accent) !important;
+}
+
+/* Visible focus ring for keyboard navigation */
+li a:focus-visible {
+  outline: 2px solid var(--v-theme-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 ul {

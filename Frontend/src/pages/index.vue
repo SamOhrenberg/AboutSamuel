@@ -1,7 +1,12 @@
 <template>
   <div id="desktop">
     <div id="top-content" class="bg-primary">
-      <img src="@/assets/sam-wedding-02.png" class="glow-image" id="header-img" />
+      <img
+        src="@/assets/sam-wedding-02.png"
+        class="glow-image"
+        id="header-img"
+        alt="Samuel Ohrenberg"
+      />
       <div id="top-content-panel-1">
         <h1 class="text-blue_green">Nice to Meet You!</h1>
         <Header>I'm Samuel Ohrenberg</Header>
@@ -32,20 +37,23 @@
       <div id="content-wrapper-2">
         <div id="item-wrapper">
           <div id="image-wrapper">
-            <img id="about-me-image" src="@/assets/photo.jpg" />
+            <img id="about-me-image" src="@/assets/photo.jpg" alt="Samuel Ohrenberg headshot" />
           </div>
           <div id="about-me-wrapper">
             <header>So, Who Am I?</header>
             <p>
-              I'm a software engineer from Oklahoma passionate about building robust, scalable solutions while always learning
-              and exploring new technologies and strategies. When I'm not coding, I enjoy diving into sci-fi books and movies,
-              engaging in tabletop games, and spending quality time with my wife, our little one, and our cherished pets—a corgi
-              and a jack russell. Curious for more? Check out my chatbot, SamuelLM!            </p>
+              I'm a software engineer from Oklahoma passionate about building robust, scalable
+              solutions while always learning and exploring new technologies and strategies. When I'm
+              not coding, I enjoy diving into sci-fi books and movies, engaging in tabletop games,
+              and spending quality time with my wife, our little one, and our cherished pets — a
+              corgi and a jack russell. Curious for more? Check out my chatbot, SamuelLM!
+            </p>
           </div>
         </div>
       </div>
     </div>
   </div>
+
   <div id="mobile">
     <div id="top-content">
       <div class="header-content">
@@ -67,22 +75,23 @@
     <div id="middle-content"></div>
     <div id="bottom-content">
       <div class="img-wrapper">
-        <img src="@/assets/photo.jpg" />
+        <img src="@/assets/photo.jpg" alt="Samuel Ohrenberg headshot" />
       </div>
 
       <div class="text-container">
-        <span>Lorem</span>
-        <span>Ipsum</span>
-        <span>Dolor</span>
+        <span>Software</span>
+        <span>Engineer</span>
+        <span>OKC</span>
       </div>
     </div>
     <div id="actual-bottom-content">
       <div>
         <header>About Sam</header>
         <p>
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorum, dolor enim ducimus in
-          aperiam laboriosam ad quae doloremque quasi vel quaerat corrupti veritatis consequuntur
-          ipsam, ut dolores harum eaque nisi.
+          I'm a software engineer from Oklahoma passionate about building robust, scalable solutions
+          while always learning and exploring new technologies. When I'm not coding, I enjoy sci-fi,
+          tabletop games, and spending time with my wife, our little one, and our corgi and jack
+          russell. Ask SamuelLM to learn more!
         </p>
       </div>
     </div>
@@ -91,7 +100,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useChatStore } from '@/stores/chatStore' // Import Pinia store
+import { useChatStore } from '@/stores/chatStore'
 
 const store = useChatStore()
 const aoran = ['', '', 'n']
@@ -104,12 +113,12 @@ const currentAoran = computed(() => aoran[index.value])
 
 onMounted(() => {
   setInterval(() => {
-    isVisible.value = false // Start fade out
+    isVisible.value = false
 
     setTimeout(() => {
-      index.value = (index.value + 1) % nouns.length // Change word
-      isVisible.value = true // Start fade in
-    }, 500) // Delay change until mid-fade (adjust timing if needed)
+      index.value = (index.value + 1) % nouns.length
+      isVisible.value = true
+    }, 500)
   }, 4000)
 })
 </script>

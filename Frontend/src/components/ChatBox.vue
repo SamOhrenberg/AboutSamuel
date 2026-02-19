@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { useChatStore } from '@/stores/chatStore' // Import Pinia store
+import { useChatStore } from '@/stores/chatStore'
 import { formatDateTime } from '@/utilities/dateUtils'
 import { useRouter } from 'vue-router'
 
@@ -8,11 +8,10 @@ const router = useRouter()
 const store = useChatStore()
 const chatContainer = ref(null)
 
-// Watch for new messages and scroll to bottom
 watch(
   () => store.messageHistory.length,
   async () => {
-    await nextTick() // Wait for DOM update
+    await nextTick()
     if (chatContainer.value) {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight
     }
@@ -33,16 +32,24 @@ async function sendMessage() {
     v-if="store.isOpen"
     class="chatbox-container fill-height d-flex flex-column pr-3 px-3 rounded-0"
     id="chatbox"
-    color="surface"
+    color="#001414"
+    role="region"
+    aria-label="Chat with SamuelLM"
   >
     <v-card-title class="d-flex justify-space-between align-center">
       Talk to me
-      <v-btn icon @click="store.isOpen = false">
+      <v-btn icon @click="store.isOpen = false" aria-label="Close chat">
         <v-icon>mdi-close</v-icon>
       </v-btn>
     </v-card-title>
 
-    <v-card-text id="chat-history" class="flex-grow-1" ref="chatContainer">
+    <v-card-text
+      id="chat-history"
+      class="flex-grow-1"
+      ref="chatContainer"
+      aria-live="polite"
+      aria-label="Chat message history"
+    >
       <div
         v-for="messageItem in store.archivedMessageHistory"
         :key="messageItem"
@@ -51,6 +58,7 @@ async function sendMessage() {
           User: messageItem.sentBy !== 'SamuelLM',
           'chat-message': true,
         }"
+        :aria-label="`${messageItem.sentBy === 'SamuelLM' ? 'SamuelLM' : 'You'} said: ${messageItem.message}`"
       >
         <div class="message-header">
           <span
@@ -88,6 +96,7 @@ async function sendMessage() {
           User: messageItem.sentBy !== 'SamuelLM',
           'chat-message': true,
         }"
+        :aria-label="`${messageItem.sentBy === 'SamuelLM' ? 'SamuelLM' : 'You'} said: ${messageItem.message}`"
       >
         <div class="message-header">
           <span
@@ -120,12 +129,19 @@ async function sendMessage() {
         class="chat-input"
         @keyup.enter="sendMessage"
         no-resize="true"
+        aria-label="Type a message to SamuelLM"
       >
       </v-textarea>
-      <v-btn @click="sendMessage" color="primary" variant="tonal" v-if="!store.isLoading"
-        >SEND</v-btn
+      <v-btn
+        @click="sendMessage"
+        color="primary"
+        variant="tonal"
+        v-if="!store.isLoading"
+        aria-label="Send message"
       >
-      <v-progress-circular indeterminate v-else />
+        SEND
+      </v-btn>
+      <v-progress-circular indeterminate v-else aria-label="Sending message, please wait" />
     </v-card-actions>
   </v-card>
 
@@ -134,6 +150,7 @@ async function sendMessage() {
     v-if="!store.isOpen"
     class="chatbox-fab rounded-0 collapsed-chat-box"
     @click="store.isOpen = true"
+    aria-label="Open chat with SamuelLM"
   >
     <v-icon size="x-large">mdi-chat</v-icon>
   </v-btn>
@@ -242,7 +259,8 @@ async function sendMessage() {
 }
 .SamuelLM .message-text {
   margin-right: auto;
-  background-color: rgb(198, 198, 198);
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #e0f2f2;
 }
 
 .User .message-text {
@@ -260,17 +278,6 @@ async function sendMessage() {
     background-color: #1976d2;
     color: white;
   }
-
-  /* .v-input__details{
-
-    grid-area: control-start !important;
-  }
-
-  #input-4-messages{
-    grid-area: control-start !important;
-
-
-  } */
 
   .chatbox-container {
     position: fixed;
