@@ -11,6 +11,9 @@ namespace PortfolioWebsite.Api
 {
     public class Program
     {
+
+        const string CorsPolicy = "ProductionCors";
+
         public static void Main(string[] args)
         {
             try
@@ -35,16 +38,15 @@ namespace PortfolioWebsite.Api
                     return new AmazonBedrockRuntimeClient(region);
                 });
 
+                var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
                 builder.Services.AddCors(options =>
                 {
-                    options.AddPolicy("AllowLocalhost",
-                        builder => builder
-                            .AllowAnyOrigin()
-                            .AllowAnyMethod()
-                            .AllowAnyHeader()
-                            .WithExposedHeaders("X-Token-Limit-Reached")
-                    );
+                    options.AddPolicy(CorsPolicy,
+                        policy => policy.WithOrigins(allowedOrigins ?? Array.Empty<string>())
+                                        .AllowAnyMethod()
+                                        .AllowAnyHeader());
                 });
+
 
                 builder.Services.AddDbContext<SqlDbContext>(options =>
                 {
@@ -67,10 +69,10 @@ namespace PortfolioWebsite.Api
                 }
 
                 app.UseMiddleware<ExceptionLoggerMiddleware>();
-
+                app.UseExceptionHandler("/error");
                 app.UseHttpsRedirection();
 
-                app.UseCors("AllowLocalhost");
+                app.UseCors(CorsPolicy);
 
 
                 app.UseAuthorization();

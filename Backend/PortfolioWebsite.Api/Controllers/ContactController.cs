@@ -17,10 +17,8 @@ public class ContactController(ILogger<ContactController> logger, ContactService
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new
-            {
-                ex.Message
-            });
+            logger.LogError(ex, "Contact form failure for {Email}", contactRequest.Email);
+            return StatusCode(500, new { Message = "Internal server error. Please try again later." });
         }
 
         return Ok();

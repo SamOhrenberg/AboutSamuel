@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json.Linq;
 using PortfolioWebsite.Api.Data.Models;
 using PortfolioWebsite.Api.Dtos;
 using PortfolioWebsite.Api.Services;

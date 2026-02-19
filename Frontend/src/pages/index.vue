@@ -1,99 +1,96 @@
 <template>
-  <div id="desktop">
-    <div id="top-content" class="bg-primary">
-      <img src="@/assets/sam-wedding-02.png" class="glow-image" id="header-img" />
-      <div id="top-content-panel-1">
-        <h1 class="text-blue_green">Nice to Meet You!</h1>
-        <Header>I'm Samuel Ohrenberg</Header>
-        <h2>
-          And I'm
-          <span class="group">
-            <span>A</span
-            ><span class="cycle-text" :class="{ fade: !isVisible }">{{ currentAoran }}&nbsp;</span>
-            <span
-              class="cycle-text text-yellow noun"
-              :class="{
-                fade: !isVisible,
-                remove_margin_auto: store.isOpen,
-                add_margin_auto: !store.isOpen,
-              }"
-              >{{ currentNoun }}</span
-            >
-          </span>
-          From Oklahoma
-        </h2>
-        <h3>
-          I'm a passionate, solution-oriented programmer who loves solving problems. If you'd like
-          to learn more about me, please speak with my chatbot, SamuelLM
-        </h3>
-      </div>
-    </div>
-    <div id="bottom-content" class="bg-background">
-      <div id="content-wrapper-2">
-        <div id="item-wrapper">
-          <div id="image-wrapper">
-            <img id="about-me-image" src="@/assets/photo.jpg" />
-          </div>
-          <div id="about-me-wrapper">
-            <header>So, Who Am I?</header>
-            <p>
-              I'm a software engineer from Oklahoma passionate about building robust, scalable solutions while always learning
-              and exploring new technologies and strategies. When I'm not coding, I enjoy diving into sci-fi books and movies,
-              engaging in tabletop games, and spending quality time with my wife, our little one, and our cherished pets—a corgi
-              and a jack russell. Curious for more? Check out my chatbot, SamuelLM!            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div id="mobile">
-    <div id="top-content">
-      <div class="header-content">
-        <header>Samuel Ohrenberg</header>
-        <h1
-          class="cycle-text text-yellow noun"
-          :class="{
-            fade: !isVisible,
-            api_dev: currentNoun === 'API Developer',
-            software_engineer: currentNoun === 'Software Engineer',
-            backend_dev: currentNoun === 'Backend Developer',
-          }"
-        >
-          {{ currentNoun }}
-        </h1>
-        <h2>Oklahoma City, Oklahoma</h2>
-      </div>
-    </div>
-    <div id="middle-content"></div>
-    <div id="bottom-content">
-      <div class="img-wrapper">
-        <img src="@/assets/photo.jpg" />
-      </div>
+  <!-- ── Hero Section ─────────────────────────────────────── -->
+  <section class="hero-section" aria-label="Introduction">
+    <v-container fluid class="pa-0 hero-container">
+      <v-row no-gutters align="center" justify="center" class="hero-row">
 
-      <div class="text-container">
-        <span>Lorem</span>
-        <span>Ipsum</span>
-        <span>Dolor</span>
-      </div>
-    </div>
-    <div id="actual-bottom-content">
-      <div>
-        <header>About Sam</header>
-        <p>
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorum, dolor enim ducimus in
-          aperiam laboriosam ad quae doloremque quasi vel quaerat corrupti veritatis consequuntur
-          ipsam, ut dolores harum eaque nisi.
-        </p>
-      </div>
-    </div>
-  </div>
+        <v-col cols="12" md="auto" class="hero-photo-col">
+          <!-- fetchpriority=high: browser loads this as top priority LCP image -->
+          <img
+            src="@/assets/sam-wedding-02.png"
+            class="glow-image hero-photo"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': photoVisible }"
+            alt="Samuel Ohrenberg"
+            fetchpriority="high"
+          />
+        </v-col>
+
+        <v-col cols="12" md="auto" class="hero-text-col">
+          <!-- v-once on static text: Vue skips diffing these after first render -->
+          <p
+            v-once
+            class="hero-greeting"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': greetingVisible }"
+          >
+            Nice to Meet You!
+          </p>
+          <h1
+            v-once
+            class="hero-name"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': nameVisible }"
+          >
+            I'm Samuel Ohrenberg
+          </h1>
+          <h2
+            class="hero-tagline"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': taglineVisible }"
+          >
+            And I'm
+            <span class="hero-inline-group">
+              <span>A</span><span class="cycle-text" :class="{ fade: !isVisible }">{{ currentAoran }}&nbsp;</span>
+              <span class="cycle-text text-yellow" :class="{ fade: !isVisible }">{{ currentNoun }}</span>
+            </span>
+            From Oklahoma
+          </h2>
+          <p
+            v-once
+            class="hero-sub"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': subVisible }"
+          >
+            I'm a passionate, solution-oriented programmer who loves solving problems. If you'd like
+            to learn more about me, please speak with my chatbot, SamuelLM.
+          </p>
+        </v-col>
+
+      </v-row>
+    </v-container>
+  </section>
+
+  <!-- ── About Section ────────────────────────────────────── -->
+  <section class="about-section" aria-label="About Samuel">
+    <v-container class="about-container">
+      <v-row align="center" justify="center" class="about-row">
+
+        <v-col cols="12" sm="5" md="4" class="about-photo-col">
+          <!-- loading=lazy: below the fold, defer until user scrolls -->
+          <img
+            src="@/assets/photo.jpg"
+            class="about-photo"
+            alt="Samuel Ohrenberg headshot"
+            loading="lazy"
+          />
+        </v-col>
+
+        <v-col cols="12" sm="7" md="6" class="about-text-col">
+          <h2 v-once class="about-heading">So, Who Am I?</h2>
+          <p v-once class="about-body">
+            I'm a software engineer from Oklahoma passionate about building robust, scalable
+            solutions while always learning and exploring new technologies and strategies. When I'm
+            not coding, I enjoy diving into sci-fi books and movies, engaging in tabletop games,
+            and spending quality time with my wife, our little one, and our cherished pets — a
+            corgi and a jack russell. Curious for more? Check out my chatbot, SamuelLM!
+          </p>
+        </v-col>
+
+      </v-row>
+    </v-container>
+  </section>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useChatStore } from '@/stores/chatStore' // Import Pinia store
 
-const store = useChatStore()
+// ── Cycling noun ──────────────────────────────────────────
 const aoran = ['', '', 'n']
 const nouns = ['Software Engineer', 'Backend Developer', 'API Developer']
 const index = ref(0)
@@ -104,282 +101,235 @@ const currentAoran = computed(() => aoran[index.value])
 
 onMounted(() => {
   setInterval(() => {
-    isVisible.value = false // Start fade out
-
+    isVisible.value = false
     setTimeout(() => {
-      index.value = (index.value + 1) % nouns.length // Change word
-      isVisible.value = true // Start fade in
-    }, 500) // Delay change until mid-fade (adjust timing if needed)
+      index.value = (index.value + 1) % nouns.length
+      isVisible.value = true
+    }, 500)
   }, 4000)
+})
+
+// ── Hero animation logic ──────────────────────────────────
+const HERO_ANIMATE = import.meta.env.VITE_HERO_ANIMATE ?? 'first-load'
+const FIRST_LOAD_KEY = 'hero_animated'
+
+const shouldAnimate = computed(() => {
+  if (HERO_ANIMATE === 'never') return false
+  if (HERO_ANIMATE === 'always') return true
+  return !sessionStorage.getItem(FIRST_LOAD_KEY)
+})
+
+const photoVisible    = ref(false)
+const greetingVisible = ref(false)
+const nameVisible     = ref(false)
+const taglineVisible  = ref(false)
+const subVisible      = ref(false)
+
+onMounted(() => {
+  if (!shouldAnimate.value) {
+    photoVisible.value = greetingVisible.value = nameVisible.value =
+      taglineVisible.value = subVisible.value = true
+    return
+  }
+
+  sessionStorage.setItem(FIRST_LOAD_KEY, '1')
+
+  setTimeout(() => { photoVisible.value    = true }, 100)
+  setTimeout(() => { greetingVisible.value = true }, 250)
+  setTimeout(() => { nameVisible.value     = true }, 380)
+  setTimeout(() => { taglineVisible.value  = true }, 490)
+  setTimeout(() => { subVisible.value      = true }, 590)
 })
 </script>
 
-<style>
-/* Reset and global styles */
-body,
-html {
-  font-family: 'Patua One', Cochin, Georgia, Times, serif, Arial, sans-serif;
-  box-sizing: border-box;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-@keyframes fadeInOut {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@media (max-width: 930px) {
-  #mobile {
-    display: flex !important;
-  }
-  #desktop {
-    display: none !important;
-  }
-}
-
-@media (min-width: 931px) {
-  #mobile {
-    display: none !important;
-  }
-  #desktop {
-    display: flex !important;
-  }
-}
-
-@media (max-width: 1402px) {
-  .add_margin_auto {
-    margin: auto;
-  }
-  .remove_margin_auto {
-    margin: none;
-  }
-}
-
-@media (min-width: 1403px) {
-  .noun {
-    margin: auto;
-  }
-}
-
-#desktop {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-#desktop #top-content {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: auto;
-  gap: 3rem;
-  background: #001e1e;
-  position: relative;
-  top: 0;
-  justify-content: center;
-  padding: 0 2rem;
-}
-
+<style scoped>
+/* ── Cycle animation ───────────────────────────── */
 .cycle-text {
   transition: opacity 0.5s ease-in-out;
   opacity: 1;
 }
+.fade { opacity: 0; }
 
-.fade {
+/* ── Hero entrance animation ───────────────────── */
+.hero-animate {
   opacity: 0;
-}
-#content-wrapper-2 {
-  display: flex;
-  width: 75%;
-  margin: auto;
+  transform: translateY(18px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-.group {
-  display: inline-flex;
-  min-width: 19.5rem;
+.hero-photo.hero-animate {
+  transform: scaleX(-1) translateX(20px);
+}
+.hero-photo.hero-animate--visible {
+  transform: scaleX(-1) translateX(0) !important;
 }
 
-#item-wrapper {
+.hero-animate--visible {
+  opacity: 1;
+  transform: translate(0, 0) !important;
+}
+
+/* ── Hero section ──────────────────────────────── */
+.hero-section {
+  background: #001e1e;
+  width: 100%;
+}
+
+.hero-container { width: 100%; }
+
+.hero-row { min-height: 420px; }
+
+.hero-photo-col {
   display: flex;
-  flex-direction: row;
-  gap: 3rem;
   justify-content: center;
-  align-content: center;
+  align-items: flex-end;
 }
-#about-me-wrapper {
-  display: flex;
-  flex-direction: column;
-}
-img {
+
+.hero-photo {
   max-width: 27rem;
+  width: 100%;
   transform: scaleX(-1);
   align-self: flex-end;
-}
-#header-img {
-  height: fit-content;
-  padding: 1rem 0 0 0;
+  filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
 }
 
-header,
-h1,
-h2,
-h3 {
-  padding: 0;
+@media (max-width: 959px) {
+  .hero-photo {
+    max-width: 16rem;
+    padding-top: 2rem;
+  }
+  .hero-row {
+    min-height: unset;
+    padding-bottom: 2rem;
+  }
+}
+
+.hero-text-col {
+  padding: 3rem 2rem;
+  max-width: 600px;
+}
+
+@media (max-width: 959px) {
+  .hero-text-col {
+    padding: 1rem 1.5rem 2rem;
+    text-align: center;
+  }
+}
+
+.hero-greeting {
+  font-family: 'Patua One', serif;
+  font-size: 1.4rem;
+  color: #00acac;
+  margin: 0 0 0.25rem;
+}
+
+.hero-name {
+  font-family: 'Patua One', serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.5rem;
+  line-height: 1.1;
+}
+
+.hero-tagline {
+  font-family: 'Patua One', serif;
+  font-size: clamp(1.2rem, 2.5vw, 2rem);
+  font-weight: 400;
+  color: #ffffff;
+  margin: 0 0 1.5rem;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+@media (max-width: 959px) {
+  .hero-tagline { justify-content: center; }
+}
+
+.hero-inline-group {
+  display: inline-flex;
+  min-width: 16rem;
+  align-items: baseline;
+}
+
+@media (max-width: 959px) {
+  .hero-inline-group { min-width: unset; }
+}
+
+.hero-sub {
+  font-family: 'Raleway', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  max-width: 480px;
   margin: 0;
 }
-#desktop #top-content-panel-1 {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+
+@media (max-width: 959px) {
+  .hero-sub { margin: 0 auto; }
 }
 
-#desktop #top-content-panel-2 {
-  display: flex;
-}
-#desktop #bottom-content {
-  width: 100%;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 2rem;
+/* ── About section ─────────────────────────────── */
+.about-section {
   background-color: #003131;
-  padding: 10rem 0;
-  z-index: 1;
+  width: 100%;
 }
 
-#desktop header {
-  font-size: 4rem;
-  font-weight: 600;
-  padding: 0.5rem 0;
-  margin-top: -15px;
+.about-container {
+  padding: 5rem 1.5rem;
+  max-width: 1100px;
 }
 
-#desktop h1 {
-  margin-top: -10px;
-  font-size: 3rem;
-  color: #00acac;
-  font-weight: 500;
+@media (max-width: 599px) {
+  .about-container { padding: 3rem 1.5rem; }
 }
 
-#desktop h2 {
-  font-size: 2rem;
-  padding-bottom: 2rem;
-}
-
-#desktop h3 {
-  font-size: 1rem;
-  font-weight: 100;
-}
-#desktop .glow-image {
-  filter: drop-shadow(0 0 15px rgba(var(--v-glow), 0.7));
-  position: relative;
-}
-
-#desktop #about-me-image {
-  padding: 5px;
-  border: 1px white solid;
-}
-
-html,
-body {
-  font-family: 'Patua One', Cochin, Georgia, Times, serif, Arial, sans-serif;
-}
-
-@media (max-width: 449px) {
-  #mobile header {
-    font-size: 2rem;
-  }
-  #mobile h1 {
-    font-size: 2.5rem;
-  }
-
-  #mobile span {
-    font-size: 2.5rem;
-  }
-}
-
-@media (min-width: 450px) {
-  #mobile header {
-    font-size: 2.5rem;
-  }
-  #mobile h1 {
-    font-size: 2.8rem;
-  }
-
-  #mobile span {
-    font-size: 2.5rem;
-  }
-}
-
-@media (min-width: 491px) {
-  #mobile header {
-    font-size: 3rem;
-  }
-  #mobile h1 {
-    font-size: 3.5rem;
-  }
-
-  #mobile span {
-    font-size: 3rem;
-  }
-}
-#mobile header {
-  font-weight: bold;
-}
-#mobile h1 {
-  font-weight: 200;
-  padding-bottom: 0.5rem;
-}
-#mobile h2 {
-  font-weight: 100;
-}
-#mobile {
+.about-photo-col {
   display: flex;
-  flex-direction: column;
-}
-
-#mobile #top-content {
-  background: #003131;
-  padding: 3rem 0 14rem 0;
-  text-align: center;
-}
-
-#mobile .text-container {
-  display: flex;
-  justify-content: space-evenly;
-  position: relative;
-  bottom: 99px;
-}
-
-#mobile img {
-  width: 20rem;
-  height: 20rem;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px white solid;
-  box-shadow: 10px 10px #003131;
-}
-#mobile #bottom-content {
-  display: flex;
-  flex-direction: column;
-  background: #c1d9d9;
-}
-
-#mobile .img-wrapper {
-  display: flex;
-  align-items: center;
   justify-content: center;
-  position: relative;
-  bottom: 11rem;
+  align-items: center;
 }
 
-#mobile #actual-bottom-content {
-  padding: 1.5rem;
-  background: #3e7b7b;
+.about-photo {
+  width: 100%;
+  max-width: 22rem;
+  transform: scaleX(-1);
+  border: 1px solid white;
+  padding: 5px;
+}
+
+@media (max-width: 599px) {
+  .about-photo {
+    max-width: 14rem;
+    border-radius: 50%;
+    border: 3px solid white;
+    padding: 0;
+    aspect-ratio: 1;
+    object-fit: cover;
+    box-shadow: 6px 6px 0 #001414;
+  }
+}
+
+.about-text-col { padding: 1.5rem; }
+
+.about-heading {
+  font-family: 'Patua One', serif;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 1rem;
+  line-height: 1.1;
+}
+
+.about-body {
+  font-family: 'Raleway', sans-serif;
+  font-size: 1rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.75;
+  margin: 0;
 }
 </style>

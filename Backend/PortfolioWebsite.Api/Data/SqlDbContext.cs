@@ -12,6 +12,8 @@ public class SqlDbContext : DbContext
     public DbSet<Keyword> Keywords { get; set; } = null!;
     public DbSet<Chat> Chats { get; set; } = null!;
 
+    public DbSet<Project> Projects { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Chat>()
@@ -26,6 +28,11 @@ public class SqlDbContext : DbContext
 
         modelBuilder.Entity<Keyword>()
             .Property(k => k.KeywordId)
+            .HasValueGenerator<SequentialGuidValueGenerator>()
+            .ValueGeneratedOnAdd();
+
+        modelBuilder.Entity<Project>()
+            .Property(k => k.ProjectId)
             .HasValueGenerator<SequentialGuidValueGenerator>()
             .ValueGeneratedOnAdd();
     }

@@ -1,34 +1,33 @@
 export const light = {
   dark: false,
   colors: {
-    background: '#e6eeee',
-    surface: '#FFFFFF',
-    'surface-bright': '#FFFFFF',
-    'surface-light': '#EEEEEE',
-    'surface-variant': '#424242',
-    'on-surface-variant': '#EEEEEE',
-    primary: '##ecf2f2',
+    background: '#d6e8e8',      // slightly deeper teal-grey so cards pop
+    surface: '#ffffff',          // clean white cards
+    'surface-bright': '#ffffff',
+    'surface-light': '#f0f7f7',
+    'surface-variant': '#e0f0f0', // soft teal tint for SamuelLM bubbles
+    'on-surface-variant': '#003131', // dark teal text on variant surfaces
+    primary: '#c8e0e0',          // hero/navbar background — muted teal
     'primary-darken-1': '#1F5592',
-    secondary: '#48A9A6',
-    'secondary-darken-1': '#018786',
+    secondary: '#007c7c',        // teal actions — darker than dark theme for contrast on white
+    'secondary-darken-1': '#005f5f',
     error: '#B00020',
-    info: '#2196F3',
-    success: '#4CAF50',
-    warning: '#FB8C00',
-    accent: '#006a6a',
-    navbar_links: '#006a6a',
-    blue_green: '##007c7c',
-    yellow: '#eeae31'
-
+    info: '#0277BD',
+    success: '#2E7D32',
+    warning: '#E65100',
+    accent: '#004f4f',           // dark teal for nav links — readable on light bg
+    navbar_links: '#004f4f',
+    blue_green: '#007c7c',
+    yellow: '#c47f00',           // deeper gold — more readable on light backgrounds
   },
   variables: {
-    'border-color': '#000000',
-    'border-opacity': 0.12,
+    'border-color': '#007c7c',
+    'border-opacity': 0.15,
     'high-emphasis-opacity': 0.87,
     'medium-emphasis-opacity': 0.6,
     'disabled-opacity': 0.38,
     'idle-opacity': 0.04,
-    'hover-opacity': 0.04,
+    'hover-opacity': 0.06,
     'focus-opacity': 0.12,
     'selected-opacity': 0.08,
     'activated-opacity': 0.12,
@@ -36,8 +35,8 @@ export const light = {
     'dragged-opacity': 0.08,
     'theme-kbd': '#212529',
     'theme-on-kbd': '#FFFFFF',
-    'theme-code': '#F5F5F5',
-    'theme-on-code': '#000000',
-    'glow':'#006a6a'
+    'theme-code': '#f0f7f7',
+    'theme-on-code': '#003131',
+    'glow': '#007c7c',
   },
 }
