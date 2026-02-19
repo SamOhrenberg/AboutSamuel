@@ -2,7 +2,6 @@
 using Amazon.BedrockRuntime.Model;
 using Amazon.Runtime.Documents;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json.Linq;
 using PortfolioWebsite.Api.Data;
 using PortfolioWebsite.Api.Data.Models;
 using PortfolioWebsite.Api.Dtos;
@@ -10,6 +9,8 @@ using PortfolioWebsite.Api.Services.Entities;
 using PortfolioWebsite.Common;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace PortfolioWebsite.Api.Services;
 
@@ -25,6 +26,15 @@ public class ChatService
     private record ModelSettings(string Model);
     private readonly ModelSettings _toolUse;
     private readonly ModelSettings _questions;
+
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        // Bedrock/Claude sometimes escapes quotes or uses specific encoding
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
 
     public ChatService(
         IConfiguration configuration,
@@ -148,8 +158,8 @@ public class ChatService
 
         try
         {
-            var jObj = JObject.Parse(raw);
-            return jObj["html"]?.ToString();
+            var node = JsonNode.Parse(raw, new JsonNodeOptions { PropertyNameCaseInsensitive = true });
+            return node?["html"]?.ToString();
         }
         catch (Exception ex)
         {
@@ -490,8 +500,8 @@ public class ChatService
                         "Redirects the user to a relevant page on the website when their query is best " +
                         "answered by navigating them there directly. Available pages:\n" +
                         "  - 'Contact':     A form the user can fill out to reach out to Samuel.\n" +
-                        "  - 'Testimonial': Testimonials from Samuel's coworkers and professional partners.\n" +
                         "  - 'Resume':      Samuel's full work history, projects, education, and skills.\n" +
+                        "  - 'Projects':    Samuel's featured projects with tech stack details.\n" +
                         "Use this when the user is asking for something that lives on one of these pages " +
                         "and would benefit most from going there.",
                     InputSchema = new ToolInputSchema
@@ -505,7 +515,7 @@ public class ChatService
                                 {
                                     ["type"]        = new Document("string"),
                                     ["description"] = new Document(
-                                        "The page to redirect the user to. Must be exactly one of: 'Contact', 'Testimonial', 'Resume'.")
+                                        "The page to redirect the user to. Must be exactly one of: 'Contact', 'Projects', 'Resume'.")
                                 })
                             }),
                             ["required"] = new Document(new List<Document> { new Document("page") })
