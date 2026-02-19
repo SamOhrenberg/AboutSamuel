@@ -4,20 +4,32 @@
     <v-container fluid class="pa-0 hero-container">
       <v-row no-gutters align="center" justify="center" class="hero-row">
 
-        <!-- Photo col: full width on mobile, auto on desktop -->
         <v-col cols="12" md="auto" class="hero-photo-col">
           <img
             src="@/assets/sam-wedding-02.png"
             class="glow-image hero-photo"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': photoVisible }"
             alt="Samuel Ohrenberg"
           />
         </v-col>
 
-        <!-- Text col -->
         <v-col cols="12" md="auto" class="hero-text-col">
-          <p class="hero-greeting">Nice to Meet You!</p>
-          <h1 class="hero-name">I'm Samuel Ohrenberg</h1>
-          <h2 class="hero-tagline">
+          <p
+            class="hero-greeting"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': greetingVisible }"
+          >
+            Nice to Meet You!
+          </p>
+          <h1
+            class="hero-name"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': nameVisible }"
+          >
+            I'm Samuel Ohrenberg
+          </h1>
+          <h2
+            class="hero-tagline"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': taglineVisible }"
+          >
             And I'm
             <span class="hero-inline-group">
               <span>A</span><span class="cycle-text" :class="{ fade: !isVisible }">{{ currentAoran }}&nbsp;</span>
@@ -25,7 +37,10 @@
             </span>
             From Oklahoma
           </h2>
-          <p class="hero-sub">
+          <p
+            class="hero-sub"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': subVisible }"
+          >
             I'm a passionate, solution-oriented programmer who loves solving problems. If you'd like
             to learn more about me, please speak with my chatbot, SamuelLM.
           </p>
@@ -67,6 +82,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
+// ── Cycling noun ──────────────────────────────────────────
 const aoran = ['', '', 'n']
 const nouns = ['Software Engineer', 'Backend Developer', 'API Developer']
 const index = ref(0)
@@ -84,6 +100,47 @@ onMounted(() => {
     }, 500)
   }, 4000)
 })
+
+// ── Hero animation logic ──────────────────────────────────
+// VITE_HERO_ANIMATE options:
+//   'always' — animate every visit to /
+//   'never'  — never animate
+//   (unset)  — animate on first page load only (default)
+const HERO_ANIMATE = import.meta.env.VITE_HERO_ANIMATE ?? 'first-load'
+const FIRST_LOAD_KEY = 'hero_animated'
+
+const shouldAnimate = computed(() => {
+  if (HERO_ANIMATE === 'never') return false
+  if (HERO_ANIMATE === 'always') return true
+  // 'first-load': only animate if we haven't yet this session
+  return !sessionStorage.getItem(FIRST_LOAD_KEY)
+})
+
+// Individual element visibility refs for stagger
+const photoVisible    = ref(false)
+const greetingVisible = ref(false)
+const nameVisible     = ref(false)
+const taglineVisible  = ref(false)
+const subVisible      = ref(false)
+
+onMounted(() => {
+  if (!shouldAnimate.value) {
+    // Skip animation — make everything visible immediately
+    photoVisible.value = greetingVisible.value = nameVisible.value =
+      taglineVisible.value = subVisible.value = true
+    return
+  }
+
+  // Mark as animated for this session
+  sessionStorage.setItem(FIRST_LOAD_KEY, '1')
+
+  // Stagger each element in
+  setTimeout(() => { photoVisible.value    = true }, 100)
+  setTimeout(() => { greetingVisible.value = true }, 250)
+  setTimeout(() => { nameVisible.value     = true }, 380)
+  setTimeout(() => { taglineVisible.value  = true }, 490)
+  setTimeout(() => { subVisible.value      = true }, 590)
+})
 </script>
 
 <style scoped>
@@ -94,6 +151,24 @@ onMounted(() => {
 }
 .fade {
   opacity: 0;
+}
+
+/* ── Hero entrance animation ───────────────────── */
+/* Base hidden state — only applied when shouldAnimate is true */
+.hero-animate {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+/* Photo slides in from left instead of up */
+.hero-photo.hero-animate {
+  transform: translateX(-20px);
+}
+
+.hero-animate--visible {
+  opacity: 1;
+  transform: translate(0, 0) !important;
 }
 
 /* ── Hero section ──────────────────────────────── */
@@ -110,7 +185,6 @@ onMounted(() => {
   min-height: 420px;
 }
 
-/* Photo */
 .hero-photo-col {
   display: flex;
   justify-content: center;
@@ -123,7 +197,14 @@ onMounted(() => {
   transform: scaleX(-1);
   align-self: flex-end;
   filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
-  /* On mobile, cap the height so it doesn't dominate */
+}
+
+/* When animating, we need scaleX(-1) AND translateX together */
+.hero-photo.hero-animate {
+  transform: scaleX(-1) translateX(20px);
+}
+.hero-photo.hero-animate--visible {
+  transform: scaleX(-1) translateX(0) !important;
 }
 
 @media (max-width: 959px) {
@@ -137,7 +218,6 @@ onMounted(() => {
   }
 }
 
-/* Text */
 .hero-text-col {
   padding: 3rem 2rem;
   max-width: 600px;
@@ -246,7 +326,6 @@ onMounted(() => {
 @media (max-width: 599px) {
   .about-photo {
     max-width: 14rem;
-    /* Circular crop on small mobile */
     border-radius: 50%;
     border: 3px solid white;
     padding: 0;

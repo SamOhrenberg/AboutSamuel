@@ -6,18 +6,21 @@
       <Navbar />
 
       <div id="content-wrapper">
-
-        <!-- Scrollable page content + footer -->
         <div id="main-content" role="main">
-          <RouterView />
+
+          <!-- Route transition: fade + slide up -->
+          <RouterView v-slot="{ Component, route }">
+            <Transition name="page" mode="out-in">
+              <component :is="Component" :key="route.path" />
+            </Transition>
+          </RouterView>
+
           <Footer />
         </div>
 
-        <!-- Chat side panel (always mounted so FAB works on mobile) -->
         <aside id="chat-box" aria-label="AI Chat Assistant">
           <ChatBox />
         </aside>
-
       </div>
     </div>
 
@@ -83,11 +86,6 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* Push footer to the bottom even on short pages */
-#main-content > :deep(.v-main),
-#main-content > * {
-  flex: 1;
-}
 #main-content > footer {
   flex: 0;
 }
@@ -102,5 +100,23 @@ onMounted(() => {
     width: 0;
     overflow: visible;
   }
+}
+</style>
+
+<!-- Page transition — global so it applies outside scoped -->
+<style>
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

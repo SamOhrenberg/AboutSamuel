@@ -77,7 +77,6 @@ router.afterEach(() => {
       <v-icon>mdi-menu</v-icon>
     </v-btn>
 
-    <!-- Site name — mobile only -->
     <span class="site-title d-flex d-md-none">Samuel Ohrenberg</span>
     <span class="d-flex d-md-none" style="width:44px;" aria-hidden="true" />
 
@@ -118,7 +117,7 @@ router.afterEach(() => {
   padding: 0 1.5rem;
   background-color: rgb(var(--v-theme-background));
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  height: 64px; /* matches --navbar-height in App.vue */
+  height: 64px;
   width: 100%;
   flex-shrink: 0;
 }
@@ -131,18 +130,47 @@ router.afterEach(() => {
   margin: 0;
 }
 
+/* Animated underline nav link */
 .nav-link {
+  position: relative;
   color: rgb(var(--v-theme-accent)) !important;
   text-decoration: none;
   font-size: 1rem;
-  padding: 0.5rem 0.25rem;
+  padding: 0.5rem 0.1rem;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
 }
 
-.nav-link:hover { text-decoration: underline; }
-.nav-link:visited { color: rgb(var(--v-theme-accent)) !important; }
+/* Underline pseudo-element */
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: rgb(var(--v-theme-secondary));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.22s ease;
+  border-radius: 2px;
+}
+
+.nav-link:hover::after,
+.nav-link.router-link-active::after {
+  transform: scaleX(1);
+}
+
+/* Active link slightly brighter */
+.nav-link.router-link-active {
+  color: rgb(var(--v-theme-secondary)) !important;
+}
+
+.nav-link:visited {
+  color: rgb(var(--v-theme-accent)) !important;
+}
+
 .nav-link:focus-visible {
   outline: 2px solid rgb(var(--v-theme-accent));
   outline-offset: 3px;
