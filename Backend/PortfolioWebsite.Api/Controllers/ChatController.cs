@@ -41,11 +41,18 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
         };
     }
 
-    [HttpGet("resume/{jobTitle?}")]
-    public async Task<string?> GetResume(string? jobTitle)
+    [HttpGet("resume")]
+    public async Task<IActionResult> GetResume()
     {
-        _logger.LogInformation("POST /api/chat/resume/{jobTitle} from {RemoteIp}", jobTitle ?? "", HttpContext.Connection.RemoteIpAddress);
-        string? html = await _chatService.GenerateHtmlResume(jobTitle);
-        return html;
+        var html = await _chatService.GenerateHtmlResume(null, null);
+        return html is null ? Problem() : Ok(html);
     }
+
+    [HttpPost("resume")]
+    public async Task<IActionResult> GetTailoredResume([FromBody] GenerateResumeRequest request)
+    {
+        var html = await _chatService.GenerateHtmlResume(request.Title, request.JobDescription);
+        return html is null ? Problem() : Ok(html);
+    }
+
 }

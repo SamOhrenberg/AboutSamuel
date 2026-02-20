@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-export async function getResponse(message, messageHistory) {
+export async function getResponse(message, messageHistory, userTrackingId) {
   try {
     var request = {
       message: message,
@@ -10,7 +10,7 @@ export async function getResponse(message, messageHistory) {
           role: msg.sentBy === 'You' ? 'user' : 'assistant',
           content: msg.message,
         })),
-      userTrackingId: userTrackingId,   // <-- add this
+      userTrackingId: userTrackingId ?? null,
     }
     const response = await axios.post(`${import.meta.env.VITE_API_URL}/Chat`, request)
 
