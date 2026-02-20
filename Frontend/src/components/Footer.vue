@@ -1,13 +1,11 @@
 <template>
   <footer class="site-footer" aria-label="Site footer">
     <div class="footer-inner">
-
       <!-- Left: name + tagline -->
       <div class="footer-brand">
         <span class="footer-name">Samuel Ohrenberg</span>
         <span class="footer-tagline">Software Engineer · Oklahoma City</span>
       </div>
-
       <!-- Center: nav links -->
       <nav class="footer-nav" aria-label="Footer navigation">
         <router-link to="/" class="footer-link">Home</router-link>
@@ -15,7 +13,6 @@
         <router-link to="/projects" class="footer-link">Projects</router-link>
         <router-link to="/contact" class="footer-link">Contact</router-link>
       </nav>
-
       <!-- Right: GitHub + copyright -->
       <div class="footer-right">
         <a
@@ -28,9 +25,13 @@
           <v-icon size="20">mdi-github</v-icon>
           <span>SamOhrenberg</span>
         </a>
-        <span class="footer-copy">© {{ currentYear }} Samuel Ohrenberg</span>
+        <div class="footer-copy-row">
+          <span class="footer-copy">© {{ currentYear }} Samuel Ohrenberg</span>
+          <router-link to="/admin/login" class="footer-admin-link" aria-label="Admin">
+            <v-icon size="11">mdi-lock</v-icon>
+          </router-link>
+        </div>
       </div>
-
     </div>
   </footer>
 </template>
@@ -47,7 +48,6 @@ const currentYear = new Date().getFullYear()
   font-family: 'Raleway', sans-serif;
   flex-shrink: 0;
 }
-
 .footer-inner {
   max-width: 1100px;
   margin: 0 auto;
@@ -58,26 +58,22 @@ const currentYear = new Date().getFullYear()
   gap: 1.5rem;
   flex-wrap: wrap;
 }
-
 /* Brand */
 .footer-brand {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
 }
-
 .footer-name {
   font-family: 'Patua One', serif;
   font-size: 1rem;
   color: rgb(var(--v-theme-accent));
   font-weight: 600;
 }
-
 .footer-tagline {
   font-size: 0.75rem;
   color: rgba(var(--v-theme-on-background), 0.45);
 }
-
 /* Nav */
 .footer-nav {
   display: flex;
@@ -85,22 +81,18 @@ const currentYear = new Date().getFullYear()
   flex-wrap: wrap;
   justify-content: center;
 }
-
 .footer-link {
   font-size: 0.85rem;
   color: rgba(var(--v-theme-on-background), 0.6) !important;
   text-decoration: none;
   transition: color 0.15s ease;
 }
-
 .footer-link:hover {
   color: rgb(var(--v-theme-accent)) !important;
 }
-
 .footer-link:visited {
   color: rgba(var(--v-theme-on-background), 0.6) !important;
 }
-
 /* Right */
 .footer-right {
   display: flex;
@@ -108,7 +100,6 @@ const currentYear = new Date().getFullYear()
   align-items: flex-end;
   gap: 0.3rem;
 }
-
 .footer-github {
   display: inline-flex;
   align-items: center;
@@ -118,17 +109,31 @@ const currentYear = new Date().getFullYear()
   text-decoration: none;
   transition: opacity 0.15s ease;
 }
-
 .footer-github:hover {
   opacity: 0.8;
   text-decoration: underline;
 }
-
+.footer-copy-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
 .footer-copy {
   font-size: 0.75rem;
   color: rgba(var(--v-theme-on-background), 0.35);
 }
-
+/* Inconspicuous admin link — same faintness as copyright text */
+.footer-admin-link {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(var(--v-theme-on-background), 0.2) !important;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  line-height: 1;
+}
+.footer-admin-link:hover {
+  color: rgba(var(--v-theme-on-background), 0.5) !important;
+}
 /* Mobile: stack vertically and center */
 @media (max-width: 599px) {
   .footer-inner {
@@ -136,11 +141,9 @@ const currentYear = new Date().getFullYear()
     align-items: center;
     text-align: center;
   }
-
   .footer-right {
     align-items: center;
   }
-
   .footer-brand {
     align-items: center;
   }

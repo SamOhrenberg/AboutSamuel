@@ -12,6 +12,7 @@ public class ProjectDto
     public string? Detail { get; set; }
     public List<string> TechStack { get; set; } = [];
     public int DisplayOrder { get; set; }
+    public bool IsActive { get; set; }
     public bool IsFeatured { get; set; }
     public string? StartYear { get; set; }
     public string? EndYear { get; set; }
@@ -38,6 +39,7 @@ public class ProjectDto
             Detail = project.Detail,
             TechStack = techStack,
             DisplayOrder = project.DisplayOrder,
+            IsActive = project.IsActive,
             IsFeatured = project.IsFeatured,
             StartYear = project.StartYear,
             EndYear = project.EndYear

@@ -14,6 +14,7 @@ public class SqlDbContext : DbContext
 
     public DbSet<Project> Projects { get; set; } = null!;
 
+    public DbSet<AdminToken> AdminTokens { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Chat>()
@@ -33,6 +34,11 @@ public class SqlDbContext : DbContext
 
         modelBuilder.Entity<Project>()
             .Property(k => k.ProjectId)
+            .HasValueGenerator<SequentialGuidValueGenerator>()
+            .ValueGeneratedOnAdd();
+
+        modelBuilder.Entity<AdminToken>()
+            .Property(k => k.AdminTokenId)
             .HasValueGenerator<SequentialGuidValueGenerator>()
             .ValueGeneratedOnAdd();
     }

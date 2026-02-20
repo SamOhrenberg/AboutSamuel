@@ -3,7 +3,6 @@
  *
  * Automatic routes for `./src/pages/*.vue`
  */
-
 // Composables
 import { createRouter, createWebHistory } from 'vue-router/auto'
 import { setupLayouts } from 'virtual:generated-layouts'
@@ -27,6 +26,30 @@ router.onError((err, to) => {
   } else {
     console.error(err)
   }
+})
+
+
+const PUBLIC_ADMIN_ROUTES = ['/admin/login', '/admin/verify']
+
+router.beforeEach((to) => {
+  const isAdminRoute = to.path.startsWith('/admin')
+  const isPublicAdminRoute = PUBLIC_ADMIN_ROUTES.some(r => to.path.startsWith(r))
+
+  if (!isAdminRoute || isPublicAdminRoute) return true
+
+  const jwt       = sessionStorage.getItem('admin_jwt')
+  const expiresAt = sessionStorage.getItem('admin_expires')
+  const isAuthenticated = !!jwt && !!expiresAt && new Date(expiresAt) > new Date()
+
+  if (!isAuthenticated) {
+    return {
+      path: '/admin/login',
+      replace: true,
+      query: to.path !== '/admin' ? { redirect: to.fullPath } : undefined,
+    }
+  }
+
+  return true
 })
 
 router.isReady().then(() => {
