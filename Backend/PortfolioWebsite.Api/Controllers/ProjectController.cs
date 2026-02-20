@@ -15,7 +15,7 @@ public class ProjectController(ILogger<ProjectController> _logger, SqlDbContext 
     {
         _logger.LogInformation("GET /projects from {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
 
-        return await _dbContext.Projects
+        var projects = await _dbContext.Projects
                 .Where(p => p.IsActive)
                 .OrderBy(p => p.DisplayOrder)
                 .Select(p => new ProjectDto
@@ -25,6 +25,8 @@ public class ProjectController(ILogger<ProjectController> _logger, SqlDbContext 
                     Employer = p.Employer,
                     Role = p.Role,
                     Summary = p.Summary,
+                    Detail = p.Detail,
+                    ImpactStatement = p.ImpactStatement,
                     TechStack = Enumerable.ToList(JsonSerializer.Deserialize<List<string>>(p.TechStack, (JsonSerializerOptions)null) ?? new List<string>()),
                     DisplayOrder = p.DisplayOrder,
                     IsFeatured = p.IsFeatured,
@@ -32,6 +34,8 @@ public class ProjectController(ILogger<ProjectController> _logger, SqlDbContext 
                     EndYear = p.EndYear
                 })
                 .ToListAsync();
+
+        return projects;
 
     }
 

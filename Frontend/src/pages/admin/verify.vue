@@ -59,7 +59,7 @@ onMounted(async () => {
 
 <style scoped>
 .admin-verify-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;

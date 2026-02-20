@@ -9,6 +9,14 @@ export const useChatStore = defineStore('chat', {
     isLoading: false,
     width: 250, // Default min width
     height: window.innerHeight * 0.3, // 30% of viewport height
+    get userTrackingId() {
+      let id = sessionStorage.getItem('chat_tracking_id')
+      if (!id) {
+        id = crypto.randomUUID()
+        sessionStorage.setItem('chat_tracking_id', id)
+      }
+      return id
+    },
     archivedMessageHistory: [
       {
         sentBy: 'SamuelLM',
@@ -73,7 +81,16 @@ export const useChatStore = defineStore('chat', {
           this.message = ''
 
           if (response.redirectToPage && response.redirectToPage != '') {
-            return response.redirectToPage.replace(' ', '')
+            if (response.redirectToPage && response.redirectToPage !== '') {
+              const page = response.redirectToPage.trim()
+              // If redirecting to Projects and there's a chat message, pass it as a highlight hint
+              if (page.toLowerCase() === 'projects') {
+                // Extract a keyword from the last user message for highlighting
+                const lastMsg = encodeURIComponent(this.message || '')
+                return `${page}?highlight=${lastMsg}`
+              }
+              return page
+            }
           }
         } catch (error) {
           console.error(error)

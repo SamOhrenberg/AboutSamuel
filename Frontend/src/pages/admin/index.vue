@@ -356,6 +356,19 @@
               <v-textarea v-model="pf.detail" label="Detail (optional)" variant="outlined" density="comfortable" rows="4" color="secondary" auto-grow />
             </v-col>
             <v-col cols="12">
+              <v-textarea
+                v-model="pf.impactStatement"
+                label="Impact Statement (optional)"
+                variant="outlined"
+                density="comfortable"
+                rows="2"
+                color="secondary"
+                auto-grow
+                hint="A single punchy sentence quantifying the outcome, e.g. 'Reduced deployment time by 60% and eliminated manual hotfixes'"
+                persistent-hint
+              />
+            </v-col>
+            <v-col cols="12">
               <label class="field-label">Tech Stack</label>
               <p class="field-hint mb-2">Press Enter or comma after each item to add it.</p>
               <div class="tag-input-wrap">
@@ -525,6 +538,7 @@ const pf = ref(emptyProject())
 function emptyProject() {
   return {
     title: '', employer: '', role: '', summary: '', detail: '',
+    impactStatement: '',
     techStack: [], displayOrder: 0, isFeatured: false, isActive: true,
     startYear: '', endYear: ''
   }

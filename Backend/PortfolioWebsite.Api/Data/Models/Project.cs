@@ -8,6 +8,7 @@ public class Project
     public string Role { get; set; } = string.Empty;
     public string Summary { get; set; } = string.Empty;
     public string? Detail { get; set; }
+    public string? ImpactStatement { get; set; }
 
     /// <summary>
     /// JSON array of technology names, e.g. ["C#", "ASP.NET Core", "SQL Server"]

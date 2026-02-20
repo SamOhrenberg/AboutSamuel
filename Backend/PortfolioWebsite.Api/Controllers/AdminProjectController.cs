@@ -117,6 +117,7 @@ public class AdminProjectController(
         project.Role = request.Role;
         project.Summary = request.Summary;
         project.Detail = request.Detail;
+        project.ImpactStatement = request.ImpactStatement;
         project.TechStack = JsonSerializer.Serialize(request.TechStack);
         project.DisplayOrder = request.DisplayOrder;
         project.IsFeatured = request.IsFeatured;
