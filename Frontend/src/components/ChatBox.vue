@@ -301,7 +301,7 @@ async function sendMessage() {
 
 @media (min-width: 600px) {
   .chatbox-fab {
-    height: 100vh !important;
+    height: 100dvh !important;
     width: 2rem;
   }
   .chatbox-container {
@@ -316,7 +316,7 @@ async function sendMessage() {
     position: fixed;
     top: 0; bottom: 0; right: 0; left: 0;
     width: 100vw !important;
-    height: 100vh !important;
+    height: 100dvh !important;
     z-index: 1000;
   }
 }

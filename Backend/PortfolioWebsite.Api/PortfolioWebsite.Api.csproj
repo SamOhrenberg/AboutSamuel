@@ -23,16 +23,11 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 	  <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.*" />
 	  <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.*" />
+	  <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PortfolioWebsite.Common\PortfolioWebsite.Common.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="DeployToIIS.bat">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>
