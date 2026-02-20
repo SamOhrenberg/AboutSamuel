@@ -7,6 +7,7 @@ using PortfolioWebsite.Api.Data.Models;
 using PortfolioWebsite.Api.Dtos;
 using PortfolioWebsite.Api.Services.Entities;
 using PortfolioWebsite.Common;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -16,7 +17,12 @@ namespace PortfolioWebsite.Api.Services;
 
 public class ChatService
 {
-    private const int MatchWeight = 60;
+    // Keyword match contributes 70% of the relevance score; random jitter fills the rest
+    private const int MatchWeight = 70;
+    private const int MaxContextEntries = 4;
+    private const int MinTokenLength = 4;
+    private const int MaxResponseTokens = 300;
+    private const int MaxResponseWords = 200;
 
     private readonly ILogger<ChatService> _logger;
     private readonly SqlDbContext _dbContext;
@@ -27,12 +33,15 @@ public class ChatService
     private readonly ModelSettings _toolUse;
     private readonly ModelSettings _questions;
 
+    // Cached keyword-augmented information entries, keyed by InformationId.
+    // Rebuilt whenever the Information table is modified (simple approach: rebuild per process lifetime).
+    private readonly ConcurrentDictionary<Guid, IReadOnlyList<string>> _keywordCache = new();
+
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         AllowTrailingCommas = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
-        // Bedrock/Claude sometimes escapes quotes or uses specific encoding
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
@@ -82,51 +91,113 @@ public class ChatService
         return response;
     }
 
-    public async Task<string?> GenerateHtmlResume(string? title)
+    public async Task<string?> GenerateHtmlResume(string? title, string? jobDescription)
     {
         var allInformation = await _dbContext.Information.OrderBy(t => t.Text).ToListAsync();
-        var textBlock = string.Join(
+        var allProjects = await _dbContext.Projects
+            .Where(p => p.IsActive)
+            .OrderByDescending(p => p.IsFeatured)
+            .ThenBy(p => p.DisplayOrder)
+            .ToListAsync();
+
+        var infoBlock = string.Join(
             "\r\n\r\nNew Information:\r\n",
             allInformation.Select(i => i.Text));
 
-        var titleInstruction = !string.IsNullOrEmpty(title)
-            ? $"Personalize the resume for a '{title}' role, retaining only relevant and pertinent details."
-            : string.Empty;
+        var projectsBlock = string.Join("\r\n\r\n", allProjects.Select(p =>
+        {
+            var techStack = DeserializeTechStack(p.TechStack);
+            var years = BuildYearRange(p.StartYear, p.EndYear);
+            var sb = new StringBuilder();
+            sb.AppendLine($"Project: {p.Title}");
+            sb.AppendLine($"Employer: {p.Employer} | Role: {p.Role}{(years != null ? $" | {years}" : "")}");
+            if (!string.IsNullOrWhiteSpace(p.Summary)) sb.AppendLine($"Summary: {p.Summary}");
+            if (!string.IsNullOrWhiteSpace(p.Detail)) sb.AppendLine($"Detail: {p.Detail}");
+            if (!string.IsNullOrWhiteSpace(p.ImpactStatement)) sb.AppendLine($"Impact: {p.ImpactStatement}");
+            if (techStack.Count > 0) sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
+            return sb.ToString().Trim();
+        }));
+
+        bool hasTailoring = !string.IsNullOrWhiteSpace(title) || !string.IsNullOrWhiteSpace(jobDescription);
+
+        var titleInstruction = hasTailoring
+            ? $"""
+          Tailor this resume for the following:
+
+          {(!string.IsNullOrWhiteSpace(title) ? $"Target Role: {title}" : "")}
+
+          {(!string.IsNullOrWhiteSpace(jobDescription) ? $"""
+          Job Description:
+          {jobDescription}
+
+          Instructions:
+          - Mirror the language, keywords, and terminology used in the job description naturally throughout the resume
+          - Identify the top 5-7 required or preferred skills from the job description and ensure they are visible
+            and substantiated with real experience from Samuel's background — never fabricate
+          - Prioritize and feature projects and experience most directly relevant to the job description
+          - Lead every bullet point with the accomplishment or outcome most relevant to this role
+          - If the job description mentions specific technologies, methodologies, or domains Samuel has
+            experience with, make sure they appear prominently rather than buried
+          - Write the professional summary specifically for this role, referencing the employer's priorities
+            where you can infer them from the job description
+          - De-emphasize or condense experience and projects with little relevance to this role
+          """ : """
+          - Prioritize projects and experience most relevant to this role title
+          - Use language and keywords appropriate for this type of role
+          - Write the professional summary targeting this role
+          """)}
+          """
+            : "Include all experience and projects. Featured projects should appear more prominently.";
+
 
         var systemPrompt = $$"""
-            You are a professional resume generator. I will provide raw information about Samuel Ohrenberg's 
-            professional experience, education, and skills. Generate an HTML resume that meets these requirements:
+        You are a professional resume generator. I will provide raw information about Samuel Ohrenberg's 
+        professional experience, education, and skills, followed by a structured list of his projects.
+        Generate an HTML resume that meets these requirements:
 
-            - Slots within a Vue.js <template></template> (do NOT include the <template> tags themselves)
-            - Does NOT include a contact section
-            - Uses ONLY inline style attributes — no <style> tags, no CSS class names
-            - Includes ALL jobs, ALL projects, education, and important skills
-            - Is visually appealing, accessible (screen-reader friendly), and responsive
-            - Has strong contrast between foreground text and background colors
-            - Paraphrases and summarizes as needed while retaining all important details
+        - Slots within a Vue.js <template></template> (do NOT include the <template> tags themselves)
+        - Does NOT include a contact section
+        - Uses ONLY inline style attributes — no <style> tags, no CSS class names
+        - Includes ALL jobs, education, and important skills
+        - Includes a dedicated Projects section after Professional Experience
+        - Each project entry should show: title, employer, role, year range, a concise summary or bullet
+          points from the detail, the impact statement as a highlighted callout if present, and the tech stack as small inline tags
+        - Is visually appealing, accessible (screen-reader friendly), and responsive
+        - Has strong contrast between foreground text and background colors
+        - Paraphrases and summarizes as needed while retaining all important details
 
-            Use this color theme throughout:
-                background:           #e6eeee
-                surface:              #FFFFFF
-                surface-light:        #EEEEEE
-                surface-variant:      #424242
-                on-surface-variant:   #EEEEEE
-                primary:              #ecf2f2
-                primary-darken-1:     #1F5592
-                secondary:            #48A9A6
-                secondary-darken-1:   #018786
-                error:                #B00020
-                info:                 #2196F3
-                success:              #4CAF50
-                warning:              #FB8C00
-                accent:               #006a6a
-                yellow:               #eeae31
+        Use this color theme throughout. These are NON-NEGOTIABLE — do not deviate:
+            Page background:      #e6eeee  (light)
+            Card/section background: #FFFFFF
+            ALL body text:        #1a1a1a  (near-black — must be readable on light backgrounds)
+            ALL headings:         #1a1a1a  (near-black)
+            Accent / section titles: #006a6a
+            Highlighted text / links: #48A9A6
+            Impact callout background: #e0f4f4
+            Impact callout text:  #004d4d
+            Tech tag background:  #d0ecec
+            Tech tag text:        #006a6a
+            Subtle dividers:      #c0d8d8
 
-            {{titleInstruction}}
+        CRITICAL: This resume will always render on a LIGHT background. 
+        Every text element must have dark text (#1a1a1a or similar) to ensure readability.
+        Never use white, near-white, or light-colored text anywhere.
+        Never use the site's dark theme colors (#001e1e, #003131, rgba with low opacity) for text.
 
-            You MUST output ONLY a valid JSON object in exactly this format with no markdown, no code fences, and no extra text:
-            {"html": "<your complete html string here>"}
-            """;
+
+        {{titleInstruction}}
+
+        You MUST output ONLY a valid JSON object in exactly this format with no markdown, no code fences, and no extra text:
+        {"html": "<your complete html string here>"}
+        """;
+
+        var userContent = $"""
+        === PROFESSIONAL BACKGROUND & EXPERIENCE ===
+        {infoBlock}
+
+        === PROJECTS ===
+        {projectsBlock}
+        """;
 
         var request = new ConverseRequest
         {
@@ -135,37 +206,58 @@ public class ChatService
             Messages =
             [
                 new Message
-                {
-                    Role = "user",
-                    Content = [new ContentBlock { Text = textBlock }]
-                }
+            {
+                Role = "user",
+                Content = [new ContentBlock { Text = userContent }]
+            }
             ],
             InferenceConfig = new InferenceConfiguration { MaxTokens = 8192 }
         };
+
+
 
         var result = await _bedrockClient.ConverseAsync(request);
         var raw = result.Output.Message.Content
             .FirstOrDefault(c => c.Text != null)?.Text ?? string.Empty;
 
-        // Strip any accidental markdown code fences
         raw = raw.Trim();
+
+        // Strip markdown code fences if present
         if (raw.StartsWith("```"))
         {
             raw = string.Join('\n', raw.Split('\n').Skip(1));
             if (raw.TrimEnd().EndsWith("```"))
                 raw = raw[..raw.LastIndexOf("```")].TrimEnd();
+            raw = raw.Trim();
         }
 
+        // Try JSON parse first
         try
         {
             var node = JsonNode.Parse(raw, new JsonNodeOptions { PropertyNameCaseInsensitive = true });
-            return node?["html"]?.ToString();
+            var html = node?["html"]?.ToString();
+            if (!string.IsNullOrWhiteSpace(html))
+                return html;
         }
-        catch (Exception ex)
+        catch
         {
-            _logger.LogWarning(ex, "Resume response was not valid JSON — returning raw content");
-            return raw;
+            // Not valid JSON — fall through to heuristic extraction
         }
+
+        // Heuristic: if the response starts with a partial JSON prefix before the actual HTML,
+        // find the first < and treat everything from there to the end as the HTML content
+        var htmlStart = raw.IndexOf('<');
+        if (htmlStart > 0)
+        {
+            var extracted = raw[htmlStart..].Trim();
+            // Strip any trailing JSON artifacts like }" or }
+            if (extracted.EndsWith("}\"") || extracted.EndsWith("\"}"))
+                extracted = extracted[..extracted.LastIndexOf('<')].Trim();
+            return extracted;
+        }
+
+        _logger.LogWarning("Could not extract HTML from resume response");
+        return raw;
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -188,7 +280,7 @@ public class ChatService
             Briefly introduce yourself and invite the user to ask a question about Samuel.
 
             Only call a tool when the user's message clearly warrants one:
-            - askQuestion: for specific questions about Samuel's background, skills, or experience
+            - askQuestion: for specific questions about Samuel's background, skills, experience, or projects
             - contactSamuel: when the user wants to get in touch with Sam
             - getResume: when the user wants to see or download Sam's resume
             - redirectToPage: when the user wants content best found on a specific page
@@ -197,9 +289,18 @@ public class ChatService
             Never say things like "I'll call askQuestion" or "askQuestion: ..." or "I'm going to use a tool".
             Tool use happens silently behind the scenes. Your response to the user should only ever be
             the final answer — never the process of getting there.
+
+            CRITICAL: Your response to the user must NEVER mention tools, retrieval, or looking things up.
+            Do not say things like:
+            - "I'll retrieve information..."
+            - "Let me look that up..."
+            - "I'm going to check..."
+            - "I'll find out about..."
+            If you are calling a tool, output NO text alongside it — leave the text content completely empty.
+            Your only job in this phase is to silently route to the correct tool.
+            The actual answer will be generated separately.
             """;
 
-        // Build conversation history
         var messages = chat.History
             .Select(h => new Message
             {
@@ -243,15 +344,18 @@ public class ChatService
         bool error = false;
         bool returnResume = false;
         string? redirectToPage = null;
+        string? inlineText = null;
+        bool toolWasCalled = false;
 
         foreach (var block in result.Output.Message.Content)
         {
-            // Capture any inline text the model produced alongside tool calls
             if (block.Text != null)
-                message = block.Text;
+                inlineText = block.Text;
 
             if (block.ToolUse == null)
                 continue;
+
+            toolWasCalled = true;
 
             var toolName = block.ToolUse.Name;
             var toolInput = block.ToolUse.Input;
@@ -291,9 +395,7 @@ public class ChatService
                 case "redirectToPage":
                     {
                         redirectToPage = GetStringArg(toolInput, "page");
-
-                        // Also generate a short contextual message to accompany the redirect
-                        var questionResponse = await AskBedrockQuestion(messages, systemPrompt);
+                        var questionResponse = await AskBedrockQuestion(messages, systemPrompt, null);
                         message = questionResponse.Message;
                         error = error || questionResponse.Error;
                         tokenLimitReached = tokenLimitReached || questionResponse.TokenLimitReached;
@@ -302,7 +404,8 @@ public class ChatService
 
                 case "askQuestion":
                     {
-                        var questionResponse = await AskBedrockQuestion(messages, systemPrompt);
+                        var question = GetStringArg(toolInput, "question");
+                        var questionResponse = await AskBedrockQuestion(messages, systemPrompt, question);
                         message = questionResponse.Message;
                         error = error || questionResponse.Error;
                         tokenLimitReached = tokenLimitReached || questionResponse.TokenLimitReached;
@@ -315,7 +418,9 @@ public class ChatService
             }
         }
 
-        // Fallback if the model returned text but no tool call (shouldn't happen in ANY mode, but be safe)
+        if (!toolWasCalled && !string.IsNullOrWhiteSpace(inlineText))
+            message = inlineText;
+
         if (string.IsNullOrWhiteSpace(message))
             message = "I'm sorry, I wasn't sure how to handle that. Could you rephrase your question?";
 
@@ -323,35 +428,32 @@ public class ChatService
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Bedrock: Q&A with RAG (Relevant Information Lookup)
+    // Bedrock: Q&A with RAG
     // ═════════════════════════════════════════════════════════════════════════
 
-    private async Task<ChatResponse> AskBedrockQuestion(List<Message> conversationHistory, string baseSystemPrompt)
+    private async Task<ChatResponse> AskBedrockQuestion(
+        List<Message> conversationHistory,
+        string baseSystemPrompt,
+        string? explicitQuestion)
     {
-        // Gather all user-turn text so we can extract keywords for RAG lookup
-        var userTextBuilder = new StringBuilder();
-        foreach (var msg in conversationHistory.Where(m => m.Role == "user"))
-        {
-            foreach (var block in msg.Content.Where(c => c.Text != null))
-                userTextBuilder.Append(block.Text).Append(' ');
-        }
+        // Prefer the explicit question extracted by the tool router; fall back to
+        // scanning the full conversation history for user-turn text.
+        var queryText = !string.IsNullOrWhiteSpace(explicitQuestion)
+            ? explicitQuestion
+            : BuildUserQueryText(conversationHistory);
 
-        var allUserText = userTextBuilder.ToString();
-
-        if (allUserText.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 3)
+        if (queryText.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 3)
         {
-            // Too short to be a real question — just respond gracefully
             return new ChatResponse(
                 "Hi there! I'm SamuelLM, Sam's portfolio assistant. Feel free to ask me anything about his background, skills, or experience!",
                 false);
         }
 
-        var tokens = Tokenizer.Tokenize(userTextBuilder.ToString());
+        var tokens = Tokenizer.Tokenize(queryText).ToList();
         var relevantInfo = await GetRelevantInformation(tokens);
 
         if (string.IsNullOrWhiteSpace(relevantInfo))
         {
-            // Log what was asked so the gap can be filled later
             await CreateInformationRequest(tokens);
             return new ChatResponse(
                 "I'm sorry, I don't have information about that topic yet. " +
@@ -362,13 +464,19 @@ public class ChatService
         var enrichedSystemPrompt = $"""
             {baseSystemPrompt}
 
-            Use the following curated excerpts from Samuel Ohrenberg's professional background to answer the user's question.
-            There may be additional relevant details not shown — these are the most pertinent sections:
+            Use the following curated excerpts from Samuel Ohrenberg's professional background to answer
+            the user's question. These are the most relevant sections available:
 
             {relevantInfo}
 
-            Respond concisely and professionally, as if you are Samuel in an interview. Keep your answer under 150 words.
-            Do not output markdown. Use plain text only.
+            Guidelines for your response:
+            - Answer concisely and professionally, as if Samuel is speaking in an interview
+            - Keep your answer under {MaxResponseWords} words
+            - Do not output markdown — use plain text only
+            - If the provided context does not contain enough information to answer the question
+              confidently, say so honestly rather than guessing
+            - Do not invent project names, employers, dates, technologies, or outcomes that are
+              not present in the context above
             """;
 
         var request = new ConverseRequest
@@ -376,7 +484,7 @@ public class ChatService
             ModelId = _questions.Model,
             System = [new SystemContentBlock { Text = enrichedSystemPrompt }],
             Messages = conversationHistory,
-            InferenceConfig = new InferenceConfiguration { MaxTokens = 300 }
+            InferenceConfig = new InferenceConfiguration { MaxTokens = MaxResponseTokens }
         };
 
         try
@@ -397,7 +505,7 @@ public class ChatService
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Bedrock: Contact Confirmation Message Generation
+    // Bedrock: Contact Confirmation Message
     // ═════════════════════════════════════════════════════════════════════════
 
     private async Task<string> GetContactConfirmationMessage(string? email, string? msg, string? error)
@@ -446,14 +554,13 @@ public class ChatService
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Tool Definitions (Bedrock Converse API Format)
+    // Tool Definitions
     // ═════════════════════════════════════════════════════════════════════════
 
     private static List<Tool> GetToolDefinitions()
     {
         return
         [
-            // ── contactSamuel ────────────────────────────────────────────────
             new Tool
             {
                 ToolSpec = new ToolSpecification
@@ -490,7 +597,6 @@ public class ChatService
                 }
             },
 
-            // ── redirectToPage ───────────────────────────────────────────────
             new Tool
             {
                 ToolSpec = new ToolSpecification
@@ -524,7 +630,6 @@ public class ChatService
                 }
             },
 
-            // ── getResume ────────────────────────────────────────────────────
             new Tool
             {
                 ToolSpec = new ToolSpecification
@@ -535,7 +640,6 @@ public class ChatService
                         "Use this when the user explicitly asks to see, view, or download Sam's resume or CV.",
                     InputSchema = new ToolInputSchema
                     {
-                        // No parameters — empty object schema
                         Json = new Document(new Dictionary<string, Document>
                         {
                             ["type"]       = new Document("object"),
@@ -545,7 +649,6 @@ public class ChatService
                 }
             },
 
-            // ── askQuestion ──────────────────────────────────────────────────
             new Tool
             {
                 ToolSpec = new ToolSpecification
@@ -586,57 +689,135 @@ public class ChatService
 
     private async Task<string> GetRelevantInformation(IEnumerable<string> tokens)
     {
+        var tokenList = tokens.Where(t => t.Length >= MinTokenLength).ToList();
+
         var informations = await _dbContext.Information
             .Include(i => i.Keywords)
             .ToListAsync();
 
-        // Augment stored keywords with tokens derived from the text itself (in-memory)
-        foreach (var info in informations)
+        var projects = await _dbContext.Projects
+            .Where(p => p.IsActive)
+            .ToListAsync();
+
+        var projectInfos = projects.Select(BuildProjectInformation).ToList();
+        var allEntries = informations.Concat(projectInfos).ToList();
+
+        // Augment each entry with tokens derived from its own text, using a
+        // per-entry cache to avoid re-tokenizing on every request.
+        foreach (var info in allEntries)
         {
-            info.Keywords.AddRange(
-                Tokenizer.Tokenize(info.Text)
-                    .Select(t => new Keyword(t, info)));
-            info.Keywords = info.Keywords.DistinctBy(k => k.Text).ToList();
-        }
+            var cached = _keywordCache.GetOrAdd(
+                info.InformationId,
+                _ => Tokenizer.Tokenize(info.Text).ToList());
 
-        // Score and down-select when there are more results than the LLM context can handle
-        if (informations.Count > 3)
-        {
-            var counted = informations.Select(i => new
-            {
-                Information = i,
-                NumberOfMatches = i.Keywords.Count(k =>
-                    tokens.Any(token => Utility.LevenshteinDifference(k.Text.ToLower(), token) <= 30))
-            }).ToList();
-
-            float max = counted.Max(a => a.NumberOfMatches);
-            float min = counted.Min(a => a.NumberOfMatches);
-
-            // Avoid division-by-zero when all items have the same match count
-            var scored = counted.Select(i => new
-            {
-                Information = i.Information,
-                Score = max == min
-                    ? (float)Utility.TrueRandom(1, 100 - MatchWeight)
-                    : ((i.NumberOfMatches - min) / (max - min) * MatchWeight)
-                      + Utility.TrueRandom(1, 100 - MatchWeight)
-            }).ToList();
-
-            informations = scored
-                .OrderByDescending(a => a.Score)
-                .Take(Utility.TrueRandom(2, 5))
-                .Select(a => a.Information)
+            var newKeywords = cached
+                .Where(t => info.Keywords.All(k => k.Text != t))
+                .Select(t => new Keyword(t, info))
                 .ToList();
+
+            info.Keywords.AddRange(newKeywords);
         }
+
+        if (allEntries.Count <= MaxContextEntries)
+        {
+            return BuildContextBlock(allEntries);
+        }
+
+        var scored = allEntries.Select(i => new
+        {
+            Information = i,
+            Score = ScoreEntry(i, tokenList)
+        }).ToList();
+
+        var top = scored
+            .Where(s => s.Score > 0)
+            .OrderByDescending(s => s.Score)
+            .Take(MaxContextEntries)
+            .Select(s => s.Information)
+            .ToList();
+
+        // Fall back to jitter-sorted full list if nothing matched
+        if (top.Count == 0)
+            top = scored.OrderByDescending(s => s.Score).Take(MaxContextEntries).Select(s => s.Information).ToList();
+
+        return BuildContextBlock(top);
+    }
+
+    /// <summary>
+    /// Scores a single information entry against the query tokens.
+    /// Exact matches are weighted higher than fuzzy matches; short tokens are excluded
+    /// from fuzzy matching to avoid false positives.
+    /// A small random jitter prevents identical-scoring entries from always returning
+    /// in the same order without compromising overall relevance.
+    /// </summary>
+    private static float ScoreEntry(Information entry, IReadOnlyList<string> tokens)
+    {
+        int matches = entry.Keywords.Count(k =>
+        {
+            var kText = k.Text.ToLower();
+
+            if (tokens.Any(t => t == kText))
+                return true;
+
+            if (kText.Length < MinTokenLength)
+                return false;
+
+            return tokens.Any(t =>
+                t.Length >= MinTokenLength &&
+                Utility.LevenshteinDifference(kText, t) <= 25);
+        });
+
+        if (matches == 0) return 0;
+
+        // Score = weighted match density + small jitter for tie-breaking only
+        float density = (float)matches / Math.Max(entry.Keywords.Count, 1);
+        float jitter = Utility.TrueRandom(1, 10);
+
+        return (density * MatchWeight) + jitter;
+    }
+
+    /// <summary>
+    /// Converts a Project record into an Information entry so it can participate
+    /// in the same scoring pipeline as manually curated information.
+    /// </summary>
+    private static Information BuildProjectInformation(Project project)
+    {
+        var techStack = DeserializeTechStack(project.TechStack);
+        var years = BuildYearRange(project.StartYear, project.EndYear);
 
         var sb = new StringBuilder();
-        foreach (var info in informations)
+        sb.AppendLine($"Project: {project.Title}");
+        sb.AppendLine($"Employer: {project.Employer}");
+        sb.AppendLine($"Role: {project.Role}");
+        if (years != null) sb.AppendLine($"Years: {years}");
+        sb.AppendLine($"Summary: {project.Summary}");
+        if (!string.IsNullOrWhiteSpace(project.Detail))
+            sb.AppendLine($"Detail: {project.Detail}");
+        if (!string.IsNullOrWhiteSpace(project.ImpactStatement))
+            sb.AppendLine($"Impact: {project.ImpactStatement}");
+        if (techStack.Count > 0)
+            sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
+
+        // Keywords from structured fields
+        var keywords = techStack
+            .Select(t => new Keyword(t.ToLower(), null!))
+            .Concat(Tokenizer.Tokenize(
+                $"{project.Title} {project.Employer} {project.Role} {project.Summary} {project.Detail} {project.ImpactStatement}")
+                .Select(t => new Keyword(t, null!)))
+            .ToList();
+
+        return new Information(project.ProjectId, sb.ToString().Trim(), keywords);
+    }
+
+    private static string BuildContextBlock(IEnumerable<Information> entries)
+    {
+        var sb = new StringBuilder();
+        foreach (var info in entries)
         {
             if (!string.IsNullOrWhiteSpace(info.Text))
                 sb.AppendLine(info.Text).AppendLine();
         }
-
-        return sb.ToString();
+        return sb.ToString().Trim();
     }
 
     private async Task CreateInformationRequest(IEnumerable<string> tokens)
@@ -679,7 +860,34 @@ public class ChatService
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Safely extracts a string value from a Bedrock tool-use input <see cref="Document"/>.
+    /// Concatenates all user-turn text from the conversation history into a single
+    /// string for use as a RAG query when no explicit question was extracted.
+    /// </summary>
+    private static string BuildUserQueryText(IEnumerable<Message> history)
+    {
+        var sb = new StringBuilder();
+        foreach (var msg in history.Where(m => m.Role == "user"))
+        {
+            foreach (var block in msg.Content.Where(c => c.Text != null))
+                sb.Append(block.Text).Append(' ');
+        }
+        return sb.ToString();
+    }
+
+    private static List<string> DeserializeTechStack(string json)
+    {
+        try { return JsonSerializer.Deserialize<List<string>>(json) ?? []; }
+        catch { return []; }
+    }
+
+    private static string? BuildYearRange(string? start, string? end)
+    {
+        if (start == null) return null;
+        return end != null ? $"{start}–{end}" : $"{start}–Present";
+    }
+
+    /// <summary>
+    /// Safely extracts a string value from a Bedrock tool-use input Document.
     /// Returns null if the key is missing or the value is not a string.
     /// </summary>
     private static string? GetStringArg(Document input, string key)
@@ -693,7 +901,7 @@ public class ChatService
         }
         catch
         {
-            // Silently absorb — defensive coding against SDK edge cases
+            // Absorb SDK edge cases — callers handle null gracefully
         }
 
         return null;

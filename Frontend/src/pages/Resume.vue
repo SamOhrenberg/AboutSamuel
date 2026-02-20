@@ -5,14 +5,8 @@
     <div class="resume-toolbar">
       <div class="resume-toolbar__main">
 
-        <v-btn
-          icon
-          variant="text"
-          size="small"
-          @click="toggleExpand"
-          :aria-label="isExpanded ? 'Collapse info' : 'Expand info'"
-          class="toolbar-icon-btn"
-        >
+        <v-btn icon variant="text" size="small" @click="toggleExpand"
+          :aria-label="isExpanded ? 'Collapse info' : 'Expand info'" class="toolbar-icon-btn">
           <v-icon>{{ isExpanded ? 'mdi-information' : 'mdi-information-outline' }}</v-icon>
         </v-btn>
 
@@ -24,25 +18,21 @@
         <v-divider vertical class="toolbar-divider mx-3 d-none d-sm-flex" />
 
         <div class="toolbar-regen">
-          <v-text-field
-            v-model="jobTitle"
-            label="Tailor for a role..."
-            variant="outlined"
-            density="compact"
-            hide-details
-            class="toolbar-input"
-            color="secondary"
-            @keyup.enter="triggerFetch"
-            @input="onInput"
-          />
-          <v-btn
-            color="secondary"
-            variant="tonal"
-            size="small"
-            :loading="resumeStore.loading"
-            @click="triggerFetch"
-            class="regen-btn"
-          >
+          <div class="tailor-section">
+            <v-text-field v-model="tailorTitle" label="Tailor for a role..." variant="outlined" density="comfortable"
+              hide-details clearable style="min-width: 220px" />
+            <v-btn v-if="tailorTitle" variant="text" size="small" :color="showJd ? 'secondary' : 'default'"
+              @click="showJd = !showJd">
+              {{ showJd ? 'Hide' : '+ Add' }} Job Description
+            </v-btn>
+          </div>
+
+          <v-expand-transition>
+            <v-textarea v-if="showJd && tailorTitle" v-model="jobDescription"
+              label="Paste the job description (optional)" variant="outlined" density="comfortable" rows="6" auto-grow
+              class="mt-2" hint="The more detail you paste, the more targeted the resume will be" persistent-hint />
+          </v-expand-transition> <v-btn color="secondary" variant="tonal" size="small" :loading="resumeStore.loading"
+            @click="triggerFetch" class="regen-btn">
             <v-icon size="16" class="mr-1">mdi-refresh</v-icon>
             <span class="d-none d-sm-inline">Regenerate</span>
           </v-btn>
@@ -72,7 +62,7 @@
     <div class="resume-content">
       <div v-if="resumeStore.loading" class="resume-loading">
         <v-progress-circular indeterminate color="secondary" size="56" />
-        <p class="resume-loading__text">Generating your resume...</p>
+        <p class="resume-loading__text">Generating my resume...</p>
       </div>
       <div v-else v-html="resumeStore.resumeContent" class="resume-html" />
     </div>
@@ -86,26 +76,25 @@ import { useResumeStore } from '@/stores/resumeStore'
 
 const resumeStore = useResumeStore()
 const isExpanded = ref(false)
-const jobTitle = ref('')
+const tailorTitle   = ref('')
+const jobDescription = ref('')
+const showJd        = ref(false)
 const pdfLink = ref(import.meta.env.VITE_RESUME_PDF_LINK)
 
 // Debounce: only auto-fetch 800ms after the user stops typing
 let debounceTimer = null
 
-function onInput() {
-  clearTimeout(debounceTimer)
-  // Auto-fetch only if there's a job title; don't auto-fetch blank input
-  if (jobTitle.value.trim()) {
-    debounceTimer = setTimeout(() => {
-      resumeStore.fetchResume(jobTitle.value)
-    }, 800)
-  }
-}
-
 // Immediate fetch on Enter or button click
 function triggerFetch() {
   clearTimeout(debounceTimer)
-  resumeStore.fetchResume(jobTitle.value || undefined)
+  debounceTimer = setTimeout(() => {
+    console.log(tailorTitle);
+    console.log(jobDescription);
+    resumeStore.fetchResume(
+      tailorTitle.value || undefined,
+      jobDescription.value || undefined
+    )
+  }, 600)
 }
 
 function toggleExpand() {
@@ -150,6 +139,7 @@ onBeforeUnmount(() => {
   /* Polished focus ring */
   border-radius: 6px;
 }
+
 .toolbar-icon-btn:focus-visible {
   outline: 2px solid rgb(var(--v-theme-secondary));
   outline-offset: 2px;
@@ -167,7 +157,11 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   padding: 2px 4px;
 }
-.toolbar-pdf-link:hover { text-decoration: underline; }
+
+.toolbar-pdf-link:hover {
+  text-decoration: underline;
+}
+
 .toolbar-pdf-link:focus-visible {
   outline: 2px solid rgb(var(--v-theme-secondary));
   outline-offset: 2px;
@@ -196,6 +190,7 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   font-weight: 600;
 }
+
 .regen-btn:focus-visible {
   outline: 2px solid rgb(var(--v-theme-secondary));
   outline-offset: 2px;
@@ -218,7 +213,11 @@ onBeforeUnmount(() => {
   color: rgb(var(--v-theme-secondary));
   text-decoration: none;
 }
-.info-link:hover { text-decoration: underline; }
+
+.info-link:hover {
+  text-decoration: underline;
+}
+
 .info-link:focus-visible {
   outline: 2px solid rgb(var(--v-theme-secondary));
   outline-offset: 2px;

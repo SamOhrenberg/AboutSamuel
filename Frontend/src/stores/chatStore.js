@@ -9,14 +9,14 @@ export const useChatStore = defineStore('chat', {
     isLoading: false,
     width: 250, // Default min width
     height: window.innerHeight * 0.3, // 30% of viewport height
-    get userTrackingId() {
+    userTrackingId: (() => {
       let id = sessionStorage.getItem('chat_tracking_id')
       if (!id) {
         id = crypto.randomUUID()
         sessionStorage.setItem('chat_tracking_id', id)
       }
       return id
-    },
+    })(),
     archivedMessageHistory: [
       {
         sentBy: 'SamuelLM',
@@ -57,7 +57,7 @@ export const useChatStore = defineStore('chat', {
         console.log('Sending message:', this.message)
         this.isLoading = true
         try {
-          var response = await getResponse(this.message, this.messageHistory)
+          var response = await getResponse(this.message, this.messageHistory, this.userTrackingId)
           console.log(response)
           if (response.tokenLimitReached) {
             console.warn('token limit reached')

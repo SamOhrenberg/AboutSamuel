@@ -38,23 +38,36 @@ function setCachedResume(content) {
 export const useResumeStore = defineStore('resume', () => {
   const cached = getCachedResume();
   const resumeContent = ref(cached || '');
-  const loading = ref(!cached); // Only show loading if no valid cache exists
+  const loading = ref(!cached);
 
-  async function fetchResume(jobTitle) {
+  async function fetchResume(jobTitle, jobDescription) {
     try {
       loading.value = true;
-      let url = `${import.meta.env.VITE_API_URL}/chat/resume`;
-      if (jobTitle && jobTitle.trim() !== '') {
-        url += `/${encodeURIComponent(jobTitle.trim())}`;
-      }
-      const response = await axios.get(url);
-      resumeContent.value = response.data;
 
-      // Only cache the generic (no job title) resume to avoid polluting
-      // the cache with role-specific variants
-      if (!jobTitle || jobTitle.trim() === '') {
-        setCachedResume(response.data);
+      console.log(jobTitle, jobDescription);
+      const isTailored = (jobTitle && jobTitle.trim() !== '') ||
+                         (jobDescription && jobDescription.trim() !== '')
+
+      let resumeHtml;
+
+      if (isTailored) {
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL}/chat/resume`,
+          {
+            title: jobTitle?.trim() || null,
+            jobDescription: jobDescription?.trim() || null
+          }
+        );
+        resumeHtml = response.data;
+      } else {
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/chat/resume`
+        );
+        resumeHtml = response.data;
+        setCachedResume(resumeHtml);
       }
+
+      resumeContent.value = resumeHtml;
     } catch (error) {
       console.error('Error fetching resume:', error);
     } finally {
