@@ -14,6 +14,7 @@ public class SqlDbContext : DbContext
 
     public DbSet<Project> Projects { get; set; } = null!;
 
+    public DbSet<WorkExperience> WorkExperiences { get; set; }
     public DbSet<AdminToken> AdminTokens { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,13 +34,23 @@ public class SqlDbContext : DbContext
             .ValueGeneratedOnAdd();
 
         modelBuilder.Entity<Project>()
-            .Property(k => k.ProjectId)
-            .HasValueGenerator<SequentialGuidValueGenerator>()
-            .ValueGeneratedOnAdd();
+                .Property(k => k.ProjectId)
+                .HasValueGenerator<SequentialGuidValueGenerator>()
+                .ValueGeneratedOnAdd();
 
         modelBuilder.Entity<AdminToken>()
             .Property(k => k.AdminTokenId)
             .HasValueGenerator<SequentialGuidValueGenerator>()
             .ValueGeneratedOnAdd();
+
+        modelBuilder.Entity<WorkExperience>(entity =>
+        {
+            entity.HasKey(e => e.WorkExperienceId);
+            entity.Property(e => e.WorkExperienceId).HasDefaultValueSql("NEWSEQUENTIALID()");
+            entity.Property(e => e.Achievements).HasDefaultValue("[]");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.DisplayOrder).HasDefaultValue(0);
+        });
+
     }
 }

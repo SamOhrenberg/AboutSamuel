@@ -93,7 +93,15 @@ public class ChatService
 
     public async Task<string?> GenerateHtmlResume(string? title, string? jobDescription)
     {
-        var allInformation = await _dbContext.Information.OrderBy(t => t.Text).ToListAsync();
+        var allInformation = await _dbContext.Information
+            .OrderBy(t => t.Text)
+            .ToListAsync();
+
+        var allJobs = await _dbContext.WorkExperiences
+            .Where(j => j.IsActive)
+            .OrderBy(j => j.DisplayOrder)
+            .ToListAsync();
+
         var allProjects = await _dbContext.Projects
             .Where(p => p.IsActive)
             .OrderByDescending(p => p.IsFeatured)
@@ -104,19 +112,46 @@ public class ChatService
             "\r\n\r\nNew Information:\r\n",
             allInformation.Select(i => i.Text));
 
+        var jobsBlock = string.Join("\r\n\r\n", allJobs.Select(j =>
+        {
+            List<string> achievements;
+            try { achievements = JsonSerializer.Deserialize<List<string>>(j.Achievements) ?? []; }
+            catch { achievements = []; }
+
+            var years = BuildYearRange(j.StartYear, j.EndYear);
+            var sb = new StringBuilder();
+
+            sb.AppendLine($"Role: {j.Title}");
+            sb.AppendLine($"Employer: {j.Employer}{(years != null ? $" | {years}" : "")}");
+            if (!string.IsNullOrWhiteSpace(j.Summary))
+                sb.AppendLine($"Summary: {j.Summary}");
+            if (achievements.Count > 0)
+            {
+                sb.AppendLine("Achievements:");
+                foreach (var a in achievements)
+                    sb.AppendLine($"  - {a}");
+            }
+
+            return sb.ToString().Trim();
+        }));
+
         var projectsBlock = string.Join("\r\n\r\n", allProjects.Select(p =>
         {
             var techStack = DeserializeTechStack(p.TechStack);
             var years = BuildYearRange(p.StartYear, p.EndYear);
             var sb = new StringBuilder();
+
             sb.AppendLine($"Project: {p.Title}");
             sb.AppendLine($"Employer: {p.Employer} | Role: {p.Role}{(years != null ? $" | {years}" : "")}");
             if (!string.IsNullOrWhiteSpace(p.Summary)) sb.AppendLine($"Summary: {p.Summary}");
             if (!string.IsNullOrWhiteSpace(p.Detail)) sb.AppendLine($"Detail: {p.Detail}");
             if (!string.IsNullOrWhiteSpace(p.ImpactStatement)) sb.AppendLine($"Impact: {p.ImpactStatement}");
-            if (techStack.Count > 0) sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
+            if (techStack.Count > 0)
+                sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
+
             return sb.ToString().Trim();
         }));
+
 
         bool hasTailoring = !string.IsNullOrWhiteSpace(title) || !string.IsNullOrWhiteSpace(jobDescription);
 
@@ -192,12 +227,16 @@ public class ChatService
         """;
 
         var userContent = $"""
-        === PROFESSIONAL BACKGROUND & EXPERIENCE ===
-        {infoBlock}
+            === BIOGRAPHICAL & SKILLS INFORMATION ===
+            {infoBlock}
 
-        === PROJECTS ===
-        {projectsBlock}
-        """;
+            === PROFESSIONAL EXPERIENCE ===
+            {jobsBlock}
+
+            === PROJECTS ===
+            {projectsBlock}
+            """;
+
 
         var request = new ConverseRequest
         {
@@ -699,8 +738,13 @@ public class ChatService
             .Where(p => p.IsActive)
             .ToListAsync();
 
+        var work = await _dbContext.WorkExperiences
+            .Where(j => j.IsActive)
+            .ToListAsync();
+
         var projectInfos = projects.Select(BuildProjectInformation).ToList();
-        var allEntries = informations.Concat(projectInfos).ToList();
+        var workInfos = work.Select(BuildWorkExperienceInformation).ToList();
+        var allEntries = informations.Concat(projectInfos).Concat(workInfos).ToList();
 
         // Augment each entry with tokens derived from its own text, using a
         // per-entry cache to avoid re-tokenizing on every request.
@@ -807,6 +851,39 @@ public class ChatService
             .ToList();
 
         return new Information(project.ProjectId, sb.ToString().Trim(), keywords);
+    }
+
+    /// <summary>
+    /// Converts a WorkExperience record into an Information entry so it participates
+    /// in the same RAG scoring pipeline as projects and curated information.
+    /// </summary>
+    private static Information BuildWorkExperienceInformation(WorkExperience job)
+    {
+        List<string> achievements;
+        try { achievements = JsonSerializer.Deserialize<List<string>>(job.Achievements) ?? []; }
+        catch { achievements = []; }
+
+        var years = BuildYearRange(job.StartYear, job.EndYear);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Job: {job.Title}");
+        sb.AppendLine($"Employer: {job.Employer}");
+        if (years != null) sb.AppendLine($"Years: {years}");
+        if (!string.IsNullOrWhiteSpace(job.Summary))
+            sb.AppendLine($"Summary: {job.Summary}");
+        if (achievements.Count > 0)
+        {
+            sb.AppendLine("Achievements:");
+            foreach (var achievement in achievements)
+                sb.AppendLine($"  - {achievement}");
+        }
+
+        var keywords = Tokenizer
+            .Tokenize($"{job.Title} {job.Employer} {job.Summary} {string.Join(' ', achievements)}")
+            .Select(t => new Keyword(t, null!))
+            .ToList();
+
+        return new Information(job.WorkExperienceId, sb.ToString().Trim(), keywords);
     }
 
     private static string BuildContextBlock(IEnumerable<Information> entries)

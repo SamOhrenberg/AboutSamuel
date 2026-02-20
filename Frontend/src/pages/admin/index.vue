@@ -1,7 +1,6 @@
 <template>
   <div class="admin-page">
 
-    <!-- ── Header ───────────────────────────────────────────────────────── -->
     <div class="admin-header">
       <div class="admin-header__left">
         <v-icon color="secondary" size="28" class="mr-2">mdi-shield-account</v-icon>
@@ -13,7 +12,6 @@
       </v-btn>
     </div>
 
-    <!-- ── Stats bar ─────────────────────────────────────────────────────── -->
     <div class="stats-bar" v-if="stats">
       <div class="stat-chip" v-for="s in statItems" :key="s.label">
         <span class="stat-chip__value">{{ s.value }}</span>
@@ -21,8 +19,10 @@
       </div>
     </div>
 
-    <!-- ── Tabs ──────────────────────────────────────────────────────────── -->
     <v-tabs v-model="tab" color="secondary" class="admin-tabs">
+      <v-tab value="work-experience">
+        <v-icon start>mdi-briefcase-clock</v-icon>Work Experience
+      </v-tab>
       <v-tab value="projects">
         <v-icon start>mdi-briefcase</v-icon>Projects
       </v-tab>
@@ -38,9 +38,52 @@
 
     <div class="admin-tab-content">
 
-      <!-- ══════════════════════════════════════════════════════════════════
-           PROJECTS TAB
-           ══════════════════════════════════════════════════════════════════ -->
+      <div v-if="tab === 'work-experience'">
+        <div class="tab-toolbar">
+          <v-btn color="secondary" variant="tonal" @click="openWorkDialog()">
+            <v-icon start>mdi-plus</v-icon>Add Work
+          </v-btn>
+        </div>
+
+        <v-progress-linear v-if="worksLoading" indeterminate color="secondary" class="mb-4" />
+
+        <div v-else-if="works.length" class="works-list">
+          <div
+            v-for="work in works"
+            :key="work.workExperienceId"
+            class="work-row"
+            :class="{ 'work-row--inactive': !work.isActive }"
+          >
+            <div class="work-row__info">
+              <span class="work-row__title">{{ work.title }}</span>
+              <span class="work-row__employer">{{ work.employer }}</span>
+              <span class="work-row__years">
+                {{ work.startYear }}{{ work.endYear ? '–' + work.endYear : '–Present' }}
+              </span>
+              <v-chip
+                v-if="!work.isActive"
+                size="x-small"
+                color="warning"
+                variant="tonal"
+              >Inactive</v-chip>
+            </div>
+            <div class="work-row__meta">
+              <span class="work-row__achievements">
+                {{ work.achievements?.length || 0 }} achievement{{ work.achievements?.length !== 1 ? 's' : '' }}
+              </span>
+              <v-btn icon size="x-small" variant="text" @click="openWorkDialog(work)">
+                <v-icon>mdi-pencil</v-icon>
+              </v-btn>
+              <v-btn icon size="x-small" variant="text" color="error" @click="confirmDeleteWork(work)">
+                <v-icon>mdi-delete</v-icon>
+              </v-btn>
+            </div>
+          </div>
+        </div>
+
+        <p v-else class="admin-section__empty">No work experience entries yet.</p>
+      </div>
+
       <div v-if="tab === 'projects'">
         <div class="tab-toolbar">
           <v-btn color="secondary" variant="tonal" @click="openProjectDialog()">
@@ -117,9 +160,6 @@
         </v-data-table>
       </div>
 
-      <!-- ══════════════════════════════════════════════════════════════════
-           INFORMATION TAB
-           ══════════════════════════════════════════════════════════════════ -->
       <div v-if="tab === 'information'">
         <div class="tab-toolbar">
           <v-btn color="secondary" variant="tonal" @click="openInfoDialog()">
@@ -187,9 +227,6 @@
         </div>
       </div>
 
-      <!-- ══════════════════════════════════════════════════════════════════
-           CHAT LOGS TAB
-           ══════════════════════════════════════════════════════════════════ -->
       <div v-if="tab === 'chats'">
         <div class="tab-toolbar">
           <v-switch
@@ -307,9 +344,78 @@
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-         PROJECT DIALOG
-         ══════════════════════════════════════════════════════════════════ -->
+    <v-dialog v-model="workDialog" max-width="720" persistent scrollable>
+      <v-card class="dialog-card">
+        <v-card-title class="dialog-title">
+          {{ editingWorkId ? 'Edit Work Experience' : 'Add Work Experience' }}
+          <v-btn icon variant="text" size="small" @click="workDialog = false" class="ml-auto">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="dialog-body">
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="wf.employer" label="Employer" variant="outlined" density="comfortable" color="secondary" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="wf.title" label="Work Title" variant="outlined" density="comfortable" color="secondary" />
+            </v-col>
+            <v-col cols="6" sm="3">
+              <v-text-field v-model="wf.startYear" label="Start Year" variant="outlined" density="comfortable" color="secondary" placeholder="2019" />
+            </v-col>
+            <v-col cols="6" sm="3">
+              <v-text-field v-model="wf.endYear" label="End Year" variant="outlined" density="comfortable" color="secondary" placeholder="Present" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-switch v-model="wf.isActive" label="Active" color="secondary" density="comfortable" hide-details />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea v-model="wf.summary" label="Summary (optional)" variant="outlined" density="comfortable" color="secondary" rows="2" auto-grow />
+            </v-col>
+            <v-col cols="12">
+              <div class="achievements-label">
+                Achievements
+                <v-btn size="x-small" variant="text" color="secondary" @click="addAchievement">+ Add</v-btn>
+              </div>
+              <div v-for="(achievement, i) in wf.achievements" :key="i" class="achievement-row">
+                <v-text-field v-model="wf.achievements[i]" :label="`Achievement ${i + 1}`" variant="outlined" density="compact" color="secondary" hide-details class="achievement-field" />
+                <v-btn icon size="x-small" variant="text" color="error" @click="removeAchievement(i)">
+                  <v-icon>mdi-close</v-icon>
+                </v-btn>
+              </div>
+              <p v-if="!wf.achievements.length" class="achievements-empty">No achievements added yet.</p>
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field v-model.number="wf.displayOrder" label="Display Order" type="number" variant="outlined" density="comfortable" color="secondary" hide-details />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="dialog-actions">
+          <v-spacer />
+          <v-btn variant="text" @click="workDialog = false">Cancel</v-btn>
+          <v-btn color="secondary" variant="tonal" :loading="worksSaving" @click="saveWork">
+            {{ editingWorkId ? 'Save Changes' : 'Create' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="workDeleteDialog" max-width="400">
+      <v-card>
+        <v-card-title>Delete Work Experience</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete <strong>{{ deletingWorkItem?.title }}</strong>?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="workDeleteDialog = false">Cancel</v-btn>
+          <v-btn color="error" variant="flat" :loading="worksSaving" @click="deleteWork">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-dialog v-model="projectDialog" max-width="900" scrollable>
       <v-card class="dialog-card">
         <v-card-title class="dialog-title">
@@ -402,9 +508,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-         INFORMATION DIALOG
-         ══════════════════════════════════════════════════════════════════ -->
     <v-dialog v-model="infoDialog" max-width="600" scrollable>
       <v-card class="dialog-card">
         <v-card-title class="dialog-title">
@@ -455,9 +558,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-         ADD KEYWORD DIALOG
-         ══════════════════════════════════════════════════════════════════ -->
     <v-dialog v-model="addKeywordDialog" max-width="400">
       <v-card class="dialog-card">
         <v-card-title class="dialog-title">Add Keyword</v-card-title>
@@ -480,7 +580,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Snackbar feedback -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000" location="bottom right">
       {{ snackbar.text }}
     </v-snackbar>
@@ -496,7 +595,7 @@ const router = useRouter()
 const adminStore = useAdminStore()
 
 // ── Tab state ────────────────────────────────────────────────────────────
-const tab = ref('projects')
+const tab = ref('work-experience')
 
 // ── Snackbar ─────────────────────────────────────────────────────────────
 const snackbar = ref({ show: false, text: '', color: 'success' })
@@ -519,6 +618,113 @@ async function loadStats() {
     const res = await adminStore.apiFetch('/admin/chats/stats')
     if (res.ok) stats.value = await res.json()
   } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WORK EXPERIENCE
+// ═══════════════════════════════════════════════════════════════════════════
+const works             = ref([])
+const worksLoading      = ref(false)
+const worksSaving       = ref(false)
+const workDialog        = ref(false)
+const workDeleteDialog  = ref(false)
+const editingWorkId     = ref(null)
+const deletingWorkItem  = ref(null)
+
+const emptyWork = () => ({
+  employer:     '',
+  title:        '',
+  startYear:    '',
+  endYear:      '',
+  summary:      '',
+  achievements: [],
+  displayOrder: 0,
+  isActive:     true,
+})
+
+const wf = ref(emptyWork())
+
+async function loadWorks() {
+  worksLoading.value = true
+  try {
+    const res = await adminStore.apiFetch('/admin/work-experience')
+    if (res.ok) works.value = await res.json()
+  } catch {
+    notify('Failed to load works', 'error')
+  } finally {
+    worksLoading.value = false
+  }
+}
+
+function openWorkDialog(work = null) {
+  if (work) {
+    editingWorkId.value = work.workExperienceId
+    wf.value = {
+      ...work,
+      startYear:    work.startYear ?? '',
+      endYear:      work.endYear   ?? '',
+      summary:      work.summary   ?? '',
+      achievements: [...(work.achievements || [])],
+    }
+  } else {
+    editingWorkId.value = null
+    wf.value = emptyWork()
+  }
+  workDialog.value = true
+}
+
+function addAchievement() { wf.value.achievements.push('') }
+function removeAchievement(index) { wf.value.achievements.splice(index, 1) }
+
+async function saveWork() {
+  worksSaving.value = true
+  try {
+    const payload = {
+      ...wf.value,
+      startYear: wf.value.startYear || null,
+      endYear:   wf.value.endYear   || null,
+      achievements: wf.value.achievements.filter(a => a.trim() !== ''),
+    }
+
+    const isEdit = !!editingWorkId.value
+    const url = isEdit ? `/admin/work-experience/${editingWorkId.value}` : '/admin/work-experience'
+    
+    const res = await adminStore.apiFetch(url, {
+      method: isEdit ? 'PUT' : 'POST',
+      body: JSON.stringify(payload)
+    })
+
+    if (!res.ok) throw new Error()
+    await loadWorks()
+    workDialog.value = false
+    notify(isEdit ? 'Work updated' : 'Work created')
+  } catch {
+    notify('Save failed', 'error')
+  } finally {
+    worksSaving.value = false
+  }
+}
+
+function confirmDeleteWork(work) {
+  deletingWorkItem.value = work
+  workDeleteDialog.value = true
+}
+
+async function deleteWork() {
+  worksSaving.value = true
+  try {
+    const res = await adminStore.apiFetch(`/admin/work-experience/${deletingWorkItem.value.workExperienceId}`, {
+      method: 'DELETE'
+    })
+    if (!res.ok) throw new Error()
+    await loadWorks()
+    workDeleteDialog.value = false
+    notify('Work deleted')
+  } catch {
+    notify('Delete failed', 'error')
+  } finally {
+    worksSaving.value = false
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -753,13 +959,7 @@ async function saveQuickKeyword() {
 }
 
 async function deleteKeyword(item, keyword) {
-  // Find keyword ID — we need the full item with IDs from API
   try {
-    const res = await adminStore.apiFetch(`/admin/information/${item.informationId}`)
-    if (!res.ok) throw new Error()
-    const full = await res.json()
-    // The info endpoint returns keyword strings, not IDs
-    // Use the PUT endpoint to replace all keywords instead
     const updated = { text: item.text, keywords: item.keywords.filter(k => k !== keyword) }
     const putRes = await adminStore.apiFetch(`/admin/information/${item.informationId}`, {
       method: 'PUT',
@@ -821,6 +1021,7 @@ function handleLogout() {
 
 // ── Load on tab change ────────────────────────────────────────────────────
 watch(tab, (val) => {
+  if (val === 'work-experience' && !works.value.length)      loadWorks()
   if (val === 'projects'    && !projects.value.length)     loadProjects()
   if (val === 'information' && !information.value.length)  loadInformation()
   if (val === 'chats'       && !chatSessions.value.length) loadChats()
@@ -829,7 +1030,7 @@ watch(tab, (val) => {
 // ── Initial load ──────────────────────────────────────────────────────────
 onMounted(() => {
   loadStats()
-  loadProjects()
+  loadWorks() // Initial tab is work-experience
 })
 </script>
 
@@ -901,6 +1102,192 @@ onMounted(() => {
 .admin-tab-content {
   padding: 1.5rem;
 }
+
+/* ── Toolbar ── */
+.tab-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.toolbar-search { max-width: 300px; }
+
+/* ── Work Rows ── */
+.works-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.work-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-secondary), 0.15);
+  border-radius: 8px;
+  gap: 1rem;
+  transition: border-color 0.15s;
+}
+
+.work-row:hover { border-color: rgba(var(--v-theme-secondary), 0.35); }
+.work-row--inactive { opacity: 0.55; }
+
+.work-row__info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.work-row__title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.work-row__employer {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.work-row__years {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-secondary));
+  font-weight: 600;
+}
+
+.work-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.work-row__achievements {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+/* ── Dialogs ── */
+.dialog-card { background: rgb(var(--v-theme-surface)); }
+.dialog-title {
+  display: flex;
+  align-items: center;
+  font-family: 'Patua One', serif;
+  font-size: 1.2rem;
+  padding: 1rem 1.5rem;
+}
+
+.dialog-body { padding: 1.5rem !important; }
+.dialog-actions { padding: 0.75rem 1.5rem; }
+
+.achievements-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.achievement-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.achievement-field { flex: 1; }
+
+.achievements-empty {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.35);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Info Grid ── */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.info-card {
+  border: 1px solid rgba(var(--v-theme-secondary), 0.15);
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface));
+  display: flex;
+  flex-direction: column;
+}
+
+.info-card__body {
+  padding: 1.25rem;
+  flex: 1;
+}
+
+.info-card__text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: rgb(var(--v-theme-on-surface));
+  margin-bottom: 1rem;
+}
+
+.info-card__actions {
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.tag-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.5rem;
+  border: 1px solid rgba(var(--v-theme-secondary), 0.2);
+  border-radius: 8px;
+  min-height: 42px;
+}
+
+.tag-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 0.85rem;
+  flex: 1;
+  min-width: 120px;
+  padding: 0.25rem;
+}
+
+.field-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  margin-bottom: 0.25rem;
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  line-height: 1.3;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 3rem;
+}
+
 
 /* ── Toolbar ── */
 .tab-toolbar {
@@ -1156,4 +1543,5 @@ onMounted(() => {
   letter-spacing: 0.05em;
   color: rgba(var(--v-theme-on-surface), 0.5);
 }
+
 </style>
