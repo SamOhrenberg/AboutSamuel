@@ -20,33 +20,29 @@ public class AdminProjectController(
     public async Task<IEnumerable<ProjectDto>> GetAll()
     {
         _logger.LogInformation("Admin GET /admin/projects");
-        return await _db.Projects
+
+        var projects = await _db.Projects
+            .Include(p => p.WorkExperience)
             .OrderBy(p => p.DisplayOrder)
-            .Select(p => new ProjectDto
-            {
-                ProjectId = p.ProjectId,
-                Title = p.Title,
-                Employer = p.Employer,
-                Role = p.Role,
-                Summary = p.Summary,
-                Detail = p.Detail,
-                TechStack = JsonSerializer.Deserialize<List<string>>(p.TechStack, (JsonSerializerOptions?)null) ?? new List<string>(),
-                DisplayOrder = p.DisplayOrder,
-                IsFeatured = p.IsFeatured,
-                IsActive = p.IsActive,
-                StartYear = p.StartYear,
-                EndYear = p.EndYear
-            })
             .ToListAsync();
-        // Note: Admin gets ALL projects including inactive ones
+
+        return projects.Select(ProjectDto.FromModel);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] AdminProjectRequest request)
     {
+        if (request.WorkExperienceId.HasValue &&
+            !await _db.WorkExperiences.AnyAsync(w => w.WorkExperienceId == request.WorkExperienceId))
+            return BadRequest(new { Message = "WorkExperienceId does not reference a known work experience." });
+
         var project = MapToModel(request, new Project { ProjectId = Guid.NewGuid() });
+
         await _db.Projects.AddAsync(project);
         await _db.SaveChangesAsync();
+
+        // Re-fetch with navigation so the DTO has Employer populated
+        await _db.Entry(project).Reference(p => p.WorkExperience).LoadAsync();
 
         _logger.LogInformation("Admin created project {ProjectId}: {Title}", project.ProjectId, project.Title);
         return Ok(ProjectDto.FromModel(project));
@@ -55,11 +51,22 @@ public class AdminProjectController(
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] AdminProjectRequest request)
     {
-        var project = await _db.Projects.FindAsync(id);
+        if (request.WorkExperienceId.HasValue &&
+            !await _db.WorkExperiences.AnyAsync(w => w.WorkExperienceId == request.WorkExperienceId))
+            return BadRequest(new { Message = "WorkExperienceId does not reference a known work experience." });
+
+        var project = await _db.Projects
+            .Include(p => p.WorkExperience)
+            .FirstOrDefaultAsync(p => p.ProjectId == id);
+
         if (project is null) return NotFound();
 
         MapToModel(request, project);
         await _db.SaveChangesAsync();
+
+        // Navigation may have changed — reload if FK changed
+        if (project.WorkExperienceId != request.WorkExperienceId)
+            await _db.Entry(project).Reference(p => p.WorkExperience).LoadAsync();
 
         _logger.LogInformation("Admin updated project {ProjectId}", id);
         return Ok(ProjectDto.FromModel(project));
@@ -71,7 +78,6 @@ public class AdminProjectController(
         var project = await _db.Projects.FindAsync(id);
         if (project is null) return NotFound();
 
-        // Soft delete — sets IsActive = false rather than removing the row
         project.IsActive = false;
         await _db.SaveChangesAsync();
 
@@ -92,13 +98,13 @@ public class AdminProjectController(
         return Ok(ProjectDto.FromModel(project));
     }
 
-    // ── Reorder (drag-and-drop support) ───────────────────────────────────
-
     [HttpPatch("reorder")]
     public async Task<IActionResult> Reorder([FromBody] List<ProjectReorderItem> items)
     {
         var ids = items.Select(i => i.ProjectId).ToList();
-        var projects = await _db.Projects.Where(p => ids.Contains(p.ProjectId)).ToListAsync();
+        var projects = await _db.Projects
+            .Where(p => ids.Contains(p.ProjectId))
+            .ToListAsync();
 
         foreach (var item in items)
         {
@@ -112,8 +118,8 @@ public class AdminProjectController(
 
     private static Project MapToModel(AdminProjectRequest request, Project project)
     {
+        project.WorkExperienceId = request.WorkExperienceId;
         project.Title = request.Title;
-        project.Employer = request.Employer;
         project.Role = request.Role;
         project.Summary = request.Summary;
         project.Detail = request.Detail;
