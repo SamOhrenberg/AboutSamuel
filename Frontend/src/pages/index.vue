@@ -16,16 +16,13 @@
         </v-col>
 
         <v-col cols="12" md="auto" class="hero-text-col">
-          <!-- v-once on static text: Vue skips diffing these after first render -->
           <p
-            v-once
             class="hero-greeting"
             :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': greetingVisible }"
           >
             Nice to Meet You!
           </p>
           <h1
-            v-once
             class="hero-name"
             :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': nameVisible }"
           >
@@ -43,7 +40,6 @@
             From Oklahoma
           </h2>
           <p
-            v-once
             class="hero-sub"
             :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': subVisible }"
           >
@@ -72,8 +68,8 @@
         </v-col>
 
         <v-col cols="12" sm="7" md="6" class="about-text-col">
-          <h2 v-once class="about-heading">So, Who Am I?</h2>
-          <p v-once class="about-body">
+          <h2 class="about-heading">So, Who Am I?</h2>
+          <p class="about-body">
             I'm a software engineer from Oklahoma passionate about building robust, scalable
             solutions while always learning and exploring new technologies and strategies. When I'm
             not coding, I enjoy diving into sci-fi books and movies, engaging in tabletop games,
