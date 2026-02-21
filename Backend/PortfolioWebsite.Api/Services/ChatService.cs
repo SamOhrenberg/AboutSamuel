@@ -839,7 +839,7 @@ public class ChatService
 
             // Append the assistant's response to the message history
             // This is required — Bedrock needs to see its own previous turns
-            messages.Add(result.Output.Message);
+            messages.Add(SanitizeAssistantMessage(result.Output.Message));
 
             // Model is done — extract the final text response
             if (result.StopReason == "end_turn")
@@ -906,6 +906,23 @@ public class ChatService
         return new ChatResponse(
             "I'm sorry, I had trouble forming a response. Please try again.",
             true, tokenLimitReached, returnResume, redirectToPage);
+    }
+
+    /// <summary>
+    /// Bedrock rejects messages containing ContentBlocks with blank text fields.
+    /// This strips them out while preserving ToolUse and ToolResult blocks.
+    /// </summary>
+    private static Message SanitizeAssistantMessage(Message message)
+    {
+        var cleanBlocks = message.Content
+            .Where(b => b.ToolUse != null || b.ToolResult != null || !string.IsNullOrWhiteSpace(b.Text))
+            .ToList();
+
+        return new Message
+        {
+            Role = message.Role,
+            Content = cleanBlocks
+        };
     }
 
     private async Task<ToolExecutionResult> ExecuteTool(

@@ -34,7 +34,9 @@ export async function getResponse(message, messageHistory, userTrackingId) {
  * @param {AbortSignal} signal - for cancellation
  * @returns {Promise<{ redirectToPage?: string, displayResume?: boolean, tokenLimitReached?: boolean }>}
  */
-export async function getStreamingResponse(message, messageHistory, userTrackingId, onToken, signal) {
+export async function getStreamingResponse(
+  message, messageHistory, userTrackingId, onToken, signal, onShortCircuit
+) {
   const request = {
     message,
     history: messageHistory
@@ -53,17 +55,15 @@ export async function getStreamingResponse(message, messageHistory, userTracking
     signal,
   })
 
-  if (!response.ok) {
-    throw new Error(`Stream request failed: ${response.status}`)
-  }
+  if (!response.ok) throw new Error(`Stream request failed: ${response.status}`)
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  // Side-effect metadata comes through as special SSE events
   let redirectToPage = null
   let displayResume = false
   let tokenLimitReached = false
+  const allTokens = []
 
   while (true) {
     const { done, value } = await reader.read()
@@ -71,7 +71,7 @@ export async function getStreamingResponse(message, messageHistory, userTracking
 
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n\n')
-    buffer = lines.pop() ?? '' // hold incomplete chunk for next iteration
+    buffer = lines.pop() ?? ''
 
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue
@@ -80,21 +80,21 @@ export async function getStreamingResponse(message, messageHistory, userTracking
 
       try {
         const parsed = JSON.parse(data)
-
-        // Regular token
         if (parsed.token !== undefined) {
+          allTokens.push(parsed.token)
           onToken(parsed.token)
-          continue
         }
-
-        // Metadata event (sent before [DONE])
         if (parsed.redirectToPage) redirectToPage = parsed.redirectToPage
         if (parsed.displayResume)  displayResume  = parsed.displayResume
         if (parsed.tokenLimitReached) tokenLimitReached = parsed.tokenLimitReached
-      } catch {
-        // skip malformed chunk
-      }
+      } catch { /* skip malformed */ }
     }
+  }
+
+  // If all tokens arrived in a single read (instant response),
+  // signal the caller to animate it client-side
+  if (allTokens.length === 1 && onShortCircuit) {
+    onShortCircuit(allTokens[0])
   }
 
   return { redirectToPage, displayResume, tokenLimitReached }

@@ -38,10 +38,30 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    async simulateStreaming(messageKey, fullText) {
+      const message = this.messageHistory.find(m => m.key === messageKey)
+      if (!message) return
+
+      message.isStreaming = true
+      message.message = ''
+
+      // Chunk by character, but batch every ~3 chars so it feels
+      // like natural typing speed without being too granular
+      const chunkSize = 3
+      const delayMs = 18
+
+      for (let i = 0; i < fullText.length; i += chunkSize) {
+        if (!message.isStreaming) break // respect cancellation
+        message.message += fullText.slice(i, i + chunkSize)
+        await new Promise(resolve => setTimeout(resolve, delayMs))
+      }
+
+      message.isStreaming = false
+    },
+
     async sendMessage() {
       if (!this.message.trim()) return
 
-      // Cancel any in-flight stream
       this.cancelStream()
       this._abortController = new AbortController()
 
@@ -49,7 +69,6 @@ export const useChatStore = defineStore('chat', {
       this.message = ''
       this.isLoading = true
 
-      // Push user message immediately so it appears right away
       this.messageHistory.push({
         key: uuid(),
         sentAt: new Date(),
@@ -57,7 +76,6 @@ export const useChatStore = defineStore('chat', {
         message: userMessage,
       })
 
-      // Push a placeholder AI message — we'll fill this in as tokens arrive
       const aiMessageKey = uuid()
       this.messageHistory.push({
         key: aiMessageKey,
@@ -70,23 +88,35 @@ export const useChatStore = defineStore('chat', {
       const aiMessage = this.messageHistory.find(m => m.key === aiMessageKey)
 
       try {
+        let firstTokenReceived = false
+        let shortCircuitText = null
+
         const result = await getStreamingResponse(
           userMessage,
-          // Pass history excluding the empty placeholder we just added
           this.messageHistory.slice(0, -2),
           this.userTrackingId,
           (token) => {
-            // First token arriving — switch from loading spinner to streaming state
-            if (this.isLoading) {
+            if (!firstTokenReceived) {
+              firstTokenReceived = true
               this.isLoading = false
               this.isStreaming = true
             }
             if (aiMessage) aiMessage.message += token
           },
-          this._abortController.signal
+          this._abortController.signal,
+          // Callback fired if the entire response arrived as one instant chunk
+          (fullText) => { shortCircuitText = fullText }
         )
 
-        if (aiMessage) aiMessage.isStreaming = false
+        // If backend sent everything at once (greeting, clarification etc.)
+        // animate it client-side so it never just "pops" in
+        if (shortCircuitText && aiMessage) {
+          this.isLoading = false
+          this.isStreaming = true
+          await this.simulateStreaming(aiMessageKey, shortCircuitText)
+        } else {
+          if (aiMessage) aiMessage.isStreaming = false
+        }
 
         if (result.tokenLimitReached) {
           this.archivedMessageHistory = [...this.archivedMessageHistory, ...this.messageHistory]
@@ -103,13 +133,10 @@ export const useChatStore = defineStore('chat', {
 
       } catch (error) {
         if (error.name === 'AbortError') {
-          // User cancelled — mark message as complete with whatever came through
           if (aiMessage) aiMessage.isStreaming = false
           return
         }
-
         console.error(error)
-        // Replace the empty placeholder with an error message
         if (aiMessage) {
           aiMessage.sentBy = 'System'
           aiMessage.message = 'An error occurred. Please try your message again.'
