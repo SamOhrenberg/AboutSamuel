@@ -17,6 +17,15 @@ namespace PortfolioWebsite.Api.Services;
 
 public class ChatService
 {
+
+    private record ToolExecutionResult(
+        string ResultText,
+        bool NeedsClarification = false,
+        string? ClarificationQuestion = null,
+        bool ReturnResume = false,
+        string? RedirectToPage = null);
+
+
     private const int MatchWeight = 70;
     private const int MaxContextEntries = 4;
     private const int MinTokenLength = 4;
@@ -332,40 +341,37 @@ public class ChatService
     private async Task<ChatResponse> QueryBedrock(ChatLog chat)
     {
         const string systemPrompt = """
-            You are SamuelLM, an AI chatbot created by Samuel Ohrenberg (also known as Sam or Sammy).
-            Your website is https://aboutsamuel.com/.
-            You are hosted on Sam's infrastructure as an AI assistant for his portfolio website,
-            built with an ASP.NET Core Web API and a Vue.js front end.
-            You answer on behalf of Samuel — respond as if you were him in a professional interview setting.
-            You are professional, friendly, and helpful.
-            Do not output markdown. Use plain text only.
+        You are SamuelLM, an AI chatbot created by Samuel Ohrenberg (also known as Sam or Sammy).
+        Your website is https://aboutsamuel.com/.
+        You are hosted on Sam's infrastructure as an AI assistant for his portfolio website,
+        built with an ASP.NET Core Web API and a Vue.js front end.
+        You answer on behalf of Samuel — respond as if you were him in a professional interview setting.
+        You are professional, friendly, and helpful.
+        Do not output markdown. Use plain text only.
 
-            For greetings, small talk, or messages that are not questions (e.g. "hello", "hello world",
-            "how are you", "thanks"), respond warmly and conversationally WITHOUT calling any tool.
-            Briefly introduce yourself and invite the user to ask a question about Samuel.
+        For greetings, small talk, or messages that are not questions (e.g. "hello", "hello world",
+        "how are you", "thanks"), respond warmly and conversationally WITHOUT calling any tool.
+        Briefly introduce yourself and invite the user to ask a question about Samuel.
 
-            Only call a tool when the user's message clearly warrants one:
-            - askQuestion: for specific questions about Samuel's background, skills, experience, or projects
-            - contactSamuel: when the user wants to get in touch with Sam
-            - getResume: when the user wants to see or download Sam's resume
-            - redirectToPage: when the user wants content best found on a specific page
+        Only call a tool when the user's message clearly warrants one:
+        - askQuestion: for specific questions about Samuel's background, skills, experience, or projects
+        - askClarification: when the user's request is vague and a clarifying question would
+          meaningfully improve the answer. Use sparingly — only when genuinely ambiguous.
+        - contactSamuel: when the user wants to get in touch with Sam
+        - getResume: when the user wants to see or download Sam's resume
+        - redirectToPage: when the user wants content best found on a specific page
 
-            IMPORTANT: Never describe, mention, narrate, or reference tool calls in your response.
-            Never say things like "I'll call askQuestion" or "askQuestion: ..." or "I'm going to use a tool".
-            Tool use happens silently behind the scenes. Your response to the user should only ever be
-            the final answer — never the process of getting there.
+        You may call multiple tools in a single turn if needed (e.g. askQuestion AND redirectToPage).
+        
+        Tool results will be returned to you. Use them to construct your final answer.
+        When you have enough information, respond directly to the user with end_turn.
 
-            CRITICAL: Your response to the user must NEVER mention tools, retrieval, or looking things up.
-            Do not say things like:
-            - "I'll retrieve information..."
-            - "Let me look that up..."
-            - "I'm going to check..."
-            - "I'll find out about..."
-            If you are calling a tool, output NO text alongside it — leave the text content completely empty.
-            Your only job in this phase is to silently route to the correct tool.
-            The actual answer will be generated separately.
-            """;
+        IMPORTANT: Never describe, mention, or reference tool calls in your response.
+        Never say things like "I'll call askQuestion" or "I'm looking that up".
+        Your final response to the user should be the answer only — never the process.
+        """;
 
+        // Build the initial message list from chat history + new message
         var messages = chat.History
             .Select(h => new Message
             {
@@ -380,116 +386,181 @@ public class ChatService
             Content = [new ContentBlock { Text = chat.Message }]
         });
 
-        var request = new ConverseRequest
-        {
-            ModelId = _toolUse.Model,
-            System = [new SystemContentBlock { Text = systemPrompt }],
-            Messages = messages,
-            ToolConfig = new ToolConfiguration
-            {
-                Tools = GetToolDefinitions(),
-                ToolChoice = new ToolChoice { Auto = new AutoToolChoice() }
-            },
-            InferenceConfig = new InferenceConfiguration { MaxTokens = 1000 }
-        };
-
-        ConverseResponse result;
-        try
-        {
-            result = await _bedrockClient.ConverseAsync(request);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error calling Bedrock Converse API");
-            return new ChatResponse("I'm sorry, I encountered an error. Please try again.", true);
-        }
-
-        bool tokenLimitReached = (result.Usage?.TotalTokens ?? 0) > 2500;
-        string message = string.Empty;
-        bool error = false;
+        const int MaxIterations = 6;
+        int iteration = 0;
         bool returnResume = false;
+        bool error = false;
+        bool tokenLimitReached = false;
         string? redirectToPage = null;
-        string? inlineText = null;
-        bool toolWasCalled = false;
 
-        foreach (var block in result.Output.Message.Content)
+        while (iteration++ < MaxIterations)
         {
-            if (block.Text != null)
-                inlineText = block.Text;
-
-            if (block.ToolUse == null)
-                continue;
-
-            toolWasCalled = true;
-
-            var toolName = block.ToolUse.Name;
-            var toolInput = block.ToolUse.Input;
-
-            _logger.LogInformation("Tool selected: {ToolName}", toolName);
-
-            switch (toolName)
+            ConverseResponse result;
+            try
             {
-                case "contactSamuel":
+                result = await _bedrockClient.ConverseAsync(new ConverseRequest
+                {
+                    ModelId = _toolUse.Model,
+                    System = [new SystemContentBlock { Text = systemPrompt }],
+                    Messages = messages,
+                    ToolConfig = new ToolConfiguration
                     {
-                        var email = GetStringArg(toolInput, "email");
-                        var msg = GetStringArg(toolInput, "message");
-                        string? contactError = null;
-
-                        try
-                        {
-                            if (!string.IsNullOrEmpty(email))
-                                await _contactService.SendContactRequest(email, msg);
-                            else
-                                contactError = "No email address was provided.";
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error sending contact request");
-                            contactError = "An unknown system error occurred while sending the request.";
-                        }
-
-                        message = await GetContactConfirmationMessage(email, msg, contactError);
-                        break;
-                    }
-
-                case "getResume":
-                    returnResume = true;
-                    message = "Of course! Here is Sam's resume!";
-                    break;
-
-                case "redirectToPage":
-                    {
-                        redirectToPage = GetStringArg(toolInput, "page");
-                        var questionResponse = await AskBedrockQuestion(messages, systemPrompt, null);
-                        message = questionResponse.Message;
-                        error = error || questionResponse.Error;
-                        tokenLimitReached = tokenLimitReached || questionResponse.TokenLimitReached;
-                        break;
-                    }
-
-                case "askQuestion":
-                    {
-                        var question = GetStringArg(toolInput, "question");
-                        var questionResponse = await AskBedrockQuestion(messages, systemPrompt, question);
-                        message = questionResponse.Message;
-                        error = error || questionResponse.Error;
-                        tokenLimitReached = tokenLimitReached || questionResponse.TokenLimitReached;
-                        break;
-                    }
-
-                default:
-                    _logger.LogWarning("Unrecognized tool call: {ToolName}", toolName);
-                    break;
+                        Tools = GetToolDefinitions(),
+                        ToolChoice = new ToolChoice { Auto = new AutoToolChoice() }
+                    },
+                    InferenceConfig = new InferenceConfiguration { MaxTokens = 1000 }
+                });
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Bedrock Converse API (iteration {Iteration})", iteration);
+                return new ChatResponse("I'm sorry, I encountered an error. Please try again.", true);
+            }
+
+            tokenLimitReached = tokenLimitReached || (result.Usage?.TotalTokens ?? 0) > 2500;
+
+            // Append the assistant's response to the message history
+            // This is required — Bedrock needs to see its own previous turns
+            messages.Add(result.Output.Message);
+
+            // Model is done — extract the final text response
+            if (result.StopReason == "end_turn")
+            {
+                var text = result.Output.Message.Content
+                    .FirstOrDefault(c => c.Text != null)?.Text ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(text))
+                    text = "I'm sorry, I wasn't sure how to handle that. Could you rephrase your question?";
+
+                return new ChatResponse(text, error, tokenLimitReached, returnResume, redirectToPage);
+            }
+
+            // Model wants to use tools
+            if (result.StopReason == "tool_use")
+            {
+                var toolResultBlocks = new List<ContentBlock>();
+
+                foreach (var block in result.Output.Message.Content.Where(b => b.ToolUse != null))
+                {
+                    var toolUse = block.ToolUse;
+                    _logger.LogInformation("Tool selected: {ToolName} (iteration {Iteration})",
+                        toolUse.Name, iteration);
+
+                    var toolResult = await ExecuteTool(toolUse.Name, toolUse.Input, messages, systemPrompt);
+
+                    // Clarification is special — we stop the loop and return immediately to the user
+                    if (toolResult.NeedsClarification)
+                        return new ChatResponse(toolResult.ClarificationQuestion!, false, tokenLimitReached);
+
+                    // Accumulate side effects across multiple tool calls in one turn
+                    if (toolResult.ReturnResume) returnResume = true;
+                    if (toolResult.RedirectToPage != null) redirectToPage = toolResult.RedirectToPage;
+                    error = error || toolResult.ResultText.StartsWith("ERROR:");
+
+                    // Each tool result gets added as a block — Bedrock requires one ToolResult
+                    // per ToolUse, matched by ToolUseId
+                    toolResultBlocks.Add(new ContentBlock
+                    {
+                        ToolResult = new ToolResultBlock
+                        {
+                            ToolUseId = toolUse.ToolUseId,
+                            Content = [new ToolResultContentBlock { Text = toolResult.ResultText }]
+                        }
+                    });
+                }
+
+                // Feed all tool results back to the model as a single user turn
+                messages.Add(new Message
+                {
+                    Role = "user",
+                    Content = toolResultBlocks
+                });
+
+                // Loop continues — model will process results and either answer or call more tools
+                continue;
+            }
+
+            // Unexpected stop reason
+            _logger.LogWarning("Unexpected stop reason: {StopReason}", result.StopReason);
+            break;
         }
 
-        if (!toolWasCalled && !string.IsNullOrWhiteSpace(inlineText))
-            message = inlineText;
+        return new ChatResponse(
+            "I'm sorry, I had trouble forming a response. Please try again.",
+            true, tokenLimitReached, returnResume, redirectToPage);
+    }
 
-        if (string.IsNullOrWhiteSpace(message))
-            message = "I'm sorry, I wasn't sure how to handle that. Could you rephrase your question?";
+    private async Task<ToolExecutionResult> ExecuteTool(
+    string toolName,
+    Document toolInput,
+    List<Message> conversationHistory,
+    string systemPrompt)
+    {
+        switch (toolName)
+        {
+            case "askQuestion":
+                {
+                    var question = GetStringArg(toolInput, "question");
+                    var response = await AskBedrockQuestion(conversationHistory, systemPrompt, question);
+                    return new ToolExecutionResult(response.Message);
+                }
 
-        return new ChatResponse(message, error, tokenLimitReached, returnResume, redirectToPage);
+            case "askClarification":
+                {
+                    var question = GetStringArg(toolInput, "question");
+                    if (string.IsNullOrWhiteSpace(question))
+                        return new ToolExecutionResult("Could you tell me a bit more about what you're looking for?");
+
+                    // Signal the loop to stop and return this question to the user
+                    return new ToolExecutionResult(
+                        ResultText: question,
+                        NeedsClarification: true,
+                        ClarificationQuestion: question);
+                }
+
+            case "contactSamuel":
+                {
+                    var email = GetStringArg(toolInput, "email");
+                    var msg = GetStringArg(toolInput, "message");
+                    string? contactError = null;
+
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(email))
+                            await _contactService.SendContactRequest(email, msg);
+                        else
+                            contactError = "No email address was provided.";
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error sending contact request");
+                        contactError = "A system error occurred while sending the request.";
+                    }
+
+                    // We generate the confirmation message via Bedrock so it sounds natural
+                    // but this result text goes back to the routing model to formulate its reply
+                    var confirmation = await GetContactConfirmationMessage(email, msg, contactError);
+                    return new ToolExecutionResult(
+                        contactError != null ? $"ERROR: {contactError}" : confirmation);
+                }
+
+            case "getResume":
+                return new ToolExecutionResult(
+                    ResultText: "Resume retrieved successfully. Inform the user their resume is ready.",
+                    ReturnResume: true);
+
+            case "redirectToPage":
+                {
+                    var page = GetStringArg(toolInput, "page");
+                    return new ToolExecutionResult(
+                        ResultText: $"User is being redirected to the {page} page.",
+                        RedirectToPage: page);
+                }
+
+            default:
+                _logger.LogWarning("Unrecognized tool: {ToolName}", toolName);
+                return new ToolExecutionResult($"Unknown tool '{toolName}' was called.");
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -515,6 +586,8 @@ public class ChatService
         var tokens = Tokenizer.Tokenize(queryText).ToList();
         var relevantInfo = await GetRelevantInformation(tokens);
 
+        _logger.LogInformation("RAG result for query '{Query}':\n{Info}", queryText, string.IsNullOrWhiteSpace(relevantInfo) ? "(EMPTY)" : relevantInfo);
+
         if (string.IsNullOrWhiteSpace(relevantInfo))
         {
             await CreateInformationRequest(tokens);
@@ -527,26 +600,35 @@ public class ChatService
         var enrichedSystemPrompt = $"""
             {baseSystemPrompt}
 
-            Use the following curated excerpts from Samuel Ohrenberg's professional background to answer
-            the user's question. These are the most relevant sections available:
+            ════════════════════════════════════════════
+            CONTEXT — use ONLY the information below to answer.
+            Do NOT use your training data. Do NOT invent projects,
+            employers, technologies, dates, or outcomes.
+            If the answer is not in the context, say so honestly.
+            ════════════════════════════════════════════
 
             {relevantInfo}
 
-            Guidelines for your response:
-            - Answer concisely and professionally, as if Samuel is speaking in an interview
-            - Keep your answer under {MaxResponseWords} words
-            - Do not output markdown — use plain text only
-            - If the provided context does not contain enough information to answer the question
-              confidently, say so honestly rather than guessing
-            - Do not invent project names, employers, dates, technologies, or outcomes that are
-              not present in the context above
+            ════════════════════════════════════════════
+            RESPONSE RULES — follow all of these:
+            - Maximum {MaxResponseWords} words. Be concise.
+            - Plain text only — no markdown, no bullet points, no lists
+            - Speak as Samuel in first person, professional but brief
+            - If context is insufficient, say: "I don't have detailed 
+              information about that, but feel free to ask me something else."
+            - Never add closing offers like "Would you like to know more?" 
+              or "Feel free to ask!" — just answer and stop
+            ════════════════════════════════════════════
             """;
+
+        // ✅ Only send clean text history to the Q&A model
+        var cleanHistory = BuildCleanHistory(conversationHistory);
 
         var request = new ConverseRequest
         {
             ModelId = _questions.Model,
             System = [new SystemContentBlock { Text = enrichedSystemPrompt }],
-            Messages = conversationHistory,
+            Messages = cleanHistory,
             InferenceConfig = new InferenceConfiguration { MaxTokens = MaxResponseTokens }
         };
 
@@ -565,6 +647,36 @@ public class ChatService
                 "I encountered an error while generating a response. Please try again.",
                 true);
         }
+    }
+
+    /// <summary>
+    /// Strips ToolUse and ToolResult content blocks from message history,
+    /// returning only plain text turns. This prevents the Q&A model from
+    /// seeing agentic loop internals it has no context to interpret.
+    /// </summary>
+    private static List<Message> BuildCleanHistory(List<Message> messages)
+    {
+        var clean = new List<Message>();
+
+        foreach (var message in messages)
+        {
+            // Keep only content blocks that are plain text
+            var textBlocks = message.Content
+                .Where(c => c.Text != null && c.ToolUse == null && c.ToolResult == null)
+                .ToList();
+
+            // Skip messages that are entirely tool-related (no text content at all)
+            if (textBlocks.Count == 0)
+                continue;
+
+            clean.Add(new Message
+            {
+                Role = message.Role,
+                Content = textBlocks
+            });
+        }
+
+        return clean;
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -707,6 +819,37 @@ public class ChatService
                         {
                             ["type"]       = new Document("object"),
                             ["properties"] = new Document(new Dictionary<string, Document>())
+                        })
+                    }
+                }
+            },
+
+            new Tool
+            {
+                ToolSpec = new ToolSpecification
+                {
+                    Name = "askClarification",
+                    Description =
+                        "Ask the user a clarifying question when their request is genuinely ambiguous " +
+                        "and a better answer depends on knowing more. For example: 'tell me about his projects' " +
+                        "could mean frontend projects, backend, all of them, or a specific one. " +
+                        "Do NOT use this for clear questions. Use it sparingly.",
+                    InputSchema = new ToolInputSchema
+                    {
+                        Json = new Document(new Dictionary<string, Document>
+                        {
+                            ["type"] = new Document("object"),
+                            ["properties"] = new Document(new Dictionary<string, Document>
+                            {
+                                ["question"] = new Document(new Dictionary<string, Document>
+                                {
+                                    ["type"]        = new Document("string"),
+                                    ["description"] = new Document(
+                                        "The clarifying question to ask the user. Should be short, " +
+                                        "friendly, and specific about what additional info would help.")
+                                })
+                            }),
+                            ["required"] = new Document(new List<Document> { new Document("question") })
                         })
                     }
                 }

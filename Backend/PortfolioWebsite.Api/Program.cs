@@ -91,14 +91,12 @@ namespace PortfolioWebsite.Api
                     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 });
 
-                builder.Services.AddDbContext<SqlDbContext>(options =>
-                {
-                    options.UseSqlServer(
-                        builder.Configuration.GetConnectionString("DefaultConnection"));
-                });
-
-                builder.Services.AddDbContextFactory<SqlDbContext>(options =>
+                builder.Services.AddPooledDbContextFactory<SqlDbContext>(options =>
                     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+                builder.Services.AddScoped(sp =>
+                    sp.GetRequiredService<IDbContextFactory<SqlDbContext>>().CreateDbContext());
+
 
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();
