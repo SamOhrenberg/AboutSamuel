@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PortfolioWebsite.Api.Data;
 
@@ -11,9 +12,11 @@ using PortfolioWebsite.Api.Data;
 namespace PortfolioWebsite.Api.Migrations
 {
     [DbContext(typeof(SqlDbContext))]
-    partial class SqlDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260220064536_AddWorkExperience")]
+    partial class AddWorkExperience
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -133,6 +136,10 @@ namespace PortfolioWebsite.Api.Migrations
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("int");
 
+                    b.Property<string>("Employer")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("EndYear")
                         .HasColumnType("nvarchar(max)");
 
@@ -164,12 +171,7 @@ namespace PortfolioWebsite.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("WorkExperienceId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("ProjectId");
-
-                    b.HasIndex("WorkExperienceId");
 
                     b.ToTable("Projects");
                 });
@@ -230,24 +232,9 @@ namespace PortfolioWebsite.Api.Migrations
                     b.Navigation("Information");
                 });
 
-            modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.Project", b =>
-                {
-                    b.HasOne("PortfolioWebsite.Api.Data.Models.WorkExperience", "WorkExperience")
-                        .WithMany("Projects")
-                        .HasForeignKey("WorkExperienceId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("WorkExperience");
-                });
-
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.Information", b =>
                 {
                     b.Navigation("Keywords");
-                });
-
-            modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.WorkExperience", b =>
-                {
-                    b.Navigation("Projects");
                 });
 #pragma warning restore 612, 618
         }

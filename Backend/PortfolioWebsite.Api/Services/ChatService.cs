@@ -17,7 +17,6 @@ namespace PortfolioWebsite.Api.Services;
 
 public class ChatService
 {
-    // Keyword match contributes 70% of the relevance score; random jitter fills the rest
     private const int MatchWeight = 70;
     private const int MaxContextEntries = 4;
     private const int MinTokenLength = 4;
@@ -33,8 +32,6 @@ public class ChatService
     private readonly ModelSettings _toolUse;
     private readonly ModelSettings _questions;
 
-    // Cached keyword-augmented information entries, keyed by InformationId.
-    // Rebuilt whenever the Information table is modified (simple approach: rebuild per process lifetime).
     private readonly ConcurrentDictionary<Guid, IReadOnlyList<string>> _keywordCache = new();
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -93,10 +90,21 @@ public class ChatService
 
     public async Task<string?> GenerateHtmlResume(string? title, string? jobDescription)
     {
-        var allInformation = await _dbContext.Information.OrderBy(t => t.Text).ToListAsync();
+        var allInformation = await _dbContext.Information
+            .OrderBy(t => t.Text)
+            .ToListAsync();
+
+        var allJobs = await _dbContext.WorkExperiences
+            .Where(j => j.IsActive)
+            .OrderBy(j => j.DisplayOrder)
+            .ToListAsync();
+
+        // Include WorkExperience so employer name is available for unlinked projects
         var allProjects = await _dbContext.Projects
+            .Include(p => p.WorkExperience)
             .Where(p => p.IsActive)
             .OrderByDescending(p => p.IsFeatured)
+            .ThenBy(p => p.WorkExperience!.DisplayOrder)
             .ThenBy(p => p.DisplayOrder)
             .ToListAsync();
 
@@ -104,19 +112,68 @@ public class ChatService
             "\r\n\r\nNew Information:\r\n",
             allInformation.Select(i => i.Text));
 
-        var projectsBlock = string.Join("\r\n\r\n", allProjects.Select(p =>
+        var jobsBlock = string.Join("\r\n\r\n", allJobs.Select(j =>
         {
-            var techStack = DeserializeTechStack(p.TechStack);
-            var years = BuildYearRange(p.StartYear, p.EndYear);
+            List<string> achievements;
+            try { achievements = JsonSerializer.Deserialize<List<string>>(j.Achievements) ?? []; }
+            catch { achievements = []; }
+
+            var years = BuildYearRange(j.StartYear, j.EndYear);
             var sb = new StringBuilder();
-            sb.AppendLine($"Project: {p.Title}");
-            sb.AppendLine($"Employer: {p.Employer} | Role: {p.Role}{(years != null ? $" | {years}" : "")}");
-            if (!string.IsNullOrWhiteSpace(p.Summary)) sb.AppendLine($"Summary: {p.Summary}");
-            if (!string.IsNullOrWhiteSpace(p.Detail)) sb.AppendLine($"Detail: {p.Detail}");
-            if (!string.IsNullOrWhiteSpace(p.ImpactStatement)) sb.AppendLine($"Impact: {p.ImpactStatement}");
-            if (techStack.Count > 0) sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
+
+            sb.AppendLine($"Role: {j.Title}");
+            sb.AppendLine($"Employer: {j.Employer}{(years != null ? $" | {years}" : "")}");
+            if (!string.IsNullOrWhiteSpace(j.Summary))
+                sb.AppendLine($"Summary: {j.Summary}");
+            if (achievements.Count > 0)
+            {
+                sb.AppendLine("Achievements:");
+                foreach (var a in achievements)
+                    sb.AppendLine($"  - {a}");
+            }
+
+            // Attach linked projects directly under their employer job entry
+            var linkedProjects = allProjects
+                .Where(p => p.WorkExperienceId == j.WorkExperienceId)
+                .ToList();
+
+            if (linkedProjects.Count > 0)
+            {
+                sb.AppendLine("  Related Projects:");
+                foreach (var p in linkedProjects)
+                {
+                    var techStack = DeserializeTechStack(p.TechStack);
+                    var projectYears = BuildYearRange(p.StartYear, p.EndYear);
+                    sb.AppendLine($"    Project: {p.Title} | Role: {p.Role}{(projectYears != null ? $" | {projectYears}" : "")}");
+                    if (!string.IsNullOrWhiteSpace(p.Summary)) sb.AppendLine($"      Summary: {p.Summary}");
+                    if (!string.IsNullOrWhiteSpace(p.Detail)) sb.AppendLine($"      Detail: {p.Detail}");
+                    if (!string.IsNullOrWhiteSpace(p.ImpactStatement)) sb.AppendLine($"      Impact: {p.ImpactStatement}");
+                    if (techStack.Count > 0) sb.AppendLine($"      Tech Stack: {string.Join(", ", techStack)}");
+                }
+            }
+
             return sb.ToString().Trim();
         }));
+
+        // Only include projects that are not linked to any job (unlinked orphans)
+        var unlinkedProjects = allProjects.Where(p => p.WorkExperienceId is null).ToList();
+        var unlinkedProjectsBlock = unlinkedProjects.Count > 0
+            ? string.Join("\r\n\r\n", unlinkedProjects.Select(p =>
+            {
+                var techStack = DeserializeTechStack(p.TechStack);
+                var years = BuildYearRange(p.StartYear, p.EndYear);
+                var sb = new StringBuilder();
+
+                sb.AppendLine($"Project: {p.Title}");
+                sb.AppendLine($"Role: {p.Role}{(years != null ? $" | {years}" : "")}");
+                if (!string.IsNullOrWhiteSpace(p.Summary)) sb.AppendLine($"Summary: {p.Summary}");
+                if (!string.IsNullOrWhiteSpace(p.Detail)) sb.AppendLine($"Detail: {p.Detail}");
+                if (!string.IsNullOrWhiteSpace(p.ImpactStatement)) sb.AppendLine($"Impact: {p.ImpactStatement}");
+                if (techStack.Count > 0) sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
+
+                return sb.ToString().Trim();
+            }))
+            : null;
 
         bool hasTailoring = !string.IsNullOrWhiteSpace(title) || !string.IsNullOrWhiteSpace(jobDescription);
 
@@ -149,41 +206,50 @@ public class ChatService
           """
             : "Include all experience and projects. Featured projects should appear more prominently.";
 
-
         var systemPrompt = $$"""
         You are a professional resume generator. I will provide raw information about Samuel Ohrenberg's 
-        professional experience, education, and skills, followed by a structured list of his projects.
+        professional experience, education, and skills. Each job entry may include a list of related projects
+        that were delivered during that role. Unlinked projects (not tied to a specific employer) will be
+        provided separately at the end.
+
         Generate an HTML resume that meets these requirements:
 
         - Slots within a Vue.js <template></template> (do NOT include the <template> tags themselves)
         - Does NOT include a contact section
         - Uses ONLY inline style attributes — no <style> tags, no CSS class names
         - Includes ALL jobs, education, and important skills
-        - Includes a dedicated Projects section after Professional Experience
-        - Each project entry should show: title, employer, role, year range, a concise summary or bullet
-          points from the detail, the impact statement as a highlighted callout if present, and the tech stack as small inline tags
+        - For projects, you have flexibility in how you present them — choose whichever approach
+          produces the strongest, most readable resume:
+            Option A: Show each project as a sub-section directly under its employer job entry
+            Option B: Collect all projects into a dedicated Projects section after Professional Experience
+            Option C: A hybrid — inline the most impactful projects under their employer, and group
+                      lesser projects in a standalone section
+          Featured projects should always be prominent regardless of placement.
+          Unlinked projects (no employer) should appear in a standalone Projects section.
+        - Each project entry should show: title, role, year range, a concise summary or bullet
+          points from the detail, the impact statement as a highlighted callout if present, and
+          the tech stack as small inline tags
         - Is visually appealing, accessible (screen-reader friendly), and responsive
         - Has strong contrast between foreground text and background colors
         - Paraphrases and summarizes as needed while retaining all important details
 
         Use this color theme throughout. These are NON-NEGOTIABLE — do not deviate:
-            Page background:      #e6eeee  (light)
+            Page background:         #e6eeee  (light)
             Card/section background: #FFFFFF
-            ALL body text:        #1a1a1a  (near-black — must be readable on light backgrounds)
-            ALL headings:         #1a1a1a  (near-black)
+            ALL body text:           #1a1a1a  (near-black — must be readable on light backgrounds)
+            ALL headings:            #1a1a1a  (near-black)
             Accent / section titles: #006a6a
-            Highlighted text / links: #48A9A6
-            Impact callout background: #e0f4f4
-            Impact callout text:  #004d4d
-            Tech tag background:  #d0ecec
-            Tech tag text:        #006a6a
-            Subtle dividers:      #c0d8d8
+            Highlighted text / links:#48A9A6
+            Impact callout background:#e0f4f4
+            Impact callout text:     #004d4d
+            Tech tag background:     #d0ecec
+            Tech tag text:           #006a6a
+            Subtle dividers:         #c0d8d8
 
-        CRITICAL: This resume will always render on a LIGHT background. 
+        CRITICAL: This resume will always render on a LIGHT background.
         Every text element must have dark text (#1a1a1a or similar) to ensure readability.
         Never use white, near-white, or light-colored text anywhere.
         Never use the site's dark theme colors (#001e1e, #003131, rgba with low opacity) for text.
-
 
         {{titleInstruction}}
 
@@ -191,13 +257,19 @@ public class ChatService
         {"html": "<your complete html string here>"}
         """;
 
-        var userContent = $"""
-        === PROFESSIONAL BACKGROUND & EXPERIENCE ===
-        {infoBlock}
+        var userContent = new StringBuilder();
+        userContent.AppendLine("=== BIOGRAPHICAL & SKILLS INFORMATION ===");
+        userContent.AppendLine(infoBlock);
+        userContent.AppendLine();
+        userContent.AppendLine("=== PROFESSIONAL EXPERIENCE (projects linked where applicable) ===");
+        userContent.AppendLine(jobsBlock);
 
-        === PROJECTS ===
-        {projectsBlock}
-        """;
+        if (unlinkedProjectsBlock is not null)
+        {
+            userContent.AppendLine();
+            userContent.AppendLine("=== ADDITIONAL PROJECTS (not tied to a specific employer) ===");
+            userContent.AppendLine(unlinkedProjectsBlock);
+        }
 
         var request = new ConverseRequest
         {
@@ -206,15 +278,13 @@ public class ChatService
             Messages =
             [
                 new Message
-            {
-                Role = "user",
-                Content = [new ContentBlock { Text = userContent }]
-            }
+                {
+                    Role = "user",
+                    Content = [new ContentBlock { Text = userContent.ToString() }]
+                }
             ],
             InferenceConfig = new InferenceConfiguration { MaxTokens = 8192 }
         };
-
-
 
         var result = await _bedrockClient.ConverseAsync(request);
         var raw = result.Output.Message.Content
@@ -222,7 +292,6 @@ public class ChatService
 
         raw = raw.Trim();
 
-        // Strip markdown code fences if present
         if (raw.StartsWith("```"))
         {
             raw = string.Join('\n', raw.Split('\n').Skip(1));
@@ -231,7 +300,6 @@ public class ChatService
             raw = raw.Trim();
         }
 
-        // Try JSON parse first
         try
         {
             var node = JsonNode.Parse(raw, new JsonNodeOptions { PropertyNameCaseInsensitive = true });
@@ -239,18 +307,12 @@ public class ChatService
             if (!string.IsNullOrWhiteSpace(html))
                 return html;
         }
-        catch
-        {
-            // Not valid JSON — fall through to heuristic extraction
-        }
+        catch { }
 
-        // Heuristic: if the response starts with a partial JSON prefix before the actual HTML,
-        // find the first < and treat everything from there to the end as the HTML content
         var htmlStart = raw.IndexOf('<');
         if (htmlStart > 0)
         {
             var extracted = raw[htmlStart..].Trim();
-            // Strip any trailing JSON artifacts like }" or }
             if (extracted.EndsWith("}\"") || extracted.EndsWith("\"}"))
                 extracted = extracted[..extracted.LastIndexOf('<')].Trim();
             return extracted;
@@ -436,8 +498,6 @@ public class ChatService
         string baseSystemPrompt,
         string? explicitQuestion)
     {
-        // Prefer the explicit question extracted by the tool router; fall back to
-        // scanning the full conversation history for user-turn text.
         var queryText = !string.IsNullOrWhiteSpace(explicitQuestion)
             ? explicitQuestion
             : BuildUserQueryText(conversationHistory);
@@ -695,15 +755,20 @@ public class ChatService
             .Include(i => i.Keywords)
             .ToListAsync();
 
+        // Include WorkExperience so employer name is available in the RAG context text
         var projects = await _dbContext.Projects
+            .Include(p => p.WorkExperience)
             .Where(p => p.IsActive)
             .ToListAsync();
 
-        var projectInfos = projects.Select(BuildProjectInformation).ToList();
-        var allEntries = informations.Concat(projectInfos).ToList();
+        var work = await _dbContext.WorkExperiences
+            .Where(j => j.IsActive)
+            .ToListAsync();
 
-        // Augment each entry with tokens derived from its own text, using a
-        // per-entry cache to avoid re-tokenizing on every request.
+        var projectInfos = projects.Select(BuildProjectInformation).ToList();
+        var workInfos = work.Select(BuildWorkExperienceInformation).ToList();
+        var allEntries = informations.Concat(projectInfos).Concat(workInfos).ToList();
+
         foreach (var info in allEntries)
         {
             var cached = _keywordCache.GetOrAdd(
@@ -719,9 +784,7 @@ public class ChatService
         }
 
         if (allEntries.Count <= MaxContextEntries)
-        {
             return BuildContextBlock(allEntries);
-        }
 
         var scored = allEntries.Select(i => new
         {
@@ -736,20 +799,12 @@ public class ChatService
             .Select(s => s.Information)
             .ToList();
 
-        // Fall back to jitter-sorted full list if nothing matched
         if (top.Count == 0)
             top = scored.OrderByDescending(s => s.Score).Take(MaxContextEntries).Select(s => s.Information).ToList();
 
         return BuildContextBlock(top);
     }
 
-    /// <summary>
-    /// Scores a single information entry against the query tokens.
-    /// Exact matches are weighted higher than fuzzy matches; short tokens are excluded
-    /// from fuzzy matching to avoid false positives.
-    /// A small random jitter prevents identical-scoring entries from always returning
-    /// in the same order without compromising overall relevance.
-    /// </summary>
     private static float ScoreEntry(Information entry, IReadOnlyList<string> tokens)
     {
         int matches = entry.Keywords.Count(k =>
@@ -769,25 +824,21 @@ public class ChatService
 
         if (matches == 0) return 0;
 
-        // Score = weighted match density + small jitter for tie-breaking only
         float density = (float)matches / Math.Max(entry.Keywords.Count, 1);
         float jitter = Utility.TrueRandom(1, 10);
 
         return (density * MatchWeight) + jitter;
     }
 
-    /// <summary>
-    /// Converts a Project record into an Information entry so it can participate
-    /// in the same scoring pipeline as manually curated information.
-    /// </summary>
     private static Information BuildProjectInformation(Project project)
     {
         var techStack = DeserializeTechStack(project.TechStack);
         var years = BuildYearRange(project.StartYear, project.EndYear);
+        var employer = project.WorkExperience?.Employer;
 
         var sb = new StringBuilder();
         sb.AppendLine($"Project: {project.Title}");
-        sb.AppendLine($"Employer: {project.Employer}");
+        if (employer is not null) sb.AppendLine($"Employer: {employer}");
         sb.AppendLine($"Role: {project.Role}");
         if (years != null) sb.AppendLine($"Years: {years}");
         sb.AppendLine($"Summary: {project.Summary}");
@@ -798,15 +849,43 @@ public class ChatService
         if (techStack.Count > 0)
             sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
 
-        // Keywords from structured fields
         var keywords = techStack
             .Select(t => new Keyword(t.ToLower(), null!))
             .Concat(Tokenizer.Tokenize(
-                $"{project.Title} {project.Employer} {project.Role} {project.Summary} {project.Detail} {project.ImpactStatement}")
+                $"{project.Title} {employer} {project.Role} {project.Summary} {project.Detail} {project.ImpactStatement}")
                 .Select(t => new Keyword(t, null!)))
             .ToList();
 
         return new Information(project.ProjectId, sb.ToString().Trim(), keywords);
+    }
+
+    private static Information BuildWorkExperienceInformation(WorkExperience job)
+    {
+        List<string> achievements;
+        try { achievements = JsonSerializer.Deserialize<List<string>>(job.Achievements) ?? []; }
+        catch { achievements = []; }
+
+        var years = BuildYearRange(job.StartYear, job.EndYear);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Job: {job.Title}");
+        sb.AppendLine($"Employer: {job.Employer}");
+        if (years != null) sb.AppendLine($"Years: {years}");
+        if (!string.IsNullOrWhiteSpace(job.Summary))
+            sb.AppendLine($"Summary: {job.Summary}");
+        if (achievements.Count > 0)
+        {
+            sb.AppendLine("Achievements:");
+            foreach (var achievement in achievements)
+                sb.AppendLine($"  - {achievement}");
+        }
+
+        var keywords = Tokenizer
+            .Tokenize($"{job.Title} {job.Employer} {job.Summary} {string.Join(' ', achievements)}")
+            .Select(t => new Keyword(t, null!))
+            .ToList();
+
+        return new Information(job.WorkExperienceId, sb.ToString().Trim(), keywords);
     }
 
     private static string BuildContextBlock(IEnumerable<Information> entries)
@@ -859,10 +938,6 @@ public class ChatService
     // Helpers
     // ═════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Concatenates all user-turn text from the conversation history into a single
-    /// string for use as a RAG query when no explicit question was extracted.
-    /// </summary>
     private static string BuildUserQueryText(IEnumerable<Message> history)
     {
         var sb = new StringBuilder();
@@ -886,10 +961,6 @@ public class ChatService
         return end != null ? $"{start}–{end}" : $"{start}–Present";
     }
 
-    /// <summary>
-    /// Safely extracts a string value from a Bedrock tool-use input Document.
-    /// Returns null if the key is missing or the value is not a string.
-    /// </summary>
     private static string? GetStringArg(Document input, string key)
     {
         try
@@ -899,10 +970,7 @@ public class ChatService
             if (dict.TryGetValue(key, out var val) && val.IsString())
                 return val.AsString();
         }
-        catch
-        {
-            // Absorb SDK edge cases — callers handle null gracefully
-        }
+        catch { }
 
         return null;
     }

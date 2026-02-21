@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using PortfolioWebsite.Api.Data;
 using PortfolioWebsite.Api.Dtos;
-using System.Text.Json;
 
 namespace PortfolioWebsite.Api.Controllers;
 
@@ -16,27 +15,16 @@ public class ProjectController(ILogger<ProjectController> _logger, SqlDbContext 
         _logger.LogInformation("GET /projects from {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
 
         var projects = await _dbContext.Projects
-                .Where(p => p.IsActive)
-                .OrderBy(p => p.DisplayOrder)
-                .Select(p => new ProjectDto
-                {
-                    ProjectId = p.ProjectId,
-                    Title = p.Title,
-                    Employer = p.Employer,
-                    Role = p.Role,
-                    Summary = p.Summary,
-                    Detail = p.Detail,
-                    ImpactStatement = p.ImpactStatement,
-                    TechStack = Enumerable.ToList(JsonSerializer.Deserialize<List<string>>(p.TechStack, (JsonSerializerOptions)null) ?? new List<string>()),
-                    DisplayOrder = p.DisplayOrder,
-                    IsFeatured = p.IsFeatured,
-                    StartYear = p.StartYear,
-                    EndYear = p.EndYear
-                })
-                .ToListAsync();
+            .Include(p => p.WorkExperience)
+            .Where(p => p.IsActive)
+            .ToListAsync();
 
-        return projects;
-
+        return projects
+            .OrderByDescending(p => p.IsFeatured)
+            .ThenBy(p => p.IsFeatured ? p.DisplayOrder : int.MaxValue)  // featured: by their own order
+            .ThenBy(p => p.WorkExperience?.DisplayOrder ?? int.MaxValue) // non-featured: employer recency
+            .ThenBy(p => p.DisplayOrder)                                 // within employer: project order
+            .Select(ProjectDto.FromModel);
     }
 
     [HttpGet("featured")]
@@ -45,6 +33,7 @@ public class ProjectController(ILogger<ProjectController> _logger, SqlDbContext 
         _logger.LogInformation("GET /projects/featured from {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
 
         var projects = await _dbContext.Projects
+            .Include(p => p.WorkExperience)
             .Where(p => p.IsActive && p.IsFeatured)
             .OrderBy(p => p.DisplayOrder)
             .ToListAsync();
