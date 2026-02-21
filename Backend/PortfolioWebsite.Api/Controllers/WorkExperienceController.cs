@@ -6,7 +6,7 @@ using PortfolioWebsite.Api.Dtos;
 namespace PortfolioWebsite.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class WorkExperienceController(SqlDbContext dbContext) : ControllerBase
 {
     [HttpGet]
