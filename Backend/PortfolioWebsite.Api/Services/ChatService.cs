@@ -25,6 +25,7 @@ public class ChatService
 
     private readonly ILogger<ChatService> _logger;
     private readonly SqlDbContext _dbContext;
+    private readonly IDbContextFactory<SqlDbContext> _dbContextFactory;
     private readonly IAmazonBedrockRuntime _bedrockClient;
     private readonly ContactService _contactService;
 
@@ -46,11 +47,13 @@ public class ChatService
         IConfiguration configuration,
         ILogger<ChatService> logger,
         SqlDbContext dbContext,
+        IDbContextFactory<SqlDbContext> dbContextFactory,
         IAmazonBedrockRuntime bedrockClient,
         ContactService contactService)
     {
         _logger = logger;
         _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory; // for parallel reads
         _bedrockClient = bedrockClient;
         _contactService = contactService;
 
@@ -751,20 +754,31 @@ public class ChatService
     {
         var tokenList = tokens.Where(t => t.Length >= MinTokenLength).ToList();
 
-        var informations = await _dbContext.Information
+        // Create three independent contexts and fire all queries simultaneously
+        await using var ctx1 = await _dbContextFactory.CreateDbContextAsync();
+        await using var ctx2 = await _dbContextFactory.CreateDbContextAsync();
+        await using var ctx3 = await _dbContextFactory.CreateDbContextAsync();
+
+        var informationTask = ctx1.Information
             .Include(i => i.Keywords)
             .ToListAsync();
 
-        // Include WorkExperience so employer name is available in the RAG context text
-        var projects = await _dbContext.Projects
+        var projectsTask = ctx2.Projects
             .Include(p => p.WorkExperience)
             .Where(p => p.IsActive)
             .ToListAsync();
 
-        var work = await _dbContext.WorkExperiences
+        var workTask = ctx3.WorkExperiences
             .Where(j => j.IsActive)
             .ToListAsync();
 
+        await Task.WhenAll(informationTask, projectsTask, workTask);
+
+        var informations = await informationTask;
+        var projects = await projectsTask;
+        var work = await workTask;
+
+        // Everything below this line is unchanged
         var projectInfos = projects.Select(BuildProjectInformation).ToList();
         var workInfos = work.Select(BuildWorkExperienceInformation).ToList();
         var allEntries = informations.Concat(projectInfos).Concat(workInfos).ToList();
@@ -800,7 +814,11 @@ public class ChatService
             .ToList();
 
         if (top.Count == 0)
-            top = scored.OrderByDescending(s => s.Score).Take(MaxContextEntries).Select(s => s.Information).ToList();
+            top = scored
+                .OrderByDescending(s => s.Score)
+                .Take(MaxContextEntries)
+                .Select(s => s.Information)
+                .ToList();
 
         return BuildContextBlock(top);
     }
