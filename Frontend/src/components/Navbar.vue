@@ -140,6 +140,12 @@ router.afterEach(() => {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
+  transition: color 0.15s ease;
+}
+
+.nav-link:hover {
+  color: rgb(var(--v-theme-secondary)) !important;
+  text-shadow: 0 0 12px rgba(var(--v-theme-secondary), 0.4);
 }
 
 /* Underline pseudo-element */
@@ -200,4 +206,9 @@ ul {
 .drawer-link { min-height: 48px; }
 
 :deep(.v-input__details) { display: none; }
+
+:deep(.v-list-item--active) {
+  border-left: 3px solid rgb(var(--v-theme-secondary));
+  padding-left: calc(16px - 3px) !important;
+}
 </style>
