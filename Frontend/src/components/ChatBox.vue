@@ -8,18 +8,25 @@ const router = useRouter()
 const store = useChatStore()
 const chatContainer = ref(null)
 
-watch(
-  () => store.messageHistory.length,
-  async () => {
-    await nextTick()
+function scrollToBottom() {
+  nextTick(() => {
     if (chatContainer.value) {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight
     }
-  }
+  })
+}
+
+// Scroll when new messages are added
+watch(() => store.messageHistory.length, scrollToBottom)
+
+// Also scroll while streaming tokens are coming in
+watch(
+  () => store.messageHistory.at(-1)?.message,
+  scrollToBottom
 )
 
 async function sendMessage() {
-  let redirectToPage = await store.sendMessage()
+  const redirectToPage = await store.sendMessage()
   if (redirectToPage) {
     router.push(`/${redirectToPage}`)
   }
@@ -29,14 +36,8 @@ async function sendMessage() {
 <template>
   <!-- ── Open chat panel ─────────────────────────────────────── -->
   <Transition name="chat-panel">
-    <v-card
-      v-if="store.isOpen"
-      class="chatbox-container fill-height d-flex flex-column pr-3 px-3 rounded-0"
-      id="chatbox"
-      color="#001414"
-      role="region"
-      aria-label="Chat with SamuelLM"
-    >
+    <v-card v-if="store.isOpen" class="chatbox-container fill-height d-flex flex-column pr-3 px-3 rounded-0"
+      id="chatbox" color="#001414" role="region" aria-label="Chat with SamuelLM">
       <v-card-title class="d-flex justify-space-between align-center chat-title">
         Talk to me
         <v-btn icon @click="store.isOpen = false" aria-label="Close chat" variant="text">
@@ -44,27 +45,18 @@ async function sendMessage() {
         </v-btn>
       </v-card-title>
 
-      <v-card-text
-        id="chat-history"
-        class="flex-grow-1"
-        ref="chatContainer"
-        aria-live="polite"
-        aria-label="Chat message history"
-      >
+      <v-card-text id="chat-history" class="flex-grow-1" ref="chatContainer" aria-live="polite"
+        aria-label="Chat message history">
         <!-- Archived messages -->
         <TransitionGroup name="message">
-          <div
-            v-for="messageItem in store.archivedMessageHistory"
-            :key="messageItem.key ?? messageItem.sentAt"
-            :class="{
-              SamuelLM: messageItem.sentBy === 'SamuelLM',
-              User: messageItem.sentBy !== 'SamuelLM',
-              'chat-message': true,
-            }"
-            :aria-label="`${messageItem.sentBy === 'SamuelLM' ? 'SamuelLM' : 'You'} said: ${messageItem.message}`"
-          >
+          <div v-for="messageItem in store.archivedMessageHistory" :key="messageItem.key ?? messageItem.sentAt" :class="{
+            SamuelLM: messageItem.sentBy === 'SamuelLM',
+            User: messageItem.sentBy !== 'SamuelLM',
+            'chat-message': true,
+          }" :aria-label="`${messageItem.sentBy === 'SamuelLM' ? 'SamuelLM' : 'You'} said: ${messageItem.message}`">
             <div class="message-header">
-              <span :class="{ message_sent_by_SamuelLM: messageItem.sentBy === 'SamuelLM', message_sent_by_User: messageItem.sentBy !== 'SamuelLM' }">
+              <span
+                :class="{ message_sent_by_SamuelLM: messageItem.sentBy === 'SamuelLM', message_sent_by_User: messageItem.sentBy !== 'SamuelLM' }">
                 {{ messageItem.sentBy }}
               </span>
               <span :class="{ message_time_for_User: messageItem.sentBy !== 'SamuelLM', 'message-time': true }">
@@ -86,25 +78,23 @@ async function sendMessage() {
 
         <!-- Active messages -->
         <TransitionGroup name="message">
-          <div
-            v-for="messageItem in store.messageHistory"
-            :key="messageItem.key ?? messageItem.sentAt"
-            :class="{
-              SamuelLM: messageItem.sentBy === 'SamuelLM',
-              User: messageItem.sentBy !== 'SamuelLM',
-              'chat-message': true,
-            }"
-            :aria-label="`${messageItem.sentBy === 'SamuelLM' ? 'SamuelLM' : 'You'} said: ${messageItem.message}`"
-          >
+          <div v-for="messageItem in store.messageHistory" :key="messageItem.key ?? messageItem.sentAt" :class="{
+            SamuelLM: messageItem.sentBy === 'SamuelLM',
+            User: messageItem.sentBy !== 'SamuelLM',
+            'chat-message': true,
+          }" :aria-label="`${messageItem.sentBy === 'SamuelLM' ? 'SamuelLM' : 'You'} said: ${messageItem.message}`">
             <div class="message-header">
-              <span :class="{ message_sent_by_SamuelLM: messageItem.sentBy === 'SamuelLM', message_sent_by_User: messageItem.sentBy !== 'SamuelLM' }">
+              <span
+                :class="{ message_sent_by_SamuelLM: messageItem.sentBy === 'SamuelLM', message_sent_by_User: messageItem.sentBy !== 'SamuelLM' }">
                 {{ messageItem.sentBy }}
               </span>
               <span :class="{ message_time_for_User: messageItem.sentBy !== 'SamuelLM', 'message-time': true }">
                 {{ formatDateTime(messageItem.sentAt) }}
               </span>
             </div>
-            <div class="message-text">{{ messageItem.message }}</div>
+            <div class="message-text">
+              {{ messageItem.message }}<span v-if="messageItem.isStreaming" class="streaming-cursor">▋</span>
+            </div>
           </div>
         </TransitionGroup>
       </v-card-text>
@@ -112,59 +102,38 @@ async function sendMessage() {
       <v-divider />
 
       <v-card-actions class="d-flex flex-row card-action">
-        <v-textarea
-          v-model="store.message"
-          placeholder="Type a message..."
-          :rows="2"
-          class="chat-input"
-          @keyup.enter="sendMessage"
-          no-resize
-          aria-label="Type a message to SamuelLM"
-        />
-        <v-btn
-          v-if="!store.isLoading"
-          @click="sendMessage"
-          color="secondary"
-          variant="tonal"
-          aria-label="Send message"
-        >
+        <v-textarea v-model="store.message" placeholder="Type a message..." :rows="2" class="chat-input"
+          @keyup.enter="sendMessage" no-resize aria-label="Type a message to SamuelLM" />
+
+        <v-btn v-if="!store.isLoading && !store.isStreaming" @click="sendMessage" color="secondary" variant="tonal"
+          aria-label="Send message">
           SEND
         </v-btn>
-        <v-progress-circular
-          v-else
-          indeterminate
-          color="secondary"
-          aria-label="Sending message, please wait"
-        />
+
+        <v-progress-circular v-else-if="store.isLoading" indeterminate color="secondary" size="24"
+          aria-label="Waiting for response" />
+
+        <v-btn v-else-if="store.isStreaming" @click="store.cancelStream()" color="error" variant="tonal" size="small"
+          aria-label="Cancel response">
+          STOP
+        </v-btn>
       </v-card-actions>
+
     </v-card>
   </Transition>
 
   <!-- ── Collapsed: desktop side tab ────────────────────────── -->
   <Transition name="chat-fab">
-    <v-btn
-      v-if="!store.isOpen"
-      class="chatbox-fab d-none d-sm-flex rounded-0"
-      @click="store.isOpen = true"
-      aria-label="Open chat with SamuelLM"
-      color="#1976d2"
-    >
+    <v-btn v-if="!store.isOpen" class="chatbox-fab d-none d-sm-flex rounded-0" @click="store.isOpen = true"
+      aria-label="Open chat with SamuelLM" color="#1976d2">
       <v-icon size="x-large">mdi-chat</v-icon>
     </v-btn>
   </Transition>
 
   <!-- ── Collapsed: mobile FAB ──────────────────────────────── -->
   <Transition name="chat-fab">
-    <v-btn
-      v-if="!store.isOpen"
-      class="chatbox-mobile-fab d-flex d-sm-none"
-      icon
-      size="large"
-      @click="store.isOpen = true"
-      aria-label="Open chat with SamuelLM"
-      color="#1976d2"
-      elevation="6"
-    >
+    <v-btn v-if="!store.isOpen" class="chatbox-mobile-fab d-flex d-sm-none" icon size="large"
+      @click="store.isOpen = true" aria-label="Open chat with SamuelLM" color="#1976d2" elevation="6">
       <v-icon size="large">mdi-chat</v-icon>
     </v-btn>
   </Transition>
@@ -173,10 +142,12 @@ async function sendMessage() {
 <style>
 /* ── Chat panel slide-in (desktop: from right) ── */
 @media (min-width: 600px) {
+
   .chat-panel-enter-active,
   .chat-panel-leave-active {
     transition: transform 0.28s ease, opacity 0.28s ease;
   }
+
   .chat-panel-enter-from,
   .chat-panel-leave-to {
     transform: translateX(100%);
@@ -186,10 +157,12 @@ async function sendMessage() {
 
 /* ── Chat panel slide-up (mobile: from bottom) ── */
 @media (max-width: 599px) {
+
   .chat-panel-enter-active,
   .chat-panel-leave-active {
     transition: transform 0.28s ease, opacity 0.28s ease;
   }
+
   .chat-panel-enter-from,
   .chat-panel-leave-to {
     transform: translateY(100%);
@@ -202,6 +175,7 @@ async function sendMessage() {
 .chat-fab-leave-active {
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
+
 .chat-fab-enter-from,
 .chat-fab-leave-to {
   transform: scale(0.7);
@@ -212,12 +186,15 @@ async function sendMessage() {
 .message-enter-active {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
+
 .message-enter-from {
   opacity: 0;
   transform: translateY(10px);
 }
+
 .message-leave-active {
-  display: none; /* archived messages don't need exit animation */
+  display: none;
+  /* archived messages don't need exit animation */
 }
 
 /* ── Chat history scroll area ─── */
@@ -251,6 +228,7 @@ async function sendMessage() {
   font-size: 0.9rem;
   color: #8BE9FD;
 }
+
 .message_sent_by_User {
   display: none;
 }
@@ -260,6 +238,7 @@ async function sendMessage() {
   font-family: Calibri, 'Trebuchet MS', sans-serif;
   font-size: 0.8rem;
 }
+
 .message_time_for_User {
   margin-left: auto;
 }
@@ -271,13 +250,19 @@ async function sendMessage() {
   border-radius: 10px;
 }
 
-.SamuelLM { margin-right: auto; }
+.SamuelLM {
+  margin-right: auto;
+}
+
 .SamuelLM .message-text {
   background-color: rgba(255, 255, 255, 0.12);
   color: #e0f2f2;
 }
 
-.User { margin-left: auto; }
+.User {
+  margin-left: auto;
+}
+
 .User .message-text {
   background-color: #00acac;
   color: white;
@@ -304,6 +289,7 @@ async function sendMessage() {
     height: 100dvh !important;
     width: 2rem;
   }
+
   .chatbox-container {
     width: 33vw;
     max-width: 500px;
@@ -314,7 +300,10 @@ async function sendMessage() {
 @media (max-width: 599px) {
   #chatbox {
     position: fixed;
-    top: 0; bottom: 0; right: 0; left: 0;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
     width: 100vw !important;
     height: 100dvh !important;
     z-index: 1000;
@@ -327,5 +316,24 @@ async function sendMessage() {
   right: 1.5rem;
   z-index: 999;
   border-radius: 50% !important;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+.streaming-cursor {
+  display: inline-block;
+  animation: blink 0.8s step-end infinite;
+  color: #8BE9FD;
+  margin-left: 1px;
 }
 </style>

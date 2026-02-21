@@ -9,6 +9,7 @@ using PortfolioWebsite.Api.Services.Entities;
 using PortfolioWebsite.Common;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -24,6 +25,29 @@ public class ChatService
         string? ClarificationQuestion = null,
         bool ReturnResume = false,
         string? RedirectToPage = null);
+
+    private record RoutingResult(
+        ConverseRequest? ConverseRequest,
+        string? ShortCircuitResponse,
+        bool ReturnResume,
+        string? RedirectToPage,
+        bool TokenLimitReached,
+        DateTimeOffset ReceivedAt,
+        Stopwatch Stopwatch);
+
+    // Add these in ChatService or a shared models file
+    public record StreamChunk
+    {
+        public string? Token { get; init; }
+        public StreamMeta? Meta { get; init; }
+        public bool IsToken => Token != null;
+        public bool IsMeta => Meta != null;
+    }
+
+    public record StreamMeta(
+        string? RedirectToPage = null,
+        bool DisplayResume = false,
+        bool TokenLimitReached = false);
 
 
     private const int MatchWeight = 70;
@@ -78,6 +102,124 @@ public class ChatService
     // ═════════════════════════════════════════════════════════════════════════
     // Public Entry Points
     // ═════════════════════════════════════════════════════════════════════════
+
+    public async IAsyncEnumerable<StreamChunk> StreamChat(
+    ChatLog chat,
+    [EnumeratorCancellation] CancellationToken ct)
+    {
+        var receivedAt = DateTimeOffset.Now;
+        var stopwatch = Stopwatch.StartNew();
+
+        // Phase 1: Routing — capture errors without yielding in catch
+        RoutingResult? routing = null;
+        string? routingError = null;
+
+        try
+        {
+            routing = await RunRoutingPhase(chat);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during routing phase");
+            routingError = "I'm sorry, I encountered an error. Please try again.";
+        }
+
+        if (routingError != null)
+        {
+            yield return new StreamChunk { Token = routingError };
+            yield return new StreamChunk { Meta = new StreamMeta() };
+            yield break;
+        }
+
+        // Short-circuit: clarification, error, resume, redirect
+        if (routing!.ShortCircuitResponse != null)
+        {
+            yield return new StreamChunk { Token = routing.ShortCircuitResponse };
+            yield return new StreamChunk
+            {
+                Meta = new StreamMeta(
+                    RedirectToPage: routing.RedirectToPage,
+                    DisplayResume: routing.ReturnResume,
+                    TokenLimitReached: routing.TokenLimitReached)
+            };
+
+            stopwatch.Stop();
+            await SaveChatLog(chat, routing.ShortCircuitResponse, false,
+                routing.TokenLimitReached, receivedAt, stopwatch.ElapsedMilliseconds);
+            yield break;
+        }
+
+        if (routing.ConverseRequest == null)
+        {
+            const string fallback = "I'm sorry, I had trouble forming a response. Please try again.";
+            yield return new StreamChunk { Token = fallback };
+            yield return new StreamChunk { Meta = new StreamMeta() };
+
+            stopwatch.Stop();
+            await SaveChatLog(chat, fallback, true, false, receivedAt, stopwatch.ElapsedMilliseconds);
+            yield break;
+        }
+
+        // Phase 2: Stream Sonnet answer — capture error without yielding in catch
+        ConverseStreamResponse? streamResponse = null;
+        string? streamError = null;
+
+        try
+        {
+            streamResponse = await _bedrockClient.ConverseStreamAsync(
+                new ConverseStreamRequest
+                {
+                    ModelId = routing.ConverseRequest.ModelId,
+                    System = routing.ConverseRequest.System,
+                    Messages = routing.ConverseRequest.Messages,
+                    InferenceConfig = routing.ConverseRequest.InferenceConfig
+                }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting Bedrock stream");
+            streamError = "I encountered an error. Please try again.";
+        }
+
+        if (streamError != null)
+        {
+            yield return new StreamChunk { Token = streamError };
+            yield return new StreamChunk { Meta = new StreamMeta() };
+
+            stopwatch.Stop();
+            await SaveChatLog(chat, streamError, true, false, receivedAt, stopwatch.ElapsedMilliseconds);
+            yield break;
+        }
+
+        var fullResponse = new StringBuilder();
+
+        // No WithCancellation — CT is already passed to ConverseStreamAsync above
+        foreach (var chunk in streamResponse!.Stream)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            if (chunk is ContentBlockDeltaEvent delta && delta.Delta?.Text != null)
+            {
+                fullResponse.Append(delta.Delta.Text);
+                yield return new StreamChunk { Token = delta.Delta.Text };
+            }
+        }
+
+        stopwatch.Stop();
+        var completeResponse = fullResponse.ToString();
+
+        yield return new StreamChunk
+        {
+            Meta = new StreamMeta(
+                RedirectToPage: routing.RedirectToPage,
+                DisplayResume: routing.ReturnResume,
+                TokenLimitReached: routing.TokenLimitReached)
+        };
+
+        await SaveChatLog(chat, completeResponse, false,
+            routing.TokenLimitReached, receivedAt, stopwatch.ElapsedMilliseconds);
+    }
+
 
     internal async Task<ChatResponse> QueryChat(ChatLog chat)
     {
@@ -338,6 +480,282 @@ public class ChatService
     // Bedrock Core: Tool-Use Routing
     // ═════════════════════════════════════════════════════════════════════════
 
+
+    private async Task<RoutingResult> RunRoutingPhase(ChatLog chat)
+    {
+        var receivedAt = DateTimeOffset.Now;
+        var stopwatch = Stopwatch.StartNew();
+
+        var (converseRequest, shortCircuitResponse, returnResume, redirectToPage, tokenLimitReached) =
+            await ResolveRoutingToRequest(chat);
+
+        stopwatch.Stop();
+
+        return new RoutingResult(
+            ConverseRequest: converseRequest,
+            ShortCircuitResponse: shortCircuitResponse,
+            ReturnResume: returnResume,
+            RedirectToPage: redirectToPage,
+            TokenLimitReached: tokenLimitReached,
+            ReceivedAt: receivedAt,
+            Stopwatch: stopwatch);
+    }
+
+    private async Task<(
+        ConverseRequest? ConverseRequest,
+        string? ShortCircuitResponse,
+        bool ReturnResume,
+        string? RedirectToPage,
+        bool TokenLimitReached)>
+        ResolveRoutingToRequest(ChatLog chat)
+    {
+        // Same system prompt as QueryBedrock
+        const string systemPrompt = """
+            You are SamuelLM, an AI chatbot created by Samuel Ohrenberg (also known as Sam or Sammy).
+            Your website is https://aboutsamuel.com/.
+            You answer on behalf of Samuel — respond as if you were him in a professional interview setting.
+            You are professional, friendly, and helpful.
+            Do not output markdown. Use plain text only.
+
+            For greetings, small talk, or messages that are not questions, respond warmly WITHOUT calling any tool.
+
+            Only call a tool when the user's message clearly warrants one:
+            - askQuestion: for specific questions about Samuel's background, skills, experience, or projects
+            - askClarification: when the user's request is genuinely ambiguous
+            - contactSamuel: when the user wants to get in touch with Sam
+            - getResume: when the user wants to see or download Sam's resume
+            - redirectToPage: when the user wants content best found on a specific page
+
+            ════════════════════════════════════════════
+            ABSOLUTE RULES — never violate these:
+            1. NEVER write tool names in your text response under any circumstances.
+               Never output text like "askQuestion: ..." or "contactSamuel: ..." or any tool name as text.
+            2. NEVER describe what you are about to do. Never say "I'll look that up" or "Let me check".
+            3. When calling a tool, your text content must be completely empty — nothing at all.
+            4. Tool calls happen silently via the tool_use mechanism only, never via text.
+            ════════════════════════════════════════════
+            """;
+
+        var messages = chat.History
+            .Select(h => new Message
+            {
+                Role = h.Role == "user" ? "user" : "assistant",
+                Content = [new ContentBlock { Text = h.Content }]
+            })
+            .ToList();
+
+        messages.Add(new Message
+        {
+            Role = "user",
+            Content = [new ContentBlock { Text = chat.Message }]
+        });
+
+        const int MaxIterations = 6;
+        int iteration = 0;
+        bool returnResume = false;
+        bool tokenLimitReached = false;
+        string? redirectToPage = null;
+        ConverseRequest? preparedQuestionRequest = null;
+
+        while (iteration++ < MaxIterations)
+        {
+            ConverseResponse result;
+            try
+            {
+                result = await _bedrockClient.ConverseAsync(new ConverseRequest
+                {
+                    ModelId = _toolUse.Model,
+                    System = [new SystemContentBlock { Text = systemPrompt }],
+                    Messages = messages,
+                    ToolConfig = new ToolConfiguration
+                    {
+                        Tools = GetToolDefinitions(),
+                        ToolChoice = new ToolChoice { Auto = new AutoToolChoice() }
+                    },
+                    InferenceConfig = new InferenceConfiguration { MaxTokens = 1000 }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in routing loop (iteration {Iteration})", iteration);
+                return (null, "I'm sorry, I encountered an error. Please try again.", false, null, false);
+            }
+
+            tokenLimitReached = tokenLimitReached || (result.Usage?.TotalTokens ?? 0) > 2500;
+            messages.Add(result.Output.Message);
+
+            // Model is done — either inline text response or we have a prepared question request
+            if (result.StopReason == "end_turn")
+            {
+                if (preparedQuestionRequest != null)
+                    return (preparedQuestionRequest, null, returnResume, redirectToPage, tokenLimitReached);
+
+                var inlineText = result.Output.Message.Content
+                    .FirstOrDefault(c => c.Text != null)?.Text?.Trim();
+
+                // Safety net: detect leaked tool narration and recover
+                if (IsLeakedToolCall(inlineText))
+                {
+                    _logger.LogWarning("Detected leaked tool narration: {Text}", inlineText);
+
+                    // Extract whatever question-like content we can and run it properly
+                    var fallbackQuestion = ExtractQuestionFromLeak(inlineText, chat.Message);
+                    var (request, shortCircuit, shortCircuitResponse) =
+                        await BuildQuestionRequest(messages, systemPrompt, fallbackQuestion);
+
+                    if (shortCircuit)
+                        return (null, shortCircuitResponse!.Message, returnResume, redirectToPage, tokenLimitReached);
+
+                    return (request, null, returnResume, redirectToPage, tokenLimitReached);
+                }
+
+                return (null, inlineText, returnResume, redirectToPage, tokenLimitReached);
+            }
+
+            if (result.StopReason == "tool_use")
+            {
+                var toolResultBlocks = new List<ContentBlock>();
+
+                foreach (var block in result.Output.Message.Content.Where(b => b.ToolUse != null))
+                {
+                    var toolUse = block.ToolUse;
+                    _logger.LogInformation("Routing tool: {ToolName} (iteration {Iteration})",
+                        toolUse.Name, iteration);
+
+                    string toolResultText;
+
+                    switch (toolUse.Name)
+                    {
+                        case "askQuestion":
+                            {
+                                // Build the Sonnet request but don't execute it yet — we'll stream it
+                                var question = GetStringArg(toolUse.Input, "question");
+                                var (request, shortCircuit, shortCircuitResponse) =
+                                    await BuildQuestionRequest(messages, systemPrompt, question);
+
+                                if (shortCircuit)
+                                    return (null, shortCircuitResponse!.Message, returnResume, redirectToPage, tokenLimitReached);
+
+                                preparedQuestionRequest = request;
+
+                                // Feed a placeholder back to Haiku so it can reach end_turn cleanly
+                                toolResultText = "Answer prepared for streaming to user.";
+                                break;
+                            }
+
+                        case "askClarification":
+                            {
+                                var question = GetStringArg(toolUse.Input, "question")
+                                    ?? "Could you tell me a bit more about what you're looking for?";
+                                // Return immediately — clarification goes straight to user
+                                return (null, question, returnResume, redirectToPage, tokenLimitReached);
+                            }
+
+                        case "contactSamuel":
+                            {
+                                var email = GetStringArg(toolUse.Input, "email");
+                                var msg = GetStringArg(toolUse.Input, "message");
+                                string? contactError = null;
+
+                                try
+                                {
+                                    if (!string.IsNullOrEmpty(email))
+                                        await _contactService.SendContactRequest(email, msg);
+                                    else
+                                        contactError = "No email address was provided.";
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error sending contact request");
+                                    contactError = "A system error occurred.";
+                                }
+
+                                var confirmation = await GetContactConfirmationMessage(email, msg, contactError);
+                                // Contact confirmation is short — always short-circuit, no streaming needed
+                                return (null, confirmation, false, null, tokenLimitReached);
+                            }
+
+                        case "getResume":
+                            returnResume = true;
+                            toolResultText = "Resume retrieved successfully. Inform the user their resume is ready.";
+                            break;
+
+                        case "redirectToPage":
+                            redirectToPage = GetStringArg(toolUse.Input, "page");
+                            toolResultText = $"User is being redirected to the {redirectToPage} page.";
+                            break;
+
+                        default:
+                            _logger.LogWarning("Unrecognized tool: {ToolName}", toolUse.Name);
+                            toolResultText = $"Unknown tool '{toolUse.Name}'.";
+                            break;
+                    }
+
+                    toolResultBlocks.Add(new ContentBlock
+                    {
+                        ToolResult = new ToolResultBlock
+                        {
+                            ToolUseId = toolUse.ToolUseId,
+                            Content = [new ToolResultContentBlock { Text = toolResultText }]
+                        }
+                    });
+                }
+
+                messages.Add(new Message { Role = "user", Content = toolResultBlocks });
+                continue;
+            }
+
+            _logger.LogWarning("Unexpected stop reason: {StopReason}", result.StopReason);
+            break;
+        }
+
+        return (null, "I'm sorry, I had trouble forming a response. Please try again.", false, null, tokenLimitReached);
+    }
+
+    private static readonly string[] _toolNames =
+    ["askQuestion", "askClarification", "contactSamuel", "getResume", "redirectToPage"];
+
+    private static bool IsLeakedToolCall(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        return _toolNames.Any(tool =>
+            text.StartsWith(tool + ":", StringComparison.OrdinalIgnoreCase) ||
+            text.StartsWith(tool + " ", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains($"\"{tool}\"", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string ExtractQuestionFromLeak(string leakedText, string originalMessage)
+    {
+        // Try to pull the parameter value out of something like:
+        // "askQuestion: what does Sam know about ASP.NET"
+        // "askQuestion: {"question": "ASP.NET experience"}"
+        foreach (var tool in _toolNames)
+        {
+            var prefix = tool + ":";
+            if (leakedText.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                var remainder = leakedText[prefix.Length..].Trim();
+                // Strip any JSON wrapping if present
+                if (remainder.StartsWith("{"))
+                {
+                    try
+                    {
+                        var doc = JsonDocument.Parse(remainder);
+                        if (doc.RootElement.TryGetProperty("question", out var q))
+                            return q.GetString() ?? originalMessage;
+                    }
+                    catch { }
+                }
+                // Plain text parameter — use it directly if it's meaningful
+                if (remainder.Length > 5)
+                    return remainder;
+            }
+        }
+
+        // Couldn't extract anything useful — fall back to the original user message
+        return originalMessage;
+    }
+
     private async Task<ChatResponse> QueryBedrock(ChatLog chat)
     {
         const string systemPrompt = """
@@ -572,65 +990,11 @@ public class ChatService
         string baseSystemPrompt,
         string? explicitQuestion)
     {
-        var queryText = !string.IsNullOrWhiteSpace(explicitQuestion)
-            ? explicitQuestion
-            : BuildUserQueryText(conversationHistory);
+        var (request, shortCircuit, shortCircuitResponse) =
+            await BuildQuestionRequest(conversationHistory, baseSystemPrompt, explicitQuestion);
 
-        if (queryText.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 3)
-        {
-            return new ChatResponse(
-                "Hi there! I'm SamuelLM, Sam's portfolio assistant. Feel free to ask me anything about his background, skills, or experience!",
-                false);
-        }
-
-        var tokens = Tokenizer.Tokenize(queryText).ToList();
-        var relevantInfo = await GetRelevantInformation(tokens);
-
-        _logger.LogInformation("RAG result for query '{Query}':\n{Info}", queryText, string.IsNullOrWhiteSpace(relevantInfo) ? "(EMPTY)" : relevantInfo);
-
-        if (string.IsNullOrWhiteSpace(relevantInfo))
-        {
-            await CreateInformationRequest(tokens);
-            return new ChatResponse(
-                "I'm sorry, I don't have information about that topic yet. " +
-                "I've made a note of the gap and will work to get it added!",
-                false);
-        }
-
-        var enrichedSystemPrompt = $"""
-            {baseSystemPrompt}
-
-            ════════════════════════════════════════════
-            CONTEXT — use ONLY the information below to answer.
-            Do NOT use your training data. Do NOT invent projects,
-            employers, technologies, dates, or outcomes.
-            If the answer is not in the context, say so honestly.
-            ════════════════════════════════════════════
-
-            {relevantInfo}
-
-            ════════════════════════════════════════════
-            RESPONSE RULES — follow all of these:
-            - Maximum {MaxResponseWords} words. Be concise.
-            - Plain text only — no markdown, no bullet points, no lists
-            - Speak as Samuel in first person, professional but brief
-            - If context is insufficient, say: "I don't have detailed 
-              information about that, but feel free to ask me something else."
-            - Never add closing offers like "Would you like to know more?" 
-              or "Feel free to ask!" — just answer and stop
-            ════════════════════════════════════════════
-            """;
-
-        // ✅ Only send clean text history to the Q&A model
-        var cleanHistory = BuildCleanHistory(conversationHistory);
-
-        var request = new ConverseRequest
-        {
-            ModelId = _questions.Model,
-            System = [new SystemContentBlock { Text = enrichedSystemPrompt }],
-            Messages = cleanHistory,
-            InferenceConfig = new InferenceConfiguration { MaxTokens = MaxResponseTokens }
-        };
+        if (shortCircuit)
+            return shortCircuitResponse!;
 
         try
         {
@@ -648,6 +1012,73 @@ public class ChatService
                 true);
         }
     }
+
+    private async Task<(ConverseRequest Request, bool ShouldShortCircuit, ChatResponse? ShortCircuitResponse)>
+        BuildQuestionRequest(
+            List<Message> conversationHistory,
+            string baseSystemPrompt,
+            string? explicitQuestion)
+    {
+        var queryText = !string.IsNullOrWhiteSpace(explicitQuestion)
+            ? explicitQuestion
+            : BuildUserQueryText(conversationHistory);
+
+        if (queryText.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 3)
+        {
+            return (null!, true, new ChatResponse(
+                "Hi there! I'm SamuelLM, Sam's portfolio assistant. Feel free to ask me anything about his background, skills, or experience!",
+                false));
+        }
+
+        var tokens = Tokenizer.Tokenize(queryText).ToList();
+        var relevantInfo = await GetRelevantInformation(tokens);
+
+        if (string.IsNullOrWhiteSpace(relevantInfo))
+        {
+            await CreateInformationRequest(tokens);
+            return (null!, true, new ChatResponse(
+                "I'm sorry, I don't have information about that topic yet. " +
+                "I've made a note of the gap and will work to get it added!",
+                false));
+        }
+
+        var enrichedSystemPrompt = $"""
+        {baseSystemPrompt}
+
+        ════════════════════════════════════════════
+        CONTEXT — use ONLY the information below to answer.
+        Do NOT use your training data. Do NOT invent projects,
+        employers, technologies, dates, or outcomes.
+        If the answer is not in the context, say so honestly.
+        ════════════════════════════════════════════
+
+        {relevantInfo}
+
+        ════════════════════════════════════════════
+        RESPONSE RULES — follow all of these:
+        - Maximum {MaxResponseWords} words. Be concise.
+        - Plain text only — no markdown, no bullet points, no lists
+        - Speak as Samuel in first person, professional but brief
+        - If context is insufficient, say: "I don't have detailed 
+          information about that, but feel free to ask me something else."
+        - Never add closing offers like "Would you like to know more?" 
+          or "Feel free to ask!" — just answer and stop
+        ════════════════════════════════════════════
+        """;
+
+        var cleanHistory = BuildCleanHistory(conversationHistory);
+
+        var request = new ConverseRequest
+        {
+            ModelId = _questions.Model,
+            System = [new SystemContentBlock { Text = enrichedSystemPrompt }],
+            Messages = cleanHistory,
+            InferenceConfig = new InferenceConfiguration { MaxTokens = MaxResponseTokens }
+        };
+
+        return (request, false, null);
+    }
+
 
     /// <summary>
     /// Strips ToolUse and ToolResult content blocks from message history,
