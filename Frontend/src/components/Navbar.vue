@@ -15,6 +15,7 @@ const changeTheme = () => {
 const navLinks = [
   { label: 'Home', to: '/' },
   { label: 'Resume', to: '/resume' },
+  { label: 'Experience', to: '/work-experience' },
   { label: 'Projects', to: '/projects' },
   { label: 'Contact', to: '/contact' },
 ]

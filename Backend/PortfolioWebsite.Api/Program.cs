@@ -97,6 +97,9 @@ namespace PortfolioWebsite.Api
                         builder.Configuration.GetConnectionString("DefaultConnection"));
                 });
 
+                builder.Services.AddDbContextFactory<SqlDbContext>(options =>
+                    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();
                 builder.Services.AddScoped<AdminService>();

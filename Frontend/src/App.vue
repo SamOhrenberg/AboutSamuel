@@ -38,7 +38,7 @@ const router = useRouter()
 const resumeStore = useResumeStore()
 
 // Route order — used to determine slide direction
-const routeOrder = ['/', '/resume', '/projects', '/contact']
+const routeOrder = ['/', '/resume', '/work-experience', '/projects', '/contact']
 
 const transitionName = ref('page-forward')
 router.beforeEach((to, from) => {

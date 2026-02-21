@@ -10,6 +10,7 @@
       <nav class="footer-nav" aria-label="Footer navigation">
         <router-link to="/" class="footer-link">Home</router-link>
         <router-link to="/resume" class="footer-link">Resume</router-link>
+        <router-link to="/work-experience" class="footer-link">Experience</router-link>
         <router-link to="/projects" class="footer-link">Projects</router-link>
         <router-link to="/contact" class="footer-link">Contact</router-link>
       </nav>
