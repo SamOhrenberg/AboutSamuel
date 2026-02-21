@@ -6,32 +6,19 @@
 
         <v-col cols="12" md="auto" class="hero-photo-col">
           <!-- fetchpriority=high: browser loads this as top priority LCP image -->
-          <img
-            src="@/assets/sam-wedding-02.png"
-            class="glow-image hero-photo"
-            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': photoVisible }"
-            alt="Samuel Ohrenberg"
-            fetchpriority="high"
-          />
+          <img ref="heroPhotoEl" src="@/assets/sam-wedding-02.png" class="glow-image hero-photo"
+            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': photoVisible }" alt="Samuel Ohrenberg"
+            fetchpriority="high" />
         </v-col>
 
         <v-col cols="12" md="auto" class="hero-text-col">
-          <p
-            class="hero-greeting"
-            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': greetingVisible }"
-          >
+          <p class="hero-greeting" :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': greetingVisible }">
             Nice to Meet You!
           </p>
-          <h1
-            class="hero-name"
-            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': nameVisible }"
-          >
+          <h1 class="hero-name" :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': nameVisible }">
             I'm Samuel Ohrenberg
           </h1>
-          <h2
-            class="hero-tagline"
-            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': taglineVisible }"
-          >
+          <h2 class="hero-tagline" :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': taglineVisible }">
             And I'm
             <span class="hero-inline-group">
               <span>A</span><span class="cycle-text" :class="{ fade: !isVisible }">{{ currentAoran }}&nbsp;</span>
@@ -39,10 +26,7 @@
             </span>
             From Oklahoma
           </h2>
-          <p
-            class="hero-sub"
-            :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': subVisible }"
-          >
+          <p class="hero-sub" :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': subVisible }">
             I'm a passionate, solution-oriented programmer who loves solving problems. If you'd like
             to learn more about me, please speak with my chatbot, SamuelLM.
           </p>
@@ -58,16 +42,12 @@
       <v-row align="center" justify="center" class="about-row">
 
         <v-col cols="12" sm="5" md="4" class="about-photo-col">
-          <!-- loading=lazy: below the fold, defer until user scrolls -->
-          <img
-            src="@/assets/photo.jpg"
-            class="about-photo"
-            alt="Samuel Ohrenberg headshot"
-            loading="lazy"
-          />
+          <img ref="aboutPhotoEl" src="@/assets/photo.jpg" class="about-photo about-animate"
+            :class="{ 'about-animate--visible': aboutPhotoVisible }" alt="Samuel Ohrenberg headshot" loading="lazy" />
         </v-col>
 
-        <v-col cols="12" sm="7" md="6" class="about-text-col">
+        <v-col ref="aboutTextEl" cols="12" sm="7" md="6" class="about-text-col about-animate about-animate--text"
+          :class="{ 'about-animate--visible': aboutTextVisible }">
           <h2 class="about-heading">So, Who Am I?</h2>
           <p class="about-body">
             I'm a software engineer from Oklahoma passionate about building robust, scalable
@@ -115,11 +95,11 @@ const shouldAnimate = computed(() => {
   return !sessionStorage.getItem(FIRST_LOAD_KEY)
 })
 
-const photoVisible    = ref(false)
+const photoVisible = ref(false)
 const greetingVisible = ref(false)
-const nameVisible     = ref(false)
-const taglineVisible  = ref(false)
-const subVisible      = ref(false)
+const nameVisible = ref(false)
+const taglineVisible = ref(false)
+const subVisible = ref(false)
 
 onMounted(() => {
   if (!shouldAnimate.value) {
@@ -130,11 +110,62 @@ onMounted(() => {
 
   sessionStorage.setItem(FIRST_LOAD_KEY, '1')
 
-  setTimeout(() => { photoVisible.value    = true }, 100)
+  setTimeout(() => { photoVisible.value = true }, 100)
   setTimeout(() => { greetingVisible.value = true }, 250)
-  setTimeout(() => { nameVisible.value     = true }, 380)
-  setTimeout(() => { taglineVisible.value  = true }, 490)
-  setTimeout(() => { subVisible.value      = true }, 590)
+  setTimeout(() => { nameVisible.value = true }, 380)
+  setTimeout(() => { taglineVisible.value = true }, 490)
+  setTimeout(() => { subVisible.value = true }, 590)
+})
+
+// ── About section entrance ──────────────────────────────────────────────
+const aboutPhotoEl = ref(null)
+const aboutTextEl = ref(null)
+const aboutPhotoVisible = ref(false)
+const aboutTextVisible = ref(false)
+
+const heroPhotoEl = ref(null)
+
+onMounted(() => {
+  // About section observer
+  const aboutObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          if (entry.target === aboutPhotoEl.value) aboutPhotoVisible.value = true
+          if (entry.target === aboutTextEl.value.$el) aboutTextVisible.value = true
+          aboutObserver.unobserve(entry.target)
+        }
+      })
+    },
+    { threshold: 0.15 }
+  )
+
+  if (aboutPhotoEl.value) aboutObserver.observe(aboutPhotoEl.value)
+  if (aboutTextEl.value) aboutObserver.observe(aboutTextEl.value.$el)
+
+  // Hero photo tilt
+  const photo = heroPhotoEl.value
+  if (!photo || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+  const handleMouseMove = (e) => {
+    const rect = photo.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    const dx = (e.clientX - cx) / (rect.width / 2)  // -1 to 1
+    const dy = (e.clientY - cy) / (rect.height / 2)  // -1 to 1
+    const rotY = dx * 6   // max 6deg
+    const rotX = -dy * 4  // max 4deg
+    photo.style.transform = `scaleX(-1) perspective(600px) rotateY(${rotY}deg) rotateX(${rotX}deg)`
+  }
+
+  const handleMouseLeave = () => {
+    photo.style.transform = 'scaleX(-1) perspective(600px) rotateY(0deg) rotateX(0deg)'
+  }
+
+  // Tilt responds to the whole hero section, not just the photo
+  const heroSection = photo.closest('section')
+  heroSection?.addEventListener('mousemove', handleMouseMove, { passive: true })
+  heroSection?.addEventListener('mouseleave', handleMouseLeave, { passive: true })
 })
 </script>
 
@@ -144,7 +175,10 @@ onMounted(() => {
   transition: opacity 0.5s ease-in-out;
   opacity: 1;
 }
-.fade { opacity: 0; }
+
+.fade {
+  opacity: 0;
+}
 
 /* ── Hero entrance animation ───────────────────── */
 .hero-animate {
@@ -156,6 +190,7 @@ onMounted(() => {
 .hero-photo.hero-animate {
   transform: scaleX(-1) translateX(20px);
 }
+
 .hero-photo.hero-animate--visible {
   transform: scaleX(-1) translateX(0) !important;
 }
@@ -171,9 +206,13 @@ onMounted(() => {
   width: 100%;
 }
 
-.hero-container { width: 100%; }
+.hero-container {
+  width: 100%;
+}
 
-.hero-row { min-height: 420px; }
+.hero-row {
+  min-height: 420px;
+}
 
 .hero-photo-col {
   display: flex;
@@ -187,6 +226,12 @@ onMounted(() => {
   transform: scaleX(-1);
   align-self: flex-end;
   filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
+  transition: transform 0.12s ease-out, filter 0.3s ease;
+  will-change: transform;
+}
+
+.hero-photo:not(:hover) {
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), filter 0.3s ease;
 }
 
 @media (max-width: 959px) {
@@ -194,6 +239,7 @@ onMounted(() => {
     max-width: 16rem;
     padding-top: 2rem;
   }
+
   .hero-row {
     min-height: unset;
     padding-bottom: 2rem;
@@ -241,7 +287,9 @@ onMounted(() => {
 }
 
 @media (max-width: 959px) {
-  .hero-tagline { justify-content: center; }
+  .hero-tagline {
+    justify-content: center;
+  }
 }
 
 .hero-inline-group {
@@ -251,7 +299,9 @@ onMounted(() => {
 }
 
 @media (max-width: 959px) {
-  .hero-inline-group { min-width: unset; }
+  .hero-inline-group {
+    min-width: unset;
+  }
 }
 
 .hero-sub {
@@ -265,7 +315,9 @@ onMounted(() => {
 }
 
 @media (max-width: 959px) {
-  .hero-sub { margin: 0 auto; }
+  .hero-sub {
+    margin: 0 auto;
+  }
 }
 
 /* ── About section ─────────────────────────────── */
@@ -280,7 +332,9 @@ onMounted(() => {
 }
 
 @media (max-width: 599px) {
-  .about-container { padding: 3rem 1.5rem; }
+  .about-container {
+    padding: 3rem 1.5rem;
+  }
 }
 
 .about-photo-col {
@@ -295,6 +349,11 @@ onMounted(() => {
   transform: scaleX(-1);
   border: 1px solid white;
   padding: 5px;
+  transition: box-shadow 0.6s ease, border-color 0.6s ease;
+}
+
+.about-animate--visible.about-photo {
+  box-shadow: 0 0 0 1px rgba(0, 172, 172, 0.3), 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 @media (max-width: 599px) {
@@ -307,9 +366,15 @@ onMounted(() => {
     object-fit: cover;
     box-shadow: 6px 6px 0 #001414;
   }
+
+  .about-animate--visible.about-photo {
+    box-shadow: 6px 6px 0 #001414, 0 0 0 1px rgba(0, 172, 172, 0.3);
+  }
 }
 
-.about-text-col { padding: 1.5rem; }
+.about-text-col {
+  padding: 1.5rem;
+}
 
 .about-heading {
   font-family: 'Patua One', serif;
@@ -318,6 +383,31 @@ onMounted(() => {
   color: #ffffff;
   margin: 0 0 1rem;
   line-height: 1.1;
+  position: relative;
+  display: inline-block;
+}
+
+.about-heading::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 3px;
+  background: #00acac;
+  border-radius: 2px;
+  transition: width 0.5s 0.35s ease;
+}
+
+.about-animate--visible .about-heading::after {
+  width: 60%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-heading::after {
+    width: 60%;
+    transition: none;
+  }
 }
 
 .about-body {
@@ -328,4 +418,36 @@ onMounted(() => {
   line-height: 1.75;
   margin: 0;
 }
+
+
+/* ── About entrance ──────────────────────────────────────────────────── */
+.about-animate {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+/* Photo slides in from the left instead */
+.about-animate:not(.about-animate--text) {
+  transform: translateX(-24px);
+}
+
+.about-animate--visible {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* Stagger: text waits slightly longer than the photo */
+.about-animate--text {
+  transition-delay: 0.12s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-animate {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 </style>

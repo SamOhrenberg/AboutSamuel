@@ -2,7 +2,7 @@
   <div class="projects-page">
 
     <!-- ── Page header ───────────────────────────────────────────────────── -->
-    <div class="projects-header">
+    <div class="projects-header page-header-animate">
       <div class="projects-header__text">
         <h1 class="projects-title">Projects</h1>
         <p class="projects-subtitle">
@@ -15,26 +15,15 @@
     <div v-if="!store.loading && techExperience.length" class="tech-bar" aria-label="Technology experience summary">
       <div class="tech-bar__label">Experience by Technology</div>
       <div class="tech-bar__items">
-        <div
-          v-for="item in techExperience"
-          :key="item.tech"
-          class="tech-bar__item"
-          :class="{ 'tech-bar__item--active': selectedTechs.includes(item.tech) }"
-          role="button"
-          tabindex="0"
+        <div v-for="item in techExperience" :key="item.tech" class="tech-bar__item"
+          :class="{ 'tech-bar__item--active': selectedTechs.includes(item.tech) }" role="button" tabindex="0"
           :aria-pressed="selectedTechs.includes(item.tech)"
           :aria-label="`${item.tech}: ${item.years} year${item.years !== 1 ? 's' : ''} across ${item.count} project${item.count !== 1 ? 's' : ''}`"
-          @click="toggleTech(item.tech)"
-          @keydown.enter.prevent="toggleTech(item.tech)"
-          @keydown.space.prevent="toggleTech(item.tech)"
-        >
+          @click="toggleTech(item.tech)" @keydown.enter.prevent="toggleTech(item.tech)"
+          @keydown.space.prevent="toggleTech(item.tech)">
           <span class="tech-bar__tech">{{ item.tech }}</span>
           <span class="tech-bar__years">{{ item.years }}yr</span>
-          <div
-            class="tech-bar__fill"
-            :style="{ width: (item.years / maxYears * 100) + '%' }"
-            aria-hidden="true"
-          />
+          <div class="tech-bar__fill" :style="{ width: (item.years / maxYears * 100) + '%' }" aria-hidden="true" />
         </div>
       </div>
     </div>
@@ -44,52 +33,25 @@
       <!-- Grouping toggle -->
       <div class="filter-toolbar__section">
         <span class="filter-toolbar__label">Group by</span>
-        <div
-          role="radiogroup"
-          aria-label="Group projects by"
-          class="group-toggle"
-        >
-          <button
-            v-for="opt in groupOptions"
-            :key="opt.value"
-            role="radio"
-            :aria-checked="groupBy === opt.value"
-            :class="['group-btn', { 'group-btn--active': groupBy === opt.value }]"
-            @click="groupBy = opt.value"
-          >{{ opt.label }}</button>
+        <div role="radiogroup" aria-label="Group projects by" class="group-toggle">
+          <button v-for="opt in groupOptions" :key="opt.value" role="radio" :aria-checked="groupBy === opt.value"
+            :class="['group-btn', { 'group-btn--active': groupBy === opt.value }]" @click="groupBy = opt.value">{{
+              opt.label }}</button>
         </div>
       </div>
 
       <!-- Tech multi-select filter -->
       <div class="filter-toolbar__section filter-toolbar__section--flex" v-if="allTags.length">
         <span class="filter-toolbar__label" id="filter-label">Filter by tech</span>
-        <div
-          role="group"
-          aria-labelledby="filter-label"
-          class="filter-chips"
-          ref="filterChipsEl"
-          @keydown="onFilterKeydown"
-        >
-          <button
-            v-for="(tag, i) in allTags"
-            :key="tag"
-            role="checkbox"
-            :aria-checked="selectedTechs.includes(tag)"
-            :class="['filter-chip', { 'filter-chip--active': selectedTechs.includes(tag) }]"
-            :data-index="i"
-            :tabindex="i === focusedChipIndex ? 0 : -1"
-            @click="toggleTech(tag)"
-            @focus="focusedChipIndex = i"
-          >{{ tag }}</button>
-          <button
-            v-if="selectedTechs.length"
-            class="filter-chip filter-chip--clear"
-            aria-label="Clear all tech filters"
-            :tabindex="focusedChipIndex === allTags.length ? 0 : -1"
-            :data-index="allTags.length"
-            @click="selectedTechs = []"
-            @focus="focusedChipIndex = allTags.length"
-          >
+        <div role="group" aria-labelledby="filter-label" class="filter-chips" ref="filterChipsEl"
+          @keydown="onFilterKeydown">
+          <button v-for="(tag, i) in allTags" :key="tag" role="checkbox" :aria-checked="selectedTechs.includes(tag)"
+            :class="['filter-chip', { 'filter-chip--active': selectedTechs.includes(tag) }]" :data-index="i"
+            :tabindex="i === focusedChipIndex ? 0 : -1" @click="toggleTech(tag)" @focus="focusedChipIndex = i">{{ tag
+            }}</button>
+          <button v-if="selectedTechs.length" class="filter-chip filter-chip--clear" aria-label="Clear all tech filters"
+            :tabindex="focusedChipIndex === allTags.length ? 0 : -1" :data-index="allTags.length"
+            @click="selectedTechs = []" @focus="focusedChipIndex = allTags.length">
             ✕ Clear
           </button>
         </div>
@@ -99,17 +61,9 @@
     <!-- Active filter summary -->
     <div v-if="selectedTechs.length" class="active-filters" aria-live="polite">
       <span class="active-filters__label">Showing projects with:</span>
-      <span
-        v-for="t in selectedTechs"
-        :key="t"
-        class="active-filter-tag"
-      >
+      <span v-for="t in selectedTechs" :key="t" class="active-filter-tag">
         {{ t }}
-        <button
-          class="active-filter-tag__remove"
-          :aria-label="`Remove ${t} filter`"
-          @click="toggleTech(t)"
-        >✕</button>
+        <button class="active-filter-tag__remove" :aria-label="`Remove ${t} filter`" @click="toggleTech(t)">✕</button>
       </span>
     </div>
 
@@ -174,23 +128,18 @@
           </span>
         </div>
         <div class="featured-grid">
-          <div
-            v-for="(project, i) in featuredProjects"
-            :key="project.projectId"
-            class="featured-card card-animate"
+          <div v-for="(project, i) in featuredProjects" :key="project.projectId" class="featured-card card-animate"
             :class="{ 'card-animate--visible': visibleCards.has(project.projectId) }"
-            :style="{ transitionDelay: `${i * 80}ms` }"
-            :data-project-id="project.projectId"
-            role="article"
-            :aria-label="project.title"
-          >
+            :style="{ transitionDelay: `${i === 0 ? 0 : 60 + (i - 1) * 100}ms` }" :data-project-id="project.projectId"
+            role="article" :aria-label="project.title">
             <div class="featured-card__body">
               <div class="featured-card__header">
                 <h2 class="featured-card__title">{{ project.title }}</h2>
                 <p class="featured-card__meta">
-                  {{ project.employer }}
+                  <span v-if="project.employer">{{ project.employer }}</span>
                   <span v-if="project.startYear" class="project-dates">
-                    · {{ project.startYear }}{{ project.endYear ? '–' + project.endYear : '–Present' }}
+                    {{ project.employer ? ' · ' : '' }}{{ project.startYear }}{{ project.endYear ? '–' + project.endYear
+                      : '–Present' }}
                   </span>
                 </p>
                 <p v-if="project.role" class="featured-card__role">{{ project.role }}</p>
@@ -204,22 +153,14 @@
               </div>
 
               <div class="project-card__stack">
-                <span
-                  v-for="tech in project.techStack"
-                  :key="tech"
-                  class="stack-chip"
-                  :class="{ 'stack-chip--highlighted': selectedTechs.includes(tech) }"
-                >{{ tech }}</span>
+                <span v-for="tech in project.techStack" :key="tech" class="stack-chip"
+                  :class="{ 'stack-chip--highlighted': selectedTechs.includes(tech) }">{{ tech }}</span>
               </div>
             </div>
 
             <div class="featured-card__footer">
-              <button
-                v-if="project.detail || project.impactStatement"
-                class="detail-btn"
-                :aria-label="`View details for ${project.title}`"
-                @click="openDetail(project)"
-              >
+              <button v-if="project.detail || project.impactStatement" class="detail-btn"
+                :aria-label="`View details for ${project.title}`" @click="openDetail(project)">
                 View Details
                 <span aria-hidden="true">→</span>
               </button>
@@ -229,18 +170,10 @@
       </div>
 
       <!-- Grouped project sections -->
-      <div
-        v-for="group in groupedProjects"
-        :key="group.key"
-        class="employer-group"
-      >
+      <div v-for="group in groupedProjects" :key="group.key" class="employer-group">
         <div class="employer-group__header">
-          <button
-            class="employer-group__toggle"
-            :aria-expanded="!collapsedGroups.has(group.key)"
-            :aria-controls="`group-${group.key}`"
-            @click="toggleGroup(group.key)"
-          >
+          <button class="employer-group__toggle" :aria-expanded="!collapsedGroups.has(group.key)"
+            :aria-controls="`group-${group.key}`" @click="toggleGroup(group.key)">
             <span class="employer-group__name">{{ group.label }}</span>
             <span class="employer-group__meta">
               {{ group.projects.length }} project{{ group.projects.length !== 1 ? 's' : '' }}
@@ -248,40 +181,29 @@
                 · {{ group.yearRange }}
               </span>
             </span>
-            <span
-              class="employer-group__chevron"
+            <span class="employer-group__chevron"
               :class="{ 'employer-group__chevron--collapsed': collapsedGroups.has(group.key) }"
-              aria-hidden="true"
-            >›</span>
+              aria-hidden="true">›</span>
           </button>
         </div>
 
-        <div
-          :id="`group-${group.key}`"
-          class="employer-group__content"
-          :class="{ 'employer-group__content--collapsed': collapsedGroups.has(group.key) }"
-        >
+        <div :id="`group-${group.key}`" class="employer-group__content"
+          :class="{ 'employer-group__content--collapsed': collapsedGroups.has(group.key) }">
           <div class="projects-grid">
-            <div
-              v-for="(project, i) in group.projects"
-              :key="project.projectId"
-              class="project-card card-animate"
+            <div v-for="(project, i) in group.projects" :key="project.projectId" class="project-card card-animate"
               :class="{
                 'card-animate--visible': visibleCards.has(project.projectId),
                 'project-card--highlighted': highlightedId === project.projectId,
-              }"
-              :style="{ transitionDelay: `${(i % 3) * 60}ms` }"
-              :data-project-id="project.projectId"
-              role="article"
-              :aria-label="project.title"
-            >
+              }" :style="{ transitionDelay: `${Math.min(i * 45, 300)}ms` }" :data-project-id="project.projectId"
+              role="article" :aria-label="project.title">
               <div class="project-card__body">
                 <div class="project-card__header">
                   <h2 class="project-card__title">{{ project.title }}</h2>
                   <p class="project-card__meta">
-                    {{ project.employer }}
+                    <span v-if="project.employer">{{ project.employer }}</span>
                     <span v-if="project.startYear" class="project-dates">
-                      · {{ project.startYear }}{{ project.endYear ? '–' + project.endYear : '–Present' }}
+                      {{ project.employer ? ' · ' : '' }}{{ project.startYear }}{{ project.endYear ? '–' +
+                        project.endYear : '–Present' }}
                     </span>
                   </p>
                   <p v-if="project.role" class="project-card__role">{{ project.role }}</p>
@@ -295,21 +217,14 @@
                 </div>
 
                 <div class="project-card__stack">
-                  <span
-                    v-for="tech in project.techStack"
-                    :key="tech"
-                    class="stack-chip"
-                    :class="{ 'stack-chip--highlighted': selectedTechs.includes(tech) }"
-                  >{{ tech }}</span>
+                  <span v-for="tech in project.techStack" :key="tech" class="stack-chip"
+                    :class="{ 'stack-chip--highlighted': selectedTechs.includes(tech) }">{{ tech }}</span>
                 </div>
               </div>
 
               <div v-if="project.detail || project.impactStatement" class="project-card__footer">
-                <button
-                  class="detail-btn detail-btn--subtle"
-                  :aria-label="`View details for ${project.title}`"
-                  @click="openDetail(project)"
-                >
+                <button class="detail-btn detail-btn--subtle" :aria-label="`View details for ${project.title}`"
+                  @click="openDetail(project)">
                   Details <span aria-hidden="true">→</span>
                 </button>
               </div>
@@ -329,32 +244,23 @@
     <!-- ── Detail drawer ──────────────────────────────────────────────────── -->
     <Teleport to="body">
       <Transition name="drawer">
-        <div
-          v-if="detailProject"
-          class="drawer-overlay"
-          role="dialog"
-          :aria-label="`Details for ${detailProject.title}`"
-          aria-modal="true"
-          @click.self="closeDetail"
-          @keydown.esc="closeDetail"
-        >
+        <div v-if="detailProject" class="drawer-overlay" role="dialog"
+          :aria-label="`Details for ${detailProject.title}`" aria-modal="true" @click.self="closeDetail"
+          @keydown.esc="closeDetail">
           <div class="drawer" ref="drawerEl" tabindex="-1">
             <div class="drawer__header">
               <div class="drawer__title-block">
                 <h2 class="drawer__title">{{ detailProject.title }}</h2>
                 <p class="drawer__meta">
-                  {{ detailProject.employer }}
+                  <span v-if="detailProject.employer">{{ detailProject.employer }}</span>
                   <span v-if="detailProject.startYear" class="project-dates">
-                    · {{ detailProject.startYear }}{{ detailProject.endYear ? '–' + detailProject.endYear : '–Present' }}
+                    {{ detailProject.employer ? ' · ' : '' }}{{ detailProject.startYear }}{{ detailProject.endYear ? '–'
+                      + detailProject.endYear : '–Present' }}
                   </span>
                 </p>
                 <p v-if="detailProject.role" class="drawer__role">{{ detailProject.role }}</p>
               </div>
-              <button
-                class="drawer__close"
-                aria-label="Close details"
-                @click="closeDetail"
-              >✕</button>
+              <button class="drawer__close" aria-label="Close details" @click="closeDetail">✕</button>
             </div>
 
             <div class="drawer__body">
@@ -374,11 +280,8 @@
               <div v-if="detailProject.techStack.length" class="drawer__stack">
                 <div class="drawer__section-label">Technologies Used</div>
                 <div class="drawer__stack-chips">
-                  <span
-                    v-for="tech in detailProject.techStack"
-                    :key="tech"
-                    class="stack-chip stack-chip--large"
-                  >{{ tech }}</span>
+                  <span v-for="tech in detailProject.techStack" :key="tech" class="stack-chip stack-chip--large">{{ tech
+                  }}</span>
                 </div>
               </div>
             </div>
@@ -398,26 +301,26 @@ import { marked } from 'marked'
 import { useRoute } from 'vue-router'
 import { useProjectStore } from '@/stores/projectStore'
 
-const store   = useRoute ? useProjectStore() : useProjectStore()
-const route   = useRoute()
+const store = useRoute ? useProjectStore() : useProjectStore()
+const route = useRoute()
 
 // ── State ────────────────────────────────────────────────────────────────────
-const selectedTechs    = ref([])
-const groupBy          = ref('employer')   // 'employer' | 'year' | 'none'
-const collapsedGroups  = ref(new Set())
-const visibleCards     = ref(new Set())
-const detailProject    = ref(null)
-const drawerEl         = ref(null)
-const filterChipsEl    = ref(null)
+const selectedTechs = ref([])
+const groupBy = ref('employer')   // 'employer' | 'year' | 'none'
+const collapsedGroups = ref(new Set())
+const visibleCards = ref(new Set())
+const detailProject = ref(null)
+const drawerEl = ref(null)
+const filterChipsEl = ref(null)
 const focusedChipIndex = ref(0)
-const highlightedId    = ref(null)
+const highlightedId = ref(null)
 
 let observer = null
 
 const groupOptions = [
   { value: 'employer', label: 'Employer' },
-  { value: 'year',     label: 'Period'   },
-  { value: 'none',     label: 'All'      },
+  { value: 'year', label: 'Period' },
+  { value: 'none', label: 'All' },
 ]
 
 // ── Chatbot integration: ?highlight=TechName ────────────────────────────────
@@ -494,7 +397,7 @@ const techExperience = computed(() => {
   const map = new Map()
   for (const project of store.projects) {
     const start = parseInt(project.startYear ?? '0') || 0
-    const end   = parseInt(project.endYear   ?? String(new Date().getFullYear())) || new Date().getFullYear()
+    const end = parseInt(project.endYear ?? String(new Date().getFullYear())) || new Date().getFullYear()
     const years = Math.max(end - start, 1)
 
     for (const tech of project.techStack) {
@@ -545,14 +448,14 @@ const groupedProjects = computed(() => {
   if (groupBy.value === 'employer') {
     const map = new Map()
     for (const p of projects) {
-      const key = p.employer || 'Personal / Other'
+      const key = p.employer || 'Personal / Independent'
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(p)
     }
     return [...map.entries()].map(([employer, projs]) => {
       const years = projs.flatMap(p => [p.startYear, p.endYear].filter(Boolean)).map(Number)
-      const minY  = years.length ? Math.min(...years) : null
-      const maxY  = years.length ? Math.max(...years) : null
+      const minY = years.length ? Math.min(...years) : null
+      const maxY = years.length ? Math.max(...years) : null
       return {
         key: employer,
         label: employer,
@@ -571,10 +474,10 @@ const groupedProjects = computed(() => {
     ])
     for (const p of projects) {
       const y = parseInt(p.startYear ?? '0') || 0
-      if (y >= 2023)      buckets.get('Recent (2023–Present)').push(p)
+      if (y >= 2023) buckets.get('Recent (2023–Present)').push(p)
       else if (y >= 2019) buckets.get('Mid Career (2019–2022)').push(p)
       else if (y >= 2015) buckets.get('Early Career (2015–2018)').push(p)
-      else                buckets.get('Other').push(p)
+      else buckets.get('Other').push(p)
     }
     return [...buckets.entries()]
       .filter(([, projs]) => projs.length)
@@ -592,13 +495,13 @@ const totalFilteredCount = computed(() =>
 function toggleTech(tech) {
   const idx = selectedTechs.value.indexOf(tech)
   if (idx === -1) selectedTechs.value = [...selectedTechs.value, tech]
-  else            selectedTechs.value = selectedTechs.value.filter(t => t !== tech)
+  else selectedTechs.value = selectedTechs.value.filter(t => t !== tech)
 }
 
 function toggleGroup(key) {
   const s = new Set(collapsedGroups.value)
   if (s.has(key)) s.delete(key)
-  else            s.add(key)
+  else s.add(key)
   collapsedGroups.value = s
 }
 
@@ -812,7 +715,9 @@ function onFilterKeydown(e) {
   outline: none;
 }
 
-.group-btn:last-child { border-right: none; }
+.group-btn:last-child {
+  border-right: none;
+}
 
 .group-btn:hover {
   background: rgba(var(--v-theme-secondary), 0.06);
@@ -918,7 +823,9 @@ function onFilterKeydown(e) {
   transition: opacity 0.15s;
 }
 
-.active-filter-tag__remove:hover { opacity: 1; }
+.active-filter-tag__remove:hover {
+  opacity: 1;
+}
 
 /* ── Projects body ───────────────────────────────────────────────────────── */
 .projects-body {
@@ -931,9 +838,8 @@ function onFilterKeydown(e) {
 /* ── Featured strip ──────────────────────────────────────────────────────── */
 .featured-strip {
   background: linear-gradient(135deg,
-    rgba(var(--v-theme-secondary), 0.06) 0%,
-    rgba(var(--v-theme-secondary), 0.02) 100%
-  );
+      rgba(var(--v-theme-secondary), 0.06) 0%,
+      rgba(var(--v-theme-secondary), 0.02) 100%);
   border: 1px solid rgba(var(--v-theme-secondary), 0.2);
   border-radius: 16px;
   padding: 1.75rem;
@@ -977,11 +883,34 @@ function onFilterKeydown(e) {
     transform 0.45s ease,
     box-shadow 0.15s ease;
   box-shadow: 0 0 0 1px rgba(var(--v-theme-secondary), 0.08);
+  position: relative;
+  overflow: hidden
+}
+
+.featured-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg,
+      rgba(var(--v-theme-secondary), 0.06) 0%,
+      transparent 50%,
+      rgba(var(--v-theme-secondary), 0.03) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.featured-card:hover::before {
+  opacity: 1;
 }
 
 .featured-card:hover {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(var(--v-theme-secondary), 0.25) !important;
-  transform: translateY(-4px);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(var(--v-theme-secondary), 0.35),
+    0 0 24px -4px rgba(var(--v-theme-secondary), 0.25) !important;
+  transform: translateY(-5px);
 }
 
 .featured-card__body {
@@ -989,7 +918,9 @@ function onFilterKeydown(e) {
   flex: 1;
 }
 
-.featured-card__header { margin-bottom: 0.75rem; }
+.featured-card__header {
+  margin-bottom: 0.75rem;
+}
 
 .featured-card__title {
   font-family: 'Patua One', serif;
@@ -1053,7 +984,12 @@ function onFilterKeydown(e) {
 }
 
 .employer-group__toggle:hover {
-  border-bottom-color: rgba(var(--v-theme-secondary), 0.5);
+  border-bottom-color: rgba(var(--v-theme-secondary), 0.6);
+}
+
+.employer-group__toggle:hover .employer-group__name {
+  color: rgb(var(--v-theme-secondary));
+  transition: color 0.2s ease;
 }
 
 .employer-group__toggle:focus-visible {
@@ -1157,9 +1093,17 @@ function onFilterKeydown(e) {
 }
 
 @keyframes highlight-pulse {
-  0%  { box-shadow: 0 0 0 4px rgba(var(--v-theme-secondary), 0.4); }
-  60% { box-shadow: 0 0 0 8px rgba(var(--v-theme-secondary), 0.15); }
-  100%{ box-shadow: 0 0 0 1px rgba(var(--v-theme-secondary), 0.1); }
+  0% {
+    box-shadow: 0 0 0 4px rgba(var(--v-theme-secondary), 0.4);
+  }
+
+  60% {
+    box-shadow: 0 0 0 8px rgba(var(--v-theme-secondary), 0.15);
+  }
+
+  100% {
+    box-shadow: 0 0 0 1px rgba(var(--v-theme-secondary), 0.1);
+  }
 }
 
 .project-card__body {
@@ -1167,7 +1111,9 @@ function onFilterKeydown(e) {
   flex: 1;
 }
 
-.project-card__header { margin-bottom: 0.6rem; }
+.project-card__header {
+  margin-bottom: 0.6rem;
+}
 
 .project-card__title {
   font-family: 'Patua One', serif;
@@ -1184,7 +1130,9 @@ function onFilterKeydown(e) {
   margin: 0 0 0.15rem;
 }
 
-.project-dates { opacity: 0.8; }
+.project-dates {
+  opacity: 0.8;
+}
 
 .project-card__role {
   font-size: 0.72rem;
@@ -1220,6 +1168,35 @@ function onFilterKeydown(e) {
   font-size: 0.78rem;
   line-height: 1.55;
   color: rgba(var(--v-theme-on-surface), 0.85);
+}
+
+@keyframes border-pulse {
+
+  0%,
+  100% {
+    border-left-color: rgba(var(--v-theme-secondary), 0.6);
+  }
+
+  50% {
+    border-left-color: rgb(var(--v-theme-secondary));
+  }
+}
+
+.impact-callout {
+  animation: border-pulse 3s ease-in-out infinite;
+}
+
+.impact-callout--featured {
+  animation: border-pulse 2.5s ease-in-out infinite;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+  .impact-callout,
+  .impact-callout--featured {
+    animation: none;
+  }
 }
 
 .impact-callout--featured {
@@ -1258,7 +1235,14 @@ function onFilterKeydown(e) {
   color: rgba(var(--v-theme-secondary), 0.8);
   border: 1px solid rgba(var(--v-theme-secondary), 0.15);
   letter-spacing: 0.02em;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.12s ease;
+}
+
+.stack-chip:hover {
+  transform: translateY(-1px);
+  background: rgba(var(--v-theme-secondary), 0.14);
+  color: rgb(var(--v-theme-secondary));
+  border-color: rgba(var(--v-theme-secondary), 0.3);
 }
 
 .stack-chip--highlighted {
@@ -1289,6 +1273,15 @@ function onFilterKeydown(e) {
   align-items: center;
   gap: 0.3rem;
   outline: none;
+}
+
+.detail-btn span[aria-hidden] {
+  display: inline-block;
+  transition: transform 0.18s ease;
+}
+
+.detail-btn:hover span[aria-hidden] {
+  transform: translateX(3px);
 }
 
 .detail-btn:hover {
@@ -1329,8 +1322,13 @@ function onFilterKeydown(e) {
 
 /* ── Skeleton loaders ────────────────────────────────────────────────────── */
 @keyframes shimmer {
-  0%   { background-position: -600px 0; }
-  100% { background-position:  600px 0; }
+  0% {
+    background-position: -600px 0;
+  }
+
+  100% {
+    background-position: 600px 0;
+  }
 }
 
 .skeleton-line,
@@ -1338,22 +1336,22 @@ function onFilterKeydown(e) {
 .skeleton-impact,
 .skeleton-chip {
   border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    rgba(255,255,255,0.04) 25%,
-    rgba(255,255,255,0.1)  50%,
-    rgba(255,255,255,0.04) 75%
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.04) 25%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.04) 75%);
   background-size: 1200px 100%;
   animation: shimmer 1.8s infinite linear;
 }
 
-.skeleton-card__body { padding: 1.25rem; }
+.skeleton-card__body {
+  padding: 1.25rem;
+}
 
 .skeleton-impact {
   height: 38px;
   border-radius: 0 6px 6px 0;
-  border-left: 3px solid rgba(255,255,255,0.08);
+  border-left: 3px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 0.85rem;
 }
 
@@ -1406,7 +1404,10 @@ function onFilterKeydown(e) {
   z-index: 1;
 }
 
-.drawer__title-block { flex: 1; min-width: 0; }
+.drawer__title-block {
+  flex: 1;
+  min-width: 0;
+}
 
 .drawer__title {
   font-family: 'Patua One', serif;
@@ -1505,9 +1506,13 @@ function onFilterKeydown(e) {
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .projects-page { padding: 0 0 3rem; }
+  .projects-page {
+    padding: 0 0 3rem;
+  }
 
-  .projects-header { padding: 2rem 1.25rem 1.5rem; }
+  .projects-header {
+    padding: 2rem 1.25rem 1.5rem;
+  }
 
   .tech-bar {
     margin: 0 1.25rem 1.5rem;
@@ -1517,11 +1522,17 @@ function onFilterKeydown(e) {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 
-  .filter-toolbar { padding: 0 1.25rem; }
+  .filter-toolbar {
+    padding: 0 1.25rem;
+  }
 
-  .active-filters { padding: 0 1.25rem 0.6rem; }
+  .active-filters {
+    padding: 0 1.25rem 0.6rem;
+  }
 
-  .projects-body { padding: 0 1.25rem; }
+  .projects-body {
+    padding: 0 1.25rem;
+  }
 
   .featured-grid {
     grid-template-columns: 1fr;
@@ -1553,8 +1564,13 @@ function onFilterKeydown(e) {
   margin: 1.25rem 0 0.5rem;
 }
 
-:deep(.drawer__detail-text) h2 { font-size: 1rem; }
-:deep(.drawer__detail-text) h3 { font-size: 0.9rem; }
+:deep(.drawer__detail-text) h2 {
+  font-size: 1rem;
+}
+
+:deep(.drawer__detail-text) h3 {
+  font-size: 0.9rem;
+}
 
 :deep(.drawer__detail-text) p {
   margin: 0 0 0.75rem;
@@ -1616,7 +1632,41 @@ function onFilterKeydown(e) {
 }
 
 /* Remove margin on last child to avoid extra padding at bottom */
-:deep(.drawer__detail-text) > *:last-child {
+:deep(.drawer__detail-text)>*:last-child {
   margin-bottom: 0;
+}
+
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-header-animate {
+  animation: fade-up 0.5s ease both;
+}
+
+.tech-bar {
+  animation: fade-up 0.5s 0.1s ease both;
+}
+
+.filter-toolbar {
+  animation: fade-up 0.5s 0.18s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .page-header-animate,
+  .tech-bar,
+  .filter-toolbar {
+    animation: none;
+  }
 }
 </style>
