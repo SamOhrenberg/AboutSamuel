@@ -14,6 +14,7 @@ public class WorkExperienceDto
     public List<string> Achievements { get; set; } = [];
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; }
+    public bool HasEmbedding { get; set; }
 
     public static WorkExperienceDto FromModel(WorkExperience job)
     {
@@ -37,7 +38,8 @@ public class WorkExperienceDto
             Summary         = job.Summary,
             Achievements    = achievements,
             DisplayOrder    = job.DisplayOrder,
-            IsActive        = job.IsActive
+            IsActive        = job.IsActive,
+            HasEmbedding    = job.EmbeddingJson != null
         };
     }
 }

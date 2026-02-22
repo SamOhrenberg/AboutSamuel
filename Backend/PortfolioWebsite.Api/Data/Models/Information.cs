@@ -4,6 +4,7 @@ public class Information
 {
     public Guid InformationId { get; set; }
     public string? Text { get; set; } = null;
+    public string? EmbeddingJson { get; set; }
     public virtual List<Keyword> Keywords { get; set; } = [];
 
     public Information() { }

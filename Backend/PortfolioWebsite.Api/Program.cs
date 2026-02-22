@@ -38,6 +38,7 @@ namespace PortfolioWebsite.Api
                         Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1");
                     return new AmazonBedrockRuntimeClient(region);
                 });
+                builder.Services.AddScoped<EmbeddingService>();
 
                 var allowedOrigins = builder.Configuration
                     .GetSection("AllowedOrigins").Get<string[]>();
@@ -91,14 +92,12 @@ namespace PortfolioWebsite.Api
                     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 });
 
-                builder.Services.AddDbContext<SqlDbContext>(options =>
-                {
-                    options.UseSqlServer(
-                        builder.Configuration.GetConnectionString("DefaultConnection"));
-                });
-
-                builder.Services.AddDbContextFactory<SqlDbContext>(options =>
+                builder.Services.AddPooledDbContextFactory<SqlDbContext>(options =>
                     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+                builder.Services.AddScoped(sp =>
+                    sp.GetRequiredService<IDbContextFactory<SqlDbContext>>().CreateDbContext());
+
 
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();

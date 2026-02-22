@@ -41,6 +41,31 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
         };
     }
 
+    [HttpPost("stream")]
+    public async Task StreamChat([FromBody] ChatLog chat, CancellationToken ct)
+    {
+        Response.ContentType = "text/event-stream";
+        Response.Headers["Cache-Control"] = "no-cache";
+        Response.Headers["X-Accel-Buffering"] = "no";
+
+        await foreach (var chunk in _chatService.StreamChat(chat, ct))
+        {
+            string payload;
+
+            if (chunk.IsToken)
+                payload = JsonSerializer.Serialize(new { token = chunk.Token });
+            else
+                payload = JsonSerializer.Serialize(chunk.Meta); // { redirectToPage, displayResume, tokenLimitReached }
+
+            await Response.WriteAsync($"data: {payload}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+        }
+
+        await Response.WriteAsync("data: [DONE]\n\n", ct);
+        await Response.Body.FlushAsync(ct);
+    }
+
+
     [HttpGet("resume")]
     public async Task<IActionResult> GetResume()
     {

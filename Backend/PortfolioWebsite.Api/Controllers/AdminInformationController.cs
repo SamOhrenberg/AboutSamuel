@@ -65,6 +65,7 @@ public class AdminInformationController(
         if (info is null) return NotFound();
 
         info.Text = request.Text;
+        info.EmbeddingJson = null;
 
         // Replace keywords entirely — remove old, add new
         _db.Keywords.RemoveRange(info.Keywords);

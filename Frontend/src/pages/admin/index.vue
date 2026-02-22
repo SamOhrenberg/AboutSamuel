@@ -6,12 +6,18 @@
         <v-icon color="secondary" size="28" class="mr-2">mdi-shield-account</v-icon>
         <span class="admin-title">Admin Panel</span>
       </div>
-      <v-btn variant="text" color="error" size="small" @click="handleLogout">
-        <v-icon start>mdi-logout</v-icon>
-        Logout
-      </v-btn>
+      <div class="d-flex align-center gap-2">
+        <v-btn variant="tonal" color="secondary" size="small" :loading="embeddingLoading"
+          @click="generateAllEmbeddings">
+          <v-icon start>mdi-brain</v-icon>
+          Generate Embeddings
+        </v-btn>
+        <v-btn variant="text" color="error" size="small" @click="handleLogout">
+          <v-icon start>mdi-logout</v-icon>
+          Logout
+        </v-btn>
+      </div>
     </div>
-
     <div class="stats-bar" v-if="stats">
       <div class="stat-chip" v-for="s in statItems" :key="s.label">
         <span class="stat-chip__value">{{ s.value }}</span>
@@ -62,6 +68,20 @@
               <span class="work-row__achievements">
                 {{ work.achievements?.length || 0 }} achievement{{ work.achievements?.length !== 1 ? 's' : '' }}
               </span>
+
+              <!-- Embedding status -->
+              <v-chip :color="work.hasEmbedding ? 'success' : 'warning'" size="x-small" variant="tonal"
+                :title="work.hasEmbedding ? 'Embedding up to date' : 'No embedding — regenerate after saving'">
+                <v-icon start size="10">{{ work.hasEmbedding ? 'mdi-brain' : 'mdi-brain-off' }}</v-icon>
+                {{ work.hasEmbedding ? 'Embedded' : 'No embedding' }}
+              </v-chip>
+
+              <v-btn icon size="x-small" variant="text" color="secondary" title="Regenerate embedding"
+                :loading="embeddingItemLoading === work.workExperienceId"
+                @click.stop="regenerateEmbedding('work-experience', work.workExperienceId)">
+                <v-icon>mdi-refresh</v-icon>
+              </v-btn>
+
               <v-btn icon size="x-small" variant="text" @click="openWorkDialog(work)">
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
@@ -119,6 +139,13 @@
             </div>
           </template>
 
+          <template #item.hasEmbedding="{ item }">
+            <v-icon :color="item.hasEmbedding ? 'success' : 'warning'" size="18"
+              :title="item.hasEmbedding ? 'Embedding up to date' : 'No embedding'">
+              {{ item.hasEmbedding ? 'mdi-brain' : 'mdi-brain-off' }}
+            </v-icon>
+          </template>
+
           <template #item.workExperienceId="{ item }">
             <span class="text-body-2">
               {{works.find(w => w.workExperienceId === item.workExperienceId)?.employer ?? '—'}}
@@ -129,6 +156,11 @@
             <div class="row-actions">
               <v-btn icon size="x-small" variant="text" @click="openProjectDialog(item)" title="Edit">
                 <v-icon>mdi-pencil</v-icon>
+              </v-btn>
+              <v-btn icon size="x-small" variant="text" color="secondary" title="Regenerate embedding"
+                :loading="embeddingItemLoading === item.projectId"
+                @click="regenerateEmbedding('project', item.projectId)">
+                <v-icon>mdi-refresh</v-icon>
               </v-btn>
               <v-btn icon size="x-small" variant="text" :color="item.isActive ? 'error' : 'success'"
                 @click="toggleProjectActive(item)" :title="item.isActive ? 'Deactivate' : 'Restore'">
@@ -169,6 +201,18 @@
             </div>
             <v-divider />
             <div class="info-card__actions">
+              <!-- Embedding status chip -->
+              <v-chip :color="item.hasEmbedding ? 'success' : 'warning'" size="x-small" variant="tonal" class="mr-auto">
+                <v-icon start size="10">{{ item.hasEmbedding ? 'mdi-brain' : 'mdi-brain-off' }}</v-icon>
+                {{ item.hasEmbedding ? 'Embedded' : 'No embedding' }}
+              </v-chip>
+
+              <v-btn size="x-small" variant="text" color="secondary" title="Regenerate embedding"
+                :loading="embeddingItemLoading === item.informationId"
+                @click="regenerateEmbedding('information', item.informationId)">
+                <v-icon start size="14">mdi-refresh</v-icon>
+                Sync
+              </v-btn>
               <v-btn size="x-small" variant="text" color="secondary" @click="openInfoDialog(item)">
                 <v-icon start size="14">mdi-pencil</v-icon>Edit
               </v-btn>
@@ -672,8 +716,9 @@ const projectHeaders = [
   { title: 'Order', key: 'displayOrder', sortable: true, width: 80 },
   { title: 'Featured', key: 'isFeatured', sortable: true, width: 80 },
   { title: 'Status', key: 'isActive', sortable: true, width: 100 },
+  { title: 'AI', key: 'hasEmbedding', sortable: false, width: 80 },  // ← add
   { title: 'Stack', key: 'techStack', sortable: false },
-  { title: '', key: 'actions', sortable: false, width: 90 }
+  { title: '', key: 'actions', sortable: false, width: 110 }
 ]
 
 const filteredProjects = computed(() => {
@@ -954,6 +999,48 @@ onMounted(() => {
   loadStats()
   loadWorks() // Initial tab is work-experience
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EMBEDDINGS
+// ═══════════════════════════════════════════════════════════════════════════
+const embeddingLoading = ref(false)
+const embeddingItemLoading = ref(null) // tracks which item id is regenerating
+
+async function generateAllEmbeddings() {
+  embeddingLoading.value = true
+  try {
+    const res = await adminStore.apiFetch('/admin/generate-embeddings', { method: 'POST' })
+    if (!res.ok) throw new Error()
+    const data = await res.json()
+    notify(`Embeddings generated: ${data.success} succeeded, ${data.failed} failed`)
+    // Reload all tabs so indicators update
+    await Promise.all([loadWorks(), loadProjects(), loadInformation()])
+  } catch {
+    notify('Failed to generate embeddings', 'error')
+  } finally {
+    embeddingLoading.value = false
+  }
+}
+
+async function regenerateEmbedding(type, id) {
+  embeddingItemLoading.value = id
+  try {
+    const res = await adminStore.apiFetch(
+      `/admin/generate-embeddings/${type}/${id}`,
+      { method: 'POST' }
+    )
+    if (!res.ok) throw new Error()
+    notify('Embedding regenerated')
+    // Reload just the relevant tab
+    if (type === 'information') await loadInformation()
+    if (type === 'project') await loadProjects()
+    if (type === 'work-experience') await loadWorks()
+  } catch {
+    notify('Failed to regenerate embedding', 'error')
+  } finally {
+    embeddingItemLoading.value = null
+  }
+}
 </script>
 
 <style scoped>
@@ -1511,5 +1598,9 @@ onMounted(() => {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.admin-header .gap-2 {
+  gap: 0.5rem;
 }
 </style>

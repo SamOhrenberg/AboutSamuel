@@ -22,5 +22,7 @@ public class WorkExperience
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; } = true;
 
+    public string? EmbeddingJson { get; set; }
+
     public virtual ICollection<Project> Projects { get; set; } = [];
 }

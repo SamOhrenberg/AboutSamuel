@@ -130,6 +130,7 @@ public class AdminProjectController(
         project.IsActive = request.IsActive;
         project.StartYear = request.StartYear;
         project.EndYear = request.EndYear;
+        project.EmbeddingJson = null;
         return project;
     }
 }
