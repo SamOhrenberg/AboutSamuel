@@ -61,7 +61,8 @@ public class ChatService
     private readonly IDbContextFactory<SqlDbContext> _dbContextFactory;
     private readonly IAmazonBedrockRuntime _bedrockClient;
     private readonly ContactService _contactService;
-
+    private readonly EmbeddingService _embeddingService;
+    
     private record ModelSettings(string Model);
     private readonly ModelSettings _toolUse;
     private readonly ModelSettings _questions;
@@ -82,13 +83,15 @@ public class ChatService
         SqlDbContext dbContext,
         IDbContextFactory<SqlDbContext> dbContextFactory,
         IAmazonBedrockRuntime bedrockClient,
-        ContactService contactService)
+        ContactService contactService,
+        EmbeddingService embeddingService)
     {
         _logger = logger;
         _dbContext = dbContext;
         _dbContextFactory = dbContextFactory; // for parallel reads
         _bedrockClient = bedrockClient;
         _contactService = contactService;
+        _embeddingService = embeddingService;
 
         string toolModel = configuration.GetValue<string>("ChatSettings:ToolUse:Model")
             ?? throw new NullReferenceException("ChatSettings:ToolUse:Model must be populated in settings");
@@ -923,7 +926,7 @@ public class ChatService
             Role = message.Role,
             Content = cleanBlocks
         };
-    }
+    } 
 
     private async Task<ToolExecutionResult> ExecuteTool(
     string toolName,
@@ -1344,36 +1347,30 @@ public class ChatService
     private async Task<string> GetRelevantInformation(IEnumerable<string> tokens)
     {
         var tokenList = tokens.Where(t => t.Length >= MinTokenLength).ToList();
+        var queryText = string.Join(' ', tokenList);
 
-        // Create three independent contexts and fire all queries simultaneously
+        // Three DB fetches + embedding generation all in parallel
         await using var ctx1 = await _dbContextFactory.CreateDbContextAsync();
         await using var ctx2 = await _dbContextFactory.CreateDbContextAsync();
         await using var ctx3 = await _dbContextFactory.CreateDbContextAsync();
 
-        var informationTask = ctx1.Information
-            .Include(i => i.Keywords)
-            .ToListAsync();
+        var informationTask = ctx1.Information.Include(i => i.Keywords).ToListAsync();
+        var projectsTask = ctx2.Projects.Include(p => p.WorkExperience).Where(p => p.IsActive).ToListAsync();
+        var workTask = ctx3.WorkExperiences.Where(j => j.IsActive).ToListAsync();
+        var queryEmbeddingTask = _embeddingService.GetEmbeddingAsync(queryText);
 
-        var projectsTask = ctx2.Projects
-            .Include(p => p.WorkExperience)
-            .Where(p => p.IsActive)
-            .ToListAsync();
-
-        var workTask = ctx3.WorkExperiences
-            .Where(j => j.IsActive)
-            .ToListAsync();
-
-        await Task.WhenAll(informationTask, projectsTask, workTask);
+        await Task.WhenAll(informationTask, projectsTask, workTask, queryEmbeddingTask);
 
         var informations = await informationTask;
         var projects = await projectsTask;
         var work = await workTask;
+        var queryEmbedding = await queryEmbeddingTask;
 
-        // Everything below this line is unchanged
         var projectInfos = projects.Select(BuildProjectInformation).ToList();
         var workInfos = work.Select(BuildWorkExperienceInformation).ToList();
         var allEntries = informations.Concat(projectInfos).Concat(workInfos).ToList();
 
+        // Populate keyword cache (unchanged from original)
         foreach (var info in allEntries)
         {
             var cached = _keywordCache.GetOrAdd(
@@ -1391,25 +1388,50 @@ public class ChatService
         if (allEntries.Count <= MaxContextEntries)
             return BuildContextBlock(allEntries);
 
-        var scored = allEntries.Select(i => new
+        List<Information> top;
+
+        if (queryEmbedding != null)
         {
-            Information = i,
-            Score = ScoreEntry(i, tokenList)
-        }).ToList();
+            // Primary path: semantic similarity
+            // Entries without an embedding yet fall back to normalized keyword score
+            top = allEntries
+                .Select(entry =>
+                {
+                    var entryEmbedding = EmbeddingService.DeserializeEmbedding(entry.EmbeddingJson);
+                    float score = entryEmbedding != null
+                        ? EmbeddingService.CosineSimilarity(queryEmbedding, entryEmbedding)
+                        : ScoreEntry(entry, tokenList) / 100f;
 
-        var top = scored
-            .Where(s => s.Score > 0)
-            .OrderByDescending(s => s.Score)
-            .Take(MaxContextEntries)
-            .Select(s => s.Information)
-            .ToList();
-
-        if (top.Count == 0)
-            top = scored
-                .OrderByDescending(s => s.Score)
+                    return (entry, score);
+                })
+                .OrderByDescending(x => x.score)
                 .Take(MaxContextEntries)
-                .Select(s => s.Information)
+                .Select(x => x.entry)
                 .ToList();
+        }
+        else
+        {
+            // Fallback: Titan call failed, use keyword scoring
+            _logger.LogWarning("Query embedding unavailable, falling back to keyword scoring");
+
+            var scored = allEntries
+                .Select(i => (Information: i, Score: ScoreEntry(i, tokenList)))
+                .ToList();
+
+            top = scored
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .Take(MaxContextEntries)
+                .Select(x => x.Information)
+                .ToList();
+
+            if (top.Count == 0)
+                top = scored
+                    .OrderByDescending(x => x.Score)
+                    .Take(MaxContextEntries)
+                    .Select(x => x.Information)
+                    .ToList();
+        }
 
         return BuildContextBlock(top);
     }
@@ -1441,60 +1463,40 @@ public class ChatService
 
     private static Information BuildProjectInformation(Project project)
     {
+        var text = BuildProjectRagText(project);
+
         var techStack = DeserializeTechStack(project.TechStack);
-        var years = BuildYearRange(project.StartYear, project.EndYear);
-        var employer = project.WorkExperience?.Employer;
-
-        var sb = new StringBuilder();
-        sb.AppendLine($"Project: {project.Title}");
-        if (employer is not null) sb.AppendLine($"Employer: {employer}");
-        sb.AppendLine($"Role: {project.Role}");
-        if (years != null) sb.AppendLine($"Years: {years}");
-        sb.AppendLine($"Summary: {project.Summary}");
-        if (!string.IsNullOrWhiteSpace(project.Detail))
-            sb.AppendLine($"Detail: {project.Detail}");
-        if (!string.IsNullOrWhiteSpace(project.ImpactStatement))
-            sb.AppendLine($"Impact: {project.ImpactStatement}");
-        if (techStack.Count > 0)
-            sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
-
         var keywords = techStack
             .Select(t => new Keyword(t.ToLower(), null!))
             .Concat(Tokenizer.Tokenize(
-                $"{project.Title} {employer} {project.Role} {project.Summary} {project.Detail} {project.ImpactStatement}")
+                $"{project.Title} {project.WorkExperience?.Employer} {project.Role} " +
+                $"{project.Summary} {project.Detail} {project.ImpactStatement}")
                 .Select(t => new Keyword(t, null!)))
             .ToList();
 
-        return new Information(project.ProjectId, sb.ToString().Trim(), keywords);
+        return new Information(project.ProjectId, text, keywords)
+        {
+            EmbeddingJson = project.EmbeddingJson  // carry stored embedding through
+        };
     }
 
     private static Information BuildWorkExperienceInformation(WorkExperience job)
     {
+        var text = BuildWorkRagText(job);
+
         List<string> achievements;
         try { achievements = JsonSerializer.Deserialize<List<string>>(job.Achievements) ?? []; }
         catch { achievements = []; }
-
-        var years = BuildYearRange(job.StartYear, job.EndYear);
-
-        var sb = new StringBuilder();
-        sb.AppendLine($"Job: {job.Title}");
-        sb.AppendLine($"Employer: {job.Employer}");
-        if (years != null) sb.AppendLine($"Years: {years}");
-        if (!string.IsNullOrWhiteSpace(job.Summary))
-            sb.AppendLine($"Summary: {job.Summary}");
-        if (achievements.Count > 0)
-        {
-            sb.AppendLine("Achievements:");
-            foreach (var achievement in achievements)
-                sb.AppendLine($"  - {achievement}");
-        }
 
         var keywords = Tokenizer
             .Tokenize($"{job.Title} {job.Employer} {job.Summary} {string.Join(' ', achievements)}")
             .Select(t => new Keyword(t, null!))
             .ToList();
 
-        return new Information(job.WorkExperienceId, sb.ToString().Trim(), keywords);
+        return new Information(job.WorkExperienceId, text, keywords)
+        {
+            EmbeddingJson = job.EmbeddingJson  // carry stored embedding through
+        };
     }
 
     private static string BuildContextBlock(IEnumerable<Information> entries)
@@ -1582,5 +1584,51 @@ public class ChatService
         catch { }
 
         return null;
+    }
+
+    internal static string BuildProjectRagText(Project project)
+    {
+        var techStack = DeserializeTechStack(project.TechStack);
+        var years = BuildYearRange(project.StartYear, project.EndYear);
+        var employer = project.WorkExperience?.Employer;
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Project: {project.Title}");
+        if (employer is not null) sb.AppendLine($"Employer: {employer}");
+        sb.AppendLine($"Role: {project.Role}");
+        if (years != null) sb.AppendLine($"Years: {years}");
+        sb.AppendLine($"Summary: {project.Summary}");
+        if (!string.IsNullOrWhiteSpace(project.Detail))
+            sb.AppendLine($"Detail: {project.Detail}");
+        if (!string.IsNullOrWhiteSpace(project.ImpactStatement))
+            sb.AppendLine($"Impact: {project.ImpactStatement}");
+        if (techStack.Count > 0)
+            sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
+
+        return sb.ToString().Trim();
+    }
+
+    internal static string BuildWorkRagText(WorkExperience job)
+    {
+        List<string> achievements;
+        try { achievements = JsonSerializer.Deserialize<List<string>>(job.Achievements) ?? []; }
+        catch { achievements = []; }
+
+        var years = BuildYearRange(job.StartYear, job.EndYear);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Job: {job.Title}");
+        sb.AppendLine($"Employer: {job.Employer}");
+        if (years != null) sb.AppendLine($"Years: {years}");
+        if (!string.IsNullOrWhiteSpace(job.Summary))
+            sb.AppendLine($"Summary: {job.Summary}");
+        if (achievements.Count > 0)
+        {
+            sb.AppendLine("Achievements:");
+            foreach (var a in achievements)
+                sb.AppendLine($"  - {a}");
+        }
+
+        return sb.ToString().Trim();
     }
 }

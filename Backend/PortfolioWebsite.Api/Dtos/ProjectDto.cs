@@ -23,6 +23,8 @@ public class ProjectDto
     public string? StartYear { get; set; }
     public string? EndYear { get; set; }
 
+    public bool HasEmbedding { get; set; }
+
     public static ProjectDto FromModel(Project project)
     {
         List<string> techStack;
@@ -48,7 +50,8 @@ public class ProjectDto
             IsActive = project.IsActive,
             IsFeatured = project.IsFeatured,
             StartYear = project.StartYear,
-            EndYear = project.EndYear
+            EndYear = project.EndYear,
+            HasEmbedding = project.EmbeddingJson != null
         };
     }
 }

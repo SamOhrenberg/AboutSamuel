@@ -38,6 +38,7 @@ namespace PortfolioWebsite.Api
                         Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1");
                     return new AmazonBedrockRuntimeClient(region);
                 });
+                builder.Services.AddScoped<EmbeddingService>();
 
                 var allowedOrigins = builder.Configuration
                     .GetSection("AllowedOrigins").Get<string[]>();

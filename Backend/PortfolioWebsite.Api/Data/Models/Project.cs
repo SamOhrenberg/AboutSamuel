@@ -20,4 +20,6 @@ public class Project
     public bool IsActive { get; set; } = true;
     public string? StartYear { get; set; }
     public string? EndYear { get; set; }
+
+    public string? EmbeddingJson { get; set; }
 }
