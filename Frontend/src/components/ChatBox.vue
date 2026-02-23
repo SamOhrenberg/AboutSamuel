@@ -64,6 +64,11 @@ function clearHistory() {
   localStorage.removeItem('samuellm_chat')
 }
 
+function closeChat() {
+  store.isFullscreen = false
+  store.isOpen = false
+}
+
 // ── Copy message ──────────────────────────────────────────
 async function copyMessage(messageItem) {
   await navigator.clipboard.writeText(messageItem.message)
@@ -147,7 +152,7 @@ async function checkApiStatus() {
               :aria-label="store.isFullscreen ? 'Collapse chat' : 'Expand chat'">
               <v-icon size="16">{{ store.isFullscreen ? 'mdi-arrow-collapse' : 'mdi-arrow-expand' }}</v-icon>
             </button>
-            <button class="titlebar-btn titlebar-btn--close" @click="store.isOpen = false" aria-label="Close chat">
+            <button class="titlebar-btn titlebar-btn--close" @click="closeChat" aria-label="Close chat">
               <v-icon size="16">mdi-close</v-icon>
             </button>
           </div>
