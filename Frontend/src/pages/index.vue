@@ -41,13 +41,13 @@
     <v-container class="about-container">
       <v-row align="center" justify="center" class="about-row">
 
-        <v-col cols="12" sm="5" md="4" class="about-photo-col">
+        <v-col cols="12"  lg="4" class="about-photo-col"  style="order: 1">
           <img ref="aboutPhotoEl" src="@/assets/photo.jpg" class="about-photo about-animate"
             :class="{ 'about-animate--visible': aboutPhotoVisible }" alt="Samuel Ohrenberg headshot" loading="lazy" />
         </v-col>
 
-        <v-col ref="aboutTextEl" cols="12" sm="7" md="6" class="about-text-col about-animate about-animate--text"
-          :class="{ 'about-animate--visible': aboutTextVisible }">
+        <v-col ref="aboutTextEl" cols="12"  lg="6" class="about-text-col about-animate about-animate--text"
+          :class="{ 'about-animate--visible': aboutTextVisible }"  style="order: 2">
           <h2 class="about-heading">So, Who Am I?</h2>
           <p class="about-body">
             I'm a software engineer from Oklahoma passionate about building robust, scalable
@@ -212,6 +212,7 @@ onMounted(() => {
 
 .hero-row {
   min-height: 420px;
+  gap: 0 3rem;
 }
 
 .hero-photo-col {
@@ -234,27 +235,115 @@ onMounted(() => {
   transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), filter 0.3s ease;
 }
 
-@media (max-width: 959px) {
-  .hero-photo {
-    max-width: 16rem;
-    padding-top: 2rem;
+@media (max-width: 1200px) {
+  .hero-photo-col {
+    position: relative;
+    overflow: hidden;
+    /* Spotlight effect behind Samuel */
+    background: radial-gradient(
+      ellipse 70% 50% at 50% 75%,  /* pull it up slightly */
+      rgba(0, 172, 172, 0.12) 0%,
+      transparent 70%
+    );
+  }
+
+  .hero-text-col {
+    text-align: center;
+    background: linear-gradient(170deg,
+        #0d4444 0%,
+        #0a3d3d 50%,
+        #083838 100%);
+    border-top: 2px solid rgba(139, 233, 253, 0.3);
+    /* Glowing top edge */
+    box-shadow:
+      0 -1px 0 rgba(139, 233, 253, 0.1),
+      0 -8px 40px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(139, 233, 253, 0.08);
+    margin-top: -3rem;
+    margin-left: -12px;
+    margin-right: -12px;
+    width: calc(100% + 24px);
+    max-width: calc(100% + 24px);
+    position: relative;
+    z-index: 2;
+    padding: 2.5rem 2rem 3rem;
+
+    /* Subtle circuit-board-like corner accent */
+    border-bottom: 1px solid rgba(139, 233, 253, 0.08);
+  }
+
+  /* Decorative cyan accent bar above "Nice to Meet You" */
+  .hero-text-col::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    border-radius: 2px;
+    filter: blur(1px);
+  }
+
+  .hero-greeting {
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+  }
+
+  .hero-name {
+    font-size: clamp(2rem, 7vw, 3rem);
+    text-shadow: 0 0 40px rgba(0, 172, 172, 0.3);
+  }
+
+  .hero-tagline {
+    justify-content: center;
+    font-size: clamp(1rem, 3.5vw, 1.5rem);
+  }
+
+  .hero-inline-group {
+    min-width: unset;
+  }
+
+  .hero-sub {
+    margin: 0 auto;
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
+
+  .hero-section {
+    overflow: hidden;
   }
 
   .hero-row {
     min-height: unset;
-    padding-bottom: 2rem;
+    padding-bottom: 0;
+    position: relative;
   }
 }
 
 .hero-text-col {
   padding: 3rem 2rem;
-  max-width: 600px;
+  max-width: 700px;
 }
 
-@media (max-width: 959px) {
+@media (max-width: 1200px) {
   .hero-text-col {
-    padding: 1rem 1.5rem 2rem;
+    padding: 2rem 1.5rem 2.5rem;
     text-align: center;
+    background: #0a3d3d;
+    border-top: 1px solid rgba(139, 233, 253, 0.15);
+    margin-top: -3rem;
+    margin-left: -12px;
+    margin-right: -12px;
+    width: calc(100% + 24px);
+    max-width: calc(100% + 24px);
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .hero-section {
+    overflow: hidden;
   }
 }
 
@@ -263,6 +352,7 @@ onMounted(() => {
   font-size: 1.4rem;
   color: #00acac;
   margin: 0 0 0.25rem;
+  padding-top: 1rem;
 }
 
 .hero-name {
@@ -286,7 +376,7 @@ onMounted(() => {
   gap: 0.25rem;
 }
 
-@media (max-width: 959px) {
+@media (max-width: 1200px) {
   .hero-tagline {
     justify-content: center;
   }
@@ -298,7 +388,7 @@ onMounted(() => {
   align-items: baseline;
 }
 
-@media (max-width: 959px) {
+@media (max-width: 1200px) {
   .hero-inline-group {
     min-width: unset;
   }
@@ -312,9 +402,10 @@ onMounted(() => {
   line-height: 1.6;
   max-width: 480px;
   margin: 0;
+  padding-bottom: 1rem;
 }
 
-@media (max-width: 959px) {
+@media (max-width: 1200px) {
   .hero-sub {
     margin: 0 auto;
   }
@@ -369,6 +460,22 @@ onMounted(() => {
 
   .about-animate--visible.about-photo {
     box-shadow: 6px 6px 0 #001414, 0 0 0 1px rgba(0, 172, 172, 0.3);
+  }
+}
+
+@media (max-width: 900px) {
+  .about-photo-col {
+    order: 1;
+  }
+
+  .about-text-col {
+    order: 2;
+    text-align: center;
+  }
+
+  .about-heading::after {
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 
@@ -449,5 +556,4 @@ onMounted(() => {
     transition: none;
   }
 }
-
 </style>
