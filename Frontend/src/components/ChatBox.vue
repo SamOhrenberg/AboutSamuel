@@ -51,6 +51,11 @@ function sendPrompt(prompt) {
   sendMessage()
 }
 
+function clearHistory() {
+  store.$patch({ messageHistory: [], archivedMessageHistory: [] })
+  localStorage.removeItem('samuellm_chat')
+}
+
 // ── Copy message ──────────────────────────────────────────
 async function copyMessage(messageItem) {
   await navigator.clipboard.writeText(messageItem.message)
@@ -114,7 +119,10 @@ watch(
             <span class="titlebar-label">SAMUELLM<span class="titlebar-version">_v1.0</span></span>
           </div>
           <div class="titlebar-controls">
-            <!-- Expand toggle (desktop only) -->
+            <button class="titlebar-btn" @click="clearHistory" aria-label="Clear chat history"
+              title="Clear chat history">
+              <v-icon size="16">mdi-delete-outline</v-icon>
+            </button>
             <button class="titlebar-btn d-none d-sm-flex" @click="toggleExpand"
               :aria-label="store.isFullscreen ? 'Collapse chat' : 'Expand chat'">
               <v-icon size="16">{{ isExpanded ? 'mdi-arrow-collapse' : 'mdi-arrow-expand' }}</v-icon>
@@ -188,8 +196,7 @@ watch(
               SamuelLM: messageItem.sentBy === 'SamuelLM',
               User: messageItem.sentBy !== 'SamuelLM',
               'chat-message': true,
-            }"
-              :aria-label="`${messageItem.sentBy === 'SamuelLM' ? 'SamuelLM' : 'You'} said: ${messageItem.message}`">
+            }" :aria-label="`${messageItem.sentBy === 'SamuelLM' ? 'SamuelLM' : 'You'} said: ${messageItem.message}`">
               <div class="message-header">
                 <div class="message-header-left">
                   <v-icon v-if="messageItem.sentBy === 'SamuelLM'" size="13" class="message-avatar">mdi-robot</v-icon>
@@ -799,8 +806,8 @@ watch(
 
 .input-hint {
   font-family: 'Courier New', monospace;
-  font-size: 0.6rem;
-  color: rgba(139, 233, 253, 0.2);
+  font-size: 0.62rem;
+  color: rgba(139, 233, 253, 0.65);
   letter-spacing: 0.03em;
 }
 
@@ -1205,5 +1212,11 @@ watch(
     height: 100dvh !important;
     z-index: 1000;
   }
+}
+
+.titlebar-btn:has(.mdi-delete-outline):hover {
+  background: rgba(255, 85, 85, 0.15);
+  color: #FF5555;
+  border-color: rgba(255, 85, 85, 0.3);
 }
 </style>

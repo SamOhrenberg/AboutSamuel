@@ -21,11 +21,6 @@ export const useChatStore = defineStore('chat', {
       return id
     })(),
     archivedMessageHistory: [
-      {
-        sentBy: 'SamuelLM',
-        sentAt: new Date(),
-        message: 'Hello! I\'m SamuelLM. Ask me anything about Samuel\'s background, skills, or experience.',
-      },
     ],
     messageHistory: [],
     message: '',

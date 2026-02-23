@@ -48,7 +48,7 @@ const chatStore = useChatStore()
 const CHAT_DEFAULT_WIDTH = Math.round(window.innerWidth * 0.33)
 const CHAT_MIN_WIDTH = 280
 const CHAT_COLLAPSE_THRESHOLD = 220
-const CHAT_FULLSCREEN_THRESHOLD = Math.round(window.innerWidth * 0.65)
+const CHAT_FULLSCREEN_THRESHOLD = Math.round(window.innerWidth * 0.75)
 
 const chatWidth = ref(CHAT_DEFAULT_WIDTH)
 
