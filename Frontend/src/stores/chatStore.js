@@ -6,6 +6,7 @@ export const useChatStore = defineStore('chat', {
   state: () => ({
     isOpen: true,
     isExpanded: false,
+    isFullscreen: false,
     isLoading: false,    // true while waiting for first token
     isStreaming: false,  // true while tokens are actively flowing
     width: 250,

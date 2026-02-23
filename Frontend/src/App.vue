@@ -15,7 +15,11 @@
           <Footer />
         </div>
 
-        <aside id="chat-box" aria-label="AI Chat Assistant">
+        <aside id="chat-box" aria-label="AI Chat Assistant" :style="chatStore.isOpen ? { width: chatWidth + 'px' } : {}"
+          :class="{ 'chat-fullscreen': chatStore.isFullscreen }">
+          <!-- Drag handle -->
+          <div v-if="chatStore.isOpen && !chatStore.isFullscreen" id="chat-resize-handle" @mousedown="startResize"
+            aria-hidden="true" />
           <ChatBox />
         </aside>
       </div>
@@ -32,10 +36,21 @@ import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
 import { useResumeStore } from '@/stores/resumeStore'
 import { onMounted } from 'vue'
+import { useChatStore } from '@/stores/chatStore'
+
 const appShell = ref(null)
 const router = useRouter()
 
 const resumeStore = useResumeStore()
+
+const chatStore = useChatStore()
+
+const CHAT_DEFAULT_WIDTH = Math.round(window.innerWidth * 0.33)
+const CHAT_MIN_WIDTH = 280
+const CHAT_COLLAPSE_THRESHOLD = 220
+const CHAT_FULLSCREEN_THRESHOLD = Math.round(window.innerWidth * 0.65)
+
+const chatWidth = ref(CHAT_DEFAULT_WIDTH)
 
 // Route order — used to determine slide direction
 const routeOrder = ['/', '/resume', '/work-experience', '/projects', '/contact']
@@ -43,7 +58,7 @@ const routeOrder = ['/', '/resume', '/work-experience', '/projects', '/contact']
 const transitionName = ref('page-forward')
 router.beforeEach((to, from) => {
   // Set transition direction before the component swaps
-  const toIdx   = routeOrder.indexOf(to.path)
+  const toIdx = routeOrder.indexOf(to.path)
   const fromIdx = routeOrder.indexOf(from.path)
 
   if (toIdx === -1 || fromIdx === -1) {
@@ -85,6 +100,51 @@ onMounted(() => {
     setTimeout(preload, 1000)
   }
 })
+
+watch(() => chatStore.isOpen, (val) => {
+  if (val) {
+    chatWidth.value = CHAT_DEFAULT_WIDTH
+    chatStore.isFullscreen = false
+  }
+})
+
+function startResize(e) {
+  e.preventDefault()
+  const startX = e.clientX
+  const startWidth = chatWidth.value
+
+  function onMouseMove(e) {
+    const delta = startX - e.clientX // dragging left = wider
+    const newWidth = startWidth + delta
+
+    if (newWidth < CHAT_COLLAPSE_THRESHOLD) {
+      chatStore.isOpen = false
+      cleanup()
+      return
+    }
+
+    if (newWidth > CHAT_FULLSCREEN_THRESHOLD) {
+      chatStore.isFullscreen = true
+      cleanup()
+      return
+    }
+
+    chatStore.isFullscreen = false
+    chatWidth.value = Math.max(CHAT_MIN_WIDTH, newWidth)
+  }
+
+  function cleanup() {
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', cleanup)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', cleanup)
+}
 </script>
 
 <style scoped>
@@ -172,17 +232,35 @@ onMounted(() => {
   width: 100%;
 }
 
-.page-forward-enter-from { opacity: 0; transform: translateX(60px); }
-.page-forward-leave-to   { opacity: 0; transform: translateX(-60px); }
+.page-forward-enter-from {
+  opacity: 0;
+  transform: translateX(60px);
+}
 
-.page-back-enter-from    { opacity: 0; transform: translateX(-60px); }
-.page-back-leave-to      { opacity: 0; transform: translateX(60px); }
+.page-forward-leave-to {
+  opacity: 0;
+  transform: translateX(-60px);
+}
+
+.page-back-enter-from {
+  opacity: 0;
+  transform: translateX(-60px);
+}
+
+.page-back-leave-to {
+  opacity: 0;
+  transform: translateX(60px);
+}
 
 
 .page-fade-enter-from,
-.page-fade-leave-to      { opacity: 0; transform: translateY(8px); }
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
 
 @media (prefers-reduced-motion: reduce) {
+
   .page-forward-enter-active,
   .page-forward-leave-active,
   .page-back-enter-active,
@@ -191,10 +269,13 @@ onMounted(() => {
   .page-fade-leave-active {
     transition: opacity 0.15s ease;
   }
+
   .page-forward-enter-from,
   .page-forward-leave-to,
   .page-back-enter-from,
-  .page-back-leave-to     { transform: none; }
+  .page-back-leave-to {
+    transform: none;
+  }
 }
 
 /* ── Scrollbar styling (dark theme) ── */
@@ -280,5 +361,36 @@ onMounted(() => {
 #app-shell.route-loading--done::before {
   width: 100%;
   opacity: 0;
+}
+
+#chat-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  z-index: 100;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+#chat-resize-handle:hover {
+  background: rgba(139, 233, 253, 0.15);
+}
+
+#chat-box {
+  flex-shrink: 0;
+  height: 100%;
+  position: relative;
+  transition: width 0.05s linear;
+}
+
+#chat-box.chat-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 2000;
 }
 </style>
