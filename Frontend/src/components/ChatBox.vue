@@ -9,6 +9,8 @@ const store = useChatStore()
 const chatContainer = ref(null)
 const showScrollBtn = ref(false)
 const copiedKey = ref(null)
+const apiStatus = ref('checking') // 'online' | 'offline' | 'checking'
+const API_BASE = import.meta.env.VITE_API_URL
 
 // ── Starter prompts ───────────────────────────────────────
 const starterPrompts = [
@@ -21,6 +23,12 @@ const starterPrompts = [
 const showPrompts = computed(() =>
   store.messageHistory.length === 0 && store.archivedMessageHistory.length === 0
 )
+
+const statusLabel = computed(() => ({
+  online: 'ONLINE',
+  offline: 'OFFLINE',
+  checking: 'WAIT..',
+}[apiStatus.value]))
 
 // ── Scroll logic ──────────────────────────────────────────
 function scrollToBottom() {
@@ -76,6 +84,8 @@ function handleKeydown(e) {
 // ── localStorage persistence ──────────────────────────────
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  checkApiStatus()
+  const statusInterval = setInterval(checkApiStatus, 30000)
   try {
     const saved = localStorage.getItem('samuellm_chat')
     if (saved) {
@@ -89,6 +99,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  clearInterval(statusInterval)
 })
 
 watch(
@@ -100,6 +111,15 @@ watch(
   },
   { deep: true }
 )
+
+async function checkApiStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) })
+    apiStatus.value = res.ok ? 'online' : 'offline'
+  } catch {
+    apiStatus.value = 'offline'
+  }
+}
 </script>
 
 <template>
@@ -115,7 +135,7 @@ watch(
         <!-- ── Terminal title bar ── -->
         <div class="chat-titlebar">
           <div class="titlebar-left">
-            <span class="titlebar-status-dot" />
+            <span class="titlebar-status-dot" :class="`titlebar-status-dot--${apiStatus}`" />
             <span class="titlebar-label">SAMUELLM<span class="titlebar-version">_v1.0</span></span>
           </div>
           <div class="titlebar-controls">
@@ -125,7 +145,7 @@ watch(
             </button>
             <button class="titlebar-btn d-none d-sm-flex" @click="toggleExpand"
               :aria-label="store.isFullscreen ? 'Collapse chat' : 'Expand chat'">
-              <v-icon size="16">{{ isExpanded ? 'mdi-arrow-collapse' : 'mdi-arrow-expand' }}</v-icon>
+              <v-icon size="16">{{ store.isFullscreen ? 'mdi-arrow-collapse' : 'mdi-arrow-expand' }}</v-icon>
             </button>
             <button class="titlebar-btn titlebar-btn--close" @click="store.isOpen = false" aria-label="Close chat">
               <v-icon size="16">mdi-close</v-icon>
@@ -265,9 +285,9 @@ watch(
       <div class="fab-content">
         <v-icon class="fab-arrow" size="26">mdi-chevron-left</v-icon>
         <div class="fab-status">
-          <span class="fab-status-dot" />
-          <div class="fab-status-text">
-            <span v-for="(char, i) in 'ONLINE'.split('')" :key="i" class="fab-char">{{ char }}</span>
+          <span class="fab-status-dot" :class="`fab-status-dot--${apiStatus}`" />
+          <div class="fab-status-text" :class="`fab-status-text--${apiStatus}`">
+            <span v-for="(char, i) in statusLabel.split('')" :key="i" class="fab-char">{{ char }}</span>
           </div>
         </div>
         <v-icon size="22" style="color:#8BE9FD;opacity:0.9;">mdi-robot</v-icon>
@@ -288,7 +308,7 @@ watch(
       <div class="mobile-fab-scanlines" />
       <div class="mobile-fab-content">
         <span class="mobile-fab-prompt">&gt;_</span>
-        <span class="mobile-fab-status-dot" />
+        <span class="mobile-fab-status-dot" :class="`mobile-fab-status-dot--${apiStatus}`" />
       </div>
       <div class="mobile-fab-tooltip">Chat with SamuelLM</div>
     </button>
@@ -1219,4 +1239,27 @@ watch(
   color: #FF5555;
   border-color: rgba(255, 85, 85, 0.3);
 }
+
+
+
+/* Titlebar dot variants */
+.titlebar-status-dot--online   { background: #50FA7B; }
+.titlebar-status-dot--offline  { background: #FF5555; animation: none; }
+.titlebar-status-dot--checking { background: #FFB86C; }
+
+/* FAB dot variants */
+.fab-status-dot--online   { background: #50FA7B; }
+.fab-status-dot--offline  { background: #FF5555; animation: none; box-shadow: 0 0 8px 2px rgba(255,85,85,0.5) !important; }
+.fab-status-dot--checking { background: #FFB86C; }
+
+/* FAB text variants */
+.fab-status-text--online   { color: #50FA7B; }
+.fab-status-text--offline  { color: #FF5555; }
+.fab-status-text--checking { color: #FFB86C; }
+
+/* Mobile dot variants */
+.mobile-fab-status-dot--online   { background: #50FA7B; }
+.mobile-fab-status-dot--offline  { background: #FF5555; animation: none; }
+.mobile-fab-status-dot--checking { background: #FFB86C; }
+
 </style>

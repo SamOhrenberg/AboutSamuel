@@ -20,9 +20,12 @@ declare module 'vue-router/auto-routes' {
   export interface RouteNamedMap {
     '/': RouteRecordInfo<'/', '/', Record<never, never>, Record<never, never>>,
     '/admin/': RouteRecordInfo<'/admin/', '/admin', Record<never, never>, Record<never, never>>,
+    '/admin/AdminChatLog': RouteRecordInfo<'/admin/AdminChatLog', '/admin/AdminChatLog', Record<never, never>, Record<never, never>>,
+    '/admin/AdminInformation': RouteRecordInfo<'/admin/AdminInformation', '/admin/AdminInformation', Record<never, never>, Record<never, never>>,
+    '/admin/AdminProjects': RouteRecordInfo<'/admin/AdminProjects', '/admin/AdminProjects', Record<never, never>, Record<never, never>>,
+    '/admin/AdminWorkExperience': RouteRecordInfo<'/admin/AdminWorkExperience', '/admin/AdminWorkExperience', Record<never, never>, Record<never, never>>,
     '/admin/login': RouteRecordInfo<'/admin/login', '/admin/login', Record<never, never>, Record<never, never>>,
     '/admin/verify': RouteRecordInfo<'/admin/verify', '/admin/verify', Record<never, never>, Record<never, never>>,
-    '/admin/WorkExperience': RouteRecordInfo<'/admin/WorkExperience', '/admin/WorkExperience', Record<never, never>, Record<never, never>>,
     '/contact': RouteRecordInfo<'/contact', '/contact', Record<never, never>, Record<never, never>>,
     '/Projects': RouteRecordInfo<'/Projects', '/Projects', Record<never, never>, Record<never, never>>,
     '/resume': RouteRecordInfo<'/resume', '/resume', Record<never, never>, Record<never, never>>,
