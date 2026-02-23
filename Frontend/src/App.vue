@@ -124,6 +124,7 @@ onMounted(() => {
   min-height: 0;
   overflow: hidden;
   width: 100%;
+  position: relative;
 }
 
 #main-content {
