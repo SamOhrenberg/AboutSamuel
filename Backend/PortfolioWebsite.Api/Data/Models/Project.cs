@@ -3,8 +3,9 @@
 public class Project
 {
     public Guid ProjectId { get; set; }
-    public Guid? WorkExperienceId { get; set; }
-    public virtual WorkExperience? WorkExperience { get; set; }
+
+    // Many-to-many — a project can span multiple roles/employers
+    public virtual ICollection<WorkExperience> WorkExperiences { get; set; } = [];
 
     public string Title { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;

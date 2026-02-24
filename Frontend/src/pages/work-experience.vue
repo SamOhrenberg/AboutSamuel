@@ -158,9 +158,11 @@ const router = useRouter()
 const projectsByJob = computed(() => {
   const map = new Map()
   for (const p of projectStore.projects) {
-    if (!p.workExperienceId) continue
-    if (!map.has(p.workExperienceId)) map.set(p.workExperienceId, [])
-    map.get(p.workExperienceId).push(p)
+    if (!p.workExperienceIds?.length) continue
+    for (const id of p.workExperienceIds) {
+      if (!map.has(id)) map.set(id, [])
+      map.get(id).push(p)
+    }
   }
   return map
 })

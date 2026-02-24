@@ -6,10 +6,8 @@ namespace PortfolioWebsite.Api.Dtos;
 public class ProjectDto
 {
     public Guid ProjectId { get; set; }
-    public Guid? WorkExperienceId { get; set; }
-
-    // Derived from the linked WorkExperience — null when project is unlinked
-    public string? Employer { get; set; }
+    public List<Guid> WorkExperienceIds { get; set; } = [];
+    public List<string> Employers { get; set; } = [];
 
     public string Title { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
@@ -22,24 +20,19 @@ public class ProjectDto
     public bool IsFeatured { get; set; }
     public string? StartYear { get; set; }
     public string? EndYear { get; set; }
-
     public bool HasEmbedding { get; set; }
 
     public static ProjectDto FromModel(Project project)
     {
         List<string> techStack;
-        try { 
-            techStack = JsonSerializer.Deserialize<List<string>>(project.TechStack) ?? []; 
-        }
-        catch { 
-            techStack = []; 
-        }
+        try { techStack = JsonSerializer.Deserialize<List<string>>(project.TechStack) ?? []; }
+        catch { techStack = []; }
 
         return new ProjectDto
         {
             ProjectId = project.ProjectId,
-            WorkExperienceId = project.WorkExperienceId,
-            Employer = project.WorkExperience?.Employer,
+            WorkExperienceIds = project.WorkExperiences?.Select(w => w.WorkExperienceId).ToList() ?? [],
+            Employers = project.WorkExperiences?.Select(w => w.Employer).ToList() ?? [],
             Title = project.Title,
             Role = project.Role,
             Summary = project.Summary,

@@ -22,7 +22,7 @@ public class AdminProjectController(
         _logger.LogInformation("Admin GET /admin/projects");
 
         var projects = await _db.Projects
-            .Include(p => p.WorkExperience)
+            .Include(p => p.WorkExperiences)
             .OrderBy(p => p.DisplayOrder)
             .ToListAsync();
 
@@ -32,17 +32,22 @@ public class AdminProjectController(
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] AdminProjectRequest request)
     {
-        if (request.WorkExperienceId.HasValue &&
-            !await _db.WorkExperiences.AnyAsync(w => w.WorkExperienceId == request.WorkExperienceId))
-            return BadRequest(new { Message = "WorkExperienceId does not reference a known work experience." });
+        List<WorkExperience> workExperiences = [];
+        if (request.WorkExperienceIds.Count > 0)
+        {
+            workExperiences = await _db.WorkExperiences
+                .Where(w => request.WorkExperienceIds.Contains(w.WorkExperienceId))
+                .ToListAsync();
+
+            if (workExperiences.Count != request.WorkExperienceIds.Count)
+                return BadRequest(new { Message = "One or more WorkExperienceIds do not reference known work experiences." });
+        }
 
         var project = MapToModel(request, new Project { ProjectId = Guid.NewGuid() });
+        project.WorkExperiences = workExperiences;
 
         await _db.Projects.AddAsync(project);
         await _db.SaveChangesAsync();
-
-        // Re-fetch with navigation so the DTO has Employer populated
-        await _db.Entry(project).Reference(p => p.WorkExperience).LoadAsync();
 
         _logger.LogInformation("Admin created project {ProjectId}: {Title}", project.ProjectId, project.Title);
         return Ok(ProjectDto.FromModel(project));
@@ -51,22 +56,31 @@ public class AdminProjectController(
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] AdminProjectRequest request)
     {
-        if (request.WorkExperienceId.HasValue &&
-            !await _db.WorkExperiences.AnyAsync(w => w.WorkExperienceId == request.WorkExperienceId))
-            return BadRequest(new { Message = "WorkExperienceId does not reference a known work experience." });
-
         var project = await _db.Projects
-            .Include(p => p.WorkExperience)
+            .Include(p => p.WorkExperiences)
             .FirstOrDefaultAsync(p => p.ProjectId == id);
 
         if (project is null) return NotFound();
 
-        MapToModel(request, project);
-        await _db.SaveChangesAsync();
+        List<WorkExperience> workExperiences = [];
+        if (request.WorkExperienceIds.Count > 0)
+        {
+            workExperiences = await _db.WorkExperiences
+                .Where(w => request.WorkExperienceIds.Contains(w.WorkExperienceId))
+                .ToListAsync();
 
-        // Navigation may have changed — reload if FK changed
-        if (project.WorkExperienceId != request.WorkExperienceId)
-            await _db.Entry(project).Reference(p => p.WorkExperience).LoadAsync();
+            if (workExperiences.Count != request.WorkExperienceIds.Count)
+                return BadRequest(new { Message = "One or more WorkExperienceIds do not reference known work experiences." });
+        }
+
+        MapToModel(request, project);
+
+        // Replace the collection — EF tracks the join table changes automatically
+        project.WorkExperiences.Clear();
+        foreach (var we in workExperiences)
+            project.WorkExperiences.Add(we);
+
+        await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin updated project {ProjectId}", id);
         return Ok(ProjectDto.FromModel(project));
@@ -88,7 +102,10 @@ public class AdminProjectController(
     [HttpPatch("{id:guid}/restore")]
     public async Task<IActionResult> Restore(Guid id)
     {
-        var project = await _db.Projects.FindAsync(id);
+        var project = await _db.Projects
+            .Include(p => p.WorkExperiences)
+            .FirstOrDefaultAsync(p => p.ProjectId == id);
+
         if (project is null) return NotFound();
 
         project.IsActive = true;
@@ -118,7 +135,6 @@ public class AdminProjectController(
 
     private static Project MapToModel(AdminProjectRequest request, Project project)
     {
-        project.WorkExperienceId = request.WorkExperienceId;
         project.Title = request.Title;
         project.Role = request.Role;
         project.Summary = request.Summary;

@@ -67,6 +67,7 @@ public class AdminController(
             .ToListAsync();
 
         var projects = await _dbContext.Projects
+            .Include(p => p.WorkExperiences)
             .Where(p => p.EmbeddingJson == null && p.IsActive)
             .ToListAsync();
 
@@ -138,9 +139,8 @@ public class AdminController(
             case "project":
                 {
                     var project = await _dbContext.Projects
-                        .Include(p => p.WorkExperience)
-                        .FirstOrDefaultAsync(p => p.ProjectId == id);
-                    if (project is null) return NotFound();
+                        .Include(p => p.WorkExperiences)
+                        .FirstOrDefaultAsync(p => p.ProjectId == id); if (project is null) return NotFound();
                     text = ChatService.BuildProjectRagText(project);
                     persist = json => project.EmbeddingJson = json;
                     break;

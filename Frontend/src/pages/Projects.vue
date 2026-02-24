@@ -136,8 +136,8 @@
               <div class="featured-card__header">
                 <h2 class="featured-card__title">{{ project.title }}</h2>
                 <p class="featured-card__meta">
-                  <span v-if="project.employer">{{ project.employer }}</span>
-                  <span v-if="project.startYear" class="project-dates">
+                  <span v-if="project.employers?.length">{{ project.employers.join(', ') }}</span> <span
+                    v-if="project.startYear" class="project-dates">
                     {{ project.employer ? ' · ' : '' }}{{ project.startYear }}{{ project.endYear ? '–' + project.endYear
                       : '–Present' }}
                   </span>
@@ -252,7 +252,7 @@
               <div class="drawer__title-block">
                 <h2 class="drawer__title">{{ detailProject.title }}</h2>
                 <p class="drawer__meta">
-                  <span v-if="detailProject.employer">{{ detailProject.employer }}</span>
+                  <span v-if="detailProject.employers?.length">{{ detailProject.employers.join(', ') }}</span>
                   <span v-if="detailProject.startYear" class="project-dates">
                     {{ detailProject.employer ? ' · ' : '' }}{{ detailProject.startYear }}{{ detailProject.endYear ? '–'
                       + detailProject.endYear : '–Present' }}
@@ -466,9 +466,15 @@ const groupedProjects = computed(() => {
   if (groupBy.value === 'employer') {
     const map = new Map()
     for (const p of projects) {
-      const key = p.employer || 'Personal / Independent'
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(p)
+      // A project can belong to multiple employers — add it to each group
+      const employers = p.employers?.length ? p.employers : ['Personal / Independent']
+      for (const employer of employers) {
+        if (!map.has(employer)) map.set(employer, [])
+        // Avoid duplicates if somehow the same employer appears twice
+        if (!map.get(employer).find(x => x.projectId === p.projectId)) {
+          map.get(employer).push(p)
+        }
+      }
     }
     return [...map.entries()].map(([employer, projs]) => {
       const years = projs.flatMap(p => [p.startYear, p.endYear].filter(Boolean)).map(Number)

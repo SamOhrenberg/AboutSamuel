@@ -53,11 +53,19 @@ public class SqlDbContext : DbContext
                 .HasValueGenerator<SequentialGuidValueGenerator>()
                 .ValueGeneratedOnAdd();
 
-            entity.HasOne(p => p.WorkExperience)
+            // Many-to-many with explicit join table and clean column names
+            entity.HasMany(p => p.WorkExperiences)
                 .WithMany(w => w.Projects)
-                .HasForeignKey(p => p.WorkExperienceId)
-                .IsRequired(false)           // nullable — existing projects start unlinked
-                .OnDelete(DeleteBehavior.SetNull);
+                .UsingEntity<Dictionary<string, object>>(
+                    "ProjectWorkExperience",
+                    j => j.HasOne<WorkExperience>()
+                          .WithMany()
+                          .HasForeignKey("WorkExperienceId")
+                          .OnDelete(DeleteBehavior.Cascade),
+                    j => j.HasOne<Project>()
+                          .WithMany()
+                          .HasForeignKey("ProjectId")
+                          .OnDelete(DeleteBehavior.Cascade));
         });
     }
 }
