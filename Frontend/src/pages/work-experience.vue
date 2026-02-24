@@ -177,8 +177,8 @@ const stats = computed(() => {
 
   // Calculate total years of experience
   const allYears = store.work.map(j => {
-    const start = parseInt(j.startYear ?? '0') || 0
-    const end = parseInt(j.endYear ?? String(new Date().getFullYear())) || new Date().getFullYear()
+    const start = parseInt(j.startYear || '0') || 0
+    const end = parseInt(j.endYear || String(new Date().getFullYear())) || new Date().getFullYear()
     return { start, end }
   })
   const minStart = Math.min(...allYears.map(y => y.start).filter(y => y > 0))
@@ -195,7 +195,7 @@ const stats = computed(() => {
 function durationLabel(job) {
   const start = parseInt(job.startYear ?? '0')
   if (!start) return null
-  const end = parseInt(job.endYear ?? String(new Date().getFullYear()))
+  const end = parseInt(job.endYear || String(new Date().getFullYear()))
   const years = end - start
   if (years <= 0) return null
   return years === 1 ? '1 yr' : `${years} yrs`

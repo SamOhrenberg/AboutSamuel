@@ -398,17 +398,17 @@ const techExperience = computed(() => {
   for (const project of store.projects) {
     const start = parseInt(project.startYear ?? '0') || 0
     const end = parseInt(project.endYear ?? String(new Date().getFullYear())) || new Date().getFullYear()
-    const years = Math.max(end - start, 1)
 
     for (const tech of project.techStack) {
-      if (!map.has(tech)) map.set(tech, { years: 0, count: 0 })
+      if (!map.has(tech)) map.set(tech, { minStart: start, maxEnd: end, count: 0 })
       const entry = map.get(tech)
-      entry.years = Math.max(entry.years, years)
+      entry.minStart = Math.min(entry.minStart, start)
+      entry.maxEnd = Math.max(entry.maxEnd, end)
       entry.count++
     }
   }
   return [...map.entries()]
-    .map(([tech, v]) => ({ tech, ...v }))
+    .map(([tech, v]) => ({ tech, years: Math.max(v.maxEnd - v.minStart, 1), count: v.count }))
     .sort((a, b) => b.years - a.years || b.count - a.count)
     .slice(0, 12)
 })
@@ -423,8 +423,26 @@ const allTags = computed(() => {
 })
 
 const filteredProjects = computed(() => {
-  if (!selectedTechs.value.length) return store.projects
-  return store.projects.filter(p =>
+  const sorted = [...store.projects].sort((a, b) => {
+    const currentYear = new Date().getFullYear()
+
+    const resolveEnd = (p) => {
+      const y = parseInt(p.endYear ?? '')
+      return isNaN(y) ? currentYear : y  // "Present", null, undefined → current year
+    }
+
+    const aEnd = resolveEnd(a)
+    const bEnd = resolveEnd(b)
+
+    if (bEnd !== aEnd) return bEnd - aEnd  // sort by end year first
+
+    const aStart = parseInt(a.startYear ?? '0') || 0
+    const bStart = parseInt(b.startYear ?? '0') || 0
+    return bStart - aStart  // fall back to start year if end years are equal
+  })
+
+  if (!selectedTechs.value.length) return sorted
+  return sorted.filter(p =>
     selectedTechs.value.every(t => p.techStack?.includes(t))
   )
 })
