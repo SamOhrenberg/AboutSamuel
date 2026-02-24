@@ -146,7 +146,8 @@ public class AdminInformationController(
     {
         InformationId = info.InformationId,
         Text = info.Text,
-        Keywords = info.Keywords.Select(k => k.Text).ToList()
+        Keywords = info.Keywords.Select(k => k.Text).ToList(),
+        HasEmbedding = info.EmbeddingJson != null
     };
 }
 

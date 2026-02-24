@@ -6,6 +6,7 @@ export const useChatStore = defineStore('chat', {
   state: () => ({
     isOpen: true,
     isExpanded: false,
+    isFullscreen: false,
     isLoading: false,    // true while waiting for first token
     isStreaming: false,  // true while tokens are actively flowing
     width: 250,
@@ -20,11 +21,6 @@ export const useChatStore = defineStore('chat', {
       return id
     })(),
     archivedMessageHistory: [
-      {
-        sentBy: 'SamuelLM',
-        sentAt: new Date(),
-        message: 'Hello! I\'m SamuelLM. Ask me anything about Samuel\'s background, skills, or experience.',
-      },
     ],
     messageHistory: [],
     message: '',

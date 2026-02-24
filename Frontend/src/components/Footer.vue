@@ -136,7 +136,7 @@ const currentYear = new Date().getFullYear()
   color: rgba(var(--v-theme-on-background), 0.5) !important;
 }
 /* Mobile: stack vertically and center */
-@media (max-width: 599px) {
+@media (max-width: 959px) {
   .footer-inner {
     flex-direction: column;
     align-items: center;
