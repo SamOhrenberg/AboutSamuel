@@ -2,7 +2,7 @@
 
 public class AdminProjectRequest
 {
-    public Guid? WorkExperienceId { get; set; }
+    public List<Guid> WorkExperienceIds { get; set; } = [];
     public string Title { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public string Summary { get; set; } = string.Empty;

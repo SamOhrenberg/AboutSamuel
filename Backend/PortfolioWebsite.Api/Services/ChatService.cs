@@ -258,12 +258,15 @@ public class ChatService
 
         // Include WorkExperience so employer name is available for unlinked projects
         var allProjects = await _dbContext.Projects
-            .Include(p => p.WorkExperience)
+            .Include(p => p.WorkExperiences)
             .Where(p => p.IsActive)
             .OrderByDescending(p => p.IsFeatured)
-            .ThenBy(p => p.WorkExperience!.DisplayOrder)
+            .ThenBy(p => p.WorkExperiences.Any()
+                ? p.WorkExperiences.Min(w => w.DisplayOrder)
+                : int.MaxValue)
             .ThenBy(p => p.DisplayOrder)
             .ToListAsync();
+
 
         var infoBlock = string.Join(
             "\r\n\r\nNew Information:\r\n",
@@ -291,7 +294,7 @@ public class ChatService
 
             // Attach linked projects directly under their employer job entry
             var linkedProjects = allProjects
-                .Where(p => p.WorkExperienceId == j.WorkExperienceId)
+                .Where(p => p.WorkExperiences.Any(w => w.WorkExperienceId == j.WorkExperienceId))
                 .ToList();
 
             if (linkedProjects.Count > 0)
@@ -313,7 +316,7 @@ public class ChatService
         }));
 
         // Only include projects that are not linked to any job (unlinked orphans)
-        var unlinkedProjects = allProjects.Where(p => p.WorkExperienceId is null).ToList();
+        var unlinkedProjects = allProjects.Where(p => !p.WorkExperiences.Any()).ToList();
         var unlinkedProjectsBlock = unlinkedProjects.Count > 0
             ? string.Join("\r\n\r\n", unlinkedProjects.Select(p =>
             {
@@ -1355,7 +1358,7 @@ public class ChatService
         await using var ctx3 = await _dbContextFactory.CreateDbContextAsync();
 
         var informationTask = ctx1.Information.Include(i => i.Keywords).ToListAsync();
-        var projectsTask = ctx2.Projects.Include(p => p.WorkExperience).Where(p => p.IsActive).ToListAsync();
+        var projectsTask = ctx2.Projects.Include(p => p.WorkExperiences).Where(p => p.IsActive).ToListAsync();
         var workTask = ctx3.WorkExperiences.Where(j => j.IsActive).ToListAsync();
         var queryEmbeddingTask = _embeddingService.GetEmbeddingAsync(queryText);
 
@@ -1464,19 +1467,20 @@ public class ChatService
     private static Information BuildProjectInformation(Project project)
     {
         var text = BuildProjectRagText(project);
-
         var techStack = DeserializeTechStack(project.TechStack);
+        var employerNames = string.Join(' ', project.WorkExperiences?.Select(w => w.Employer) ?? []);
+
         var keywords = techStack
             .Select(t => new Keyword(t.ToLower(), null!))
             .Concat(Tokenizer.Tokenize(
-                $"{project.Title} {project.WorkExperience?.Employer} {project.Role} " +
+                $"{project.Title} {employerNames} {project.Role} " +
                 $"{project.Summary} {project.Detail} {project.ImpactStatement}")
                 .Select(t => new Keyword(t, null!)))
             .ToList();
 
         return new Information(project.ProjectId, text, keywords)
         {
-            EmbeddingJson = project.EmbeddingJson  // carry stored embedding through
+            EmbeddingJson = project.EmbeddingJson
         };
     }
 
@@ -1590,11 +1594,12 @@ public class ChatService
     {
         var techStack = DeserializeTechStack(project.TechStack);
         var years = BuildYearRange(project.StartYear, project.EndYear);
-        var employer = project.WorkExperience?.Employer;
+        var employers = project.WorkExperiences?.Select(w => w.Employer).ToList() ?? [];
 
         var sb = new StringBuilder();
         sb.AppendLine($"Project: {project.Title}");
-        if (employer is not null) sb.AppendLine($"Employer: {employer}");
+        if (employers.Count > 0)
+            sb.AppendLine($"Employer(s): {string.Join(", ", employers)}");
         sb.AppendLine($"Role: {project.Role}");
         if (years != null) sb.AppendLine($"Years: {years}");
         sb.AppendLine($"Summary: {project.Summary}");

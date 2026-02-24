@@ -136,8 +136,8 @@
               <div class="featured-card__header">
                 <h2 class="featured-card__title">{{ project.title }}</h2>
                 <p class="featured-card__meta">
-                  <span v-if="project.employer">{{ project.employer }}</span>
-                  <span v-if="project.startYear" class="project-dates">
+                  <span v-if="project.employers?.length">{{ project.employers.join(', ') }}</span> <span
+                    v-if="project.startYear" class="project-dates">
                     {{ project.employer ? ' · ' : '' }}{{ project.startYear }}{{ project.endYear ? '–' + project.endYear
                       : '–Present' }}
                   </span>
@@ -252,7 +252,7 @@
               <div class="drawer__title-block">
                 <h2 class="drawer__title">{{ detailProject.title }}</h2>
                 <p class="drawer__meta">
-                  <span v-if="detailProject.employer">{{ detailProject.employer }}</span>
+                  <span v-if="detailProject.employers?.length">{{ detailProject.employers.join(', ') }}</span>
                   <span v-if="detailProject.startYear" class="project-dates">
                     {{ detailProject.employer ? ' · ' : '' }}{{ detailProject.startYear }}{{ detailProject.endYear ? '–'
                       + detailProject.endYear : '–Present' }}
@@ -398,17 +398,17 @@ const techExperience = computed(() => {
   for (const project of store.projects) {
     const start = parseInt(project.startYear ?? '0') || 0
     const end = parseInt(project.endYear ?? String(new Date().getFullYear())) || new Date().getFullYear()
-    const years = Math.max(end - start, 1)
 
     for (const tech of project.techStack) {
-      if (!map.has(tech)) map.set(tech, { years: 0, count: 0 })
+      if (!map.has(tech)) map.set(tech, { minStart: start, maxEnd: end, count: 0 })
       const entry = map.get(tech)
-      entry.years = Math.max(entry.years, years)
+      entry.minStart = Math.min(entry.minStart, start)
+      entry.maxEnd = Math.max(entry.maxEnd, end)
       entry.count++
     }
   }
   return [...map.entries()]
-    .map(([tech, v]) => ({ tech, ...v }))
+    .map(([tech, v]) => ({ tech, years: Math.max(v.maxEnd - v.minStart, 1), count: v.count }))
     .sort((a, b) => b.years - a.years || b.count - a.count)
     .slice(0, 12)
 })
@@ -423,8 +423,26 @@ const allTags = computed(() => {
 })
 
 const filteredProjects = computed(() => {
-  if (!selectedTechs.value.length) return store.projects
-  return store.projects.filter(p =>
+  const sorted = [...store.projects].sort((a, b) => {
+    const currentYear = new Date().getFullYear()
+
+    const resolveEnd = (p) => {
+      const y = parseInt(p.endYear ?? '')
+      return isNaN(y) ? currentYear : y  // "Present", null, undefined → current year
+    }
+
+    const aEnd = resolveEnd(a)
+    const bEnd = resolveEnd(b)
+
+    if (bEnd !== aEnd) return bEnd - aEnd  // sort by end year first
+
+    const aStart = parseInt(a.startYear ?? '0') || 0
+    const bStart = parseInt(b.startYear ?? '0') || 0
+    return bStart - aStart  // fall back to start year if end years are equal
+  })
+
+  if (!selectedTechs.value.length) return sorted
+  return sorted.filter(p =>
     selectedTechs.value.every(t => p.techStack?.includes(t))
   )
 })
@@ -448,9 +466,15 @@ const groupedProjects = computed(() => {
   if (groupBy.value === 'employer') {
     const map = new Map()
     for (const p of projects) {
-      const key = p.employer || 'Personal / Independent'
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(p)
+      // A project can belong to multiple employers — add it to each group
+      const employers = p.employers?.length ? p.employers : ['Personal / Independent']
+      for (const employer of employers) {
+        if (!map.has(employer)) map.set(employer, [])
+        // Avoid duplicates if somehow the same employer appears twice
+        if (!map.get(employer).find(x => x.projectId === p.projectId)) {
+          map.get(employer).push(p)
+        }
+      }
     }
     return [...map.entries()].map(([employer, projs]) => {
       const years = projs.flatMap(p => [p.startYear, p.endYear].filter(Boolean)).map(Number)

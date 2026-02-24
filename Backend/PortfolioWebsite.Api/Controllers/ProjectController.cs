@@ -15,15 +15,17 @@ public class ProjectController(ILogger<ProjectController> _logger, SqlDbContext 
         _logger.LogInformation("GET /projects from {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
 
         var projects = await _dbContext.Projects
-            .Include(p => p.WorkExperience)
+            .Include(p => p.WorkExperiences)
             .Where(p => p.IsActive)
             .ToListAsync();
 
         return projects
             .OrderByDescending(p => p.IsFeatured)
-            .ThenBy(p => p.IsFeatured ? p.DisplayOrder : int.MaxValue)  // featured: by their own order
-            .ThenBy(p => p.WorkExperience?.DisplayOrder ?? int.MaxValue) // non-featured: employer recency
-            .ThenBy(p => p.DisplayOrder)                                 // within employer: project order
+            .ThenBy(p => p.IsFeatured ? p.DisplayOrder : int.MaxValue)
+            .ThenBy(p => p.WorkExperiences.Any()
+                ? p.WorkExperiences.Min(w => w.DisplayOrder)
+                : int.MaxValue)
+            .ThenBy(p => p.DisplayOrder)
             .Select(ProjectDto.FromModel);
     }
 
@@ -33,7 +35,7 @@ public class ProjectController(ILogger<ProjectController> _logger, SqlDbContext 
         _logger.LogInformation("GET /projects/featured from {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
 
         var projects = await _dbContext.Projects
-            .Include(p => p.WorkExperience)
+            .Include(p => p.WorkExperiences)
             .Where(p => p.IsActive && p.IsFeatured)
             .OrderBy(p => p.DisplayOrder)
             .ToListAsync();
