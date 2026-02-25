@@ -186,6 +186,8 @@ function navigateToProject(project) {
 const stats = computed(() => {
   if (!store.work.length) return null
 
+  const distinctEmployers = new Set(store.work.map(j => j.employer)).size
+
   const totalAchievements = store.work.reduce((s, j) => s + (j.achievements?.length ?? 0), 0)
 
   // Calculate total years of experience
@@ -199,6 +201,7 @@ const stats = computed(() => {
 
   return [
     { label: 'Years Experience', value: `${totalYears}+` },
+      { label: 'Employers', value: distinctEmployers },
     { label: 'Roles', value: store.work.length },
     { label: 'Achievements', value: totalAchievements },
   ]
