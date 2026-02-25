@@ -188,7 +188,7 @@ const stats = computed(() => {
 
   return [
     { label: 'Years Experience', value: `${totalYears}+` },
-    { label: 'Employers', value: store.work.length },
+    { label: 'Roles', value: store.work.length },
     { label: 'Achievements', value: totalAchievements },
   ]
 })
