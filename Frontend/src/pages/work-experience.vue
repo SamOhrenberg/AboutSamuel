@@ -46,7 +46,7 @@
         <div class="timeline-spine__fill" :style="{ height: spineHeight }" />
       </div>
 
-      <div v-for="(job, i) in store.work" :key="job.workExperienceId" class="timeline-item" :class="[
+      <div v-for="(job, i) in sortedWork" :key="job.workExperienceId" class="timeline-item" :class="[
         i % 2 === 0 ? 'timeline-item--left' : 'timeline-item--right',
         'card-animate',
         { 'card-animate--visible': visibleCards.has(job.workExperienceId) }
@@ -154,6 +154,17 @@ const store = useWorkExperienceStore()
 const projectStore = useProjectStore()
 const router = useRouter()
 
+
+const sortedWork = computed(() => {
+  return [...store.work].sort((a, b) => {
+    const aActive = isCurrentRole(a)
+    const bActive = isCurrentRole(b)
+    if (aActive && !bActive) return -1
+    if (!aActive && bActive) return 1
+    return parseInt(b.startYear ?? '0') - parseInt(a.startYear ?? '0')
+  })
+})
+
 // ── Projects by job ────────────────────────────────────────────────────
 const projectsByJob = computed(() => {
   const map = new Map()
@@ -193,15 +204,23 @@ const stats = computed(() => {
   ]
 })
 
+function isCurrentRole(job) {
+  return !job.endYear || job.endYear === 'Present'
+}
+
 // ── Duration label ─────────────────────────────────────────────────────
 function durationLabel(job) {
   const start = parseInt(job.startYear ?? '0')
   if (!start) return null
-  const end = parseInt(job.endYear || String(new Date().getFullYear()))
+  if (isCurrentRole(job)) {
+    const years = new Date().getFullYear() - start
+    return years <= 0 ? null : years === 1 ? '1 yr' : `${years} yrs`
+  }
+  const end = parseInt(job.endYear)
   const years = end - start
-  if (years <= 0) return null
-  return years === 1 ? '1 yr' : `${years} yrs`
+  return years <= 0 ? null : years === 1 ? '1 yr' : `${years} yrs`
 }
+
 
 // ── Expanded achievements ──────────────────────────────────────────────
 const expandedJobs = ref(new Set())
