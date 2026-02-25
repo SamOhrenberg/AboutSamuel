@@ -51,10 +51,10 @@ public class ChatService
 
 
     private const int MatchWeight = 70;
-    private const int MaxContextEntries = 4;
+    private const int MaxContextEntries = 8;
     private const int MinTokenLength = 4;
-    private const int MaxResponseTokens = 300;
-    private const int MaxResponseWords = 200;
+    private const int MaxResponseTokens = 500;
+    private const int MaxResponseWords = 250;
 
     private readonly ILogger<ChatService> _logger;
     private readonly SqlDbContext _dbContext;
@@ -201,7 +201,9 @@ public class ChatService
         {
             if (ct.IsCancellationRequested) break;
 
-            if (chunk is ContentBlockDeltaEvent delta && delta.Delta?.Text != null)
+            if (chunk is ContentBlockDeltaEvent delta 
+                && delta.Delta?.Text != null 
+                && !string.IsNullOrEmpty(delta.Delta.Text))
             {
                 fullResponse.Append(delta.Delta.Text);
                 yield return new StreamChunk { Token = delta.Delta.Text };
@@ -1070,9 +1072,12 @@ public class ChatService
 
         ════════════════════════════════════════════
         CONTEXT — use ONLY the information below to answer.
-        Do NOT use your training data. Do NOT invent projects,
-        employers, technologies, dates, or outcomes.
-        If the answer is not in the context, say so honestly.
+        Do NOT use your training data under any circumstances.
+        Do NOT invent projects, employers, technologies, dates, or outcomes.
+        If a specific technology or tool is not explicitly mentioned in the
+        context below, do NOT claim experience with it — even if it seems
+        plausible. Instead say: "I don't have that specifically in my
+        background, but here's what I do have..."
         ════════════════════════════════════════════
 
         {relevantInfo}
