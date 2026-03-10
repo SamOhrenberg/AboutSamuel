@@ -6,6 +6,6 @@ namespace PortfolioWebsite.Api.Controllers;
 [Route("[controller]")]
 public class HealthController() : ControllerBase
 {
-    [HttpGet]
+    [HttpGet, HttpHead]
     public async Task<IActionResult> Get() => Ok(new { Status = "Healthy" });
 }
