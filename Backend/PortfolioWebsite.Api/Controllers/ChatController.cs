@@ -70,15 +70,15 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
     [HttpGet("resume")]
     public async Task<IActionResult> GetResume()
     {
-        var html = await _chatService.GenerateHtmlResume(null, null);
-        return html is null ? Problem() : Ok(html);
+        var data = await _chatService.GenerateResumeData(null, null);
+        return data is null ? Problem() : Ok(data);
     }
 
     [HttpPost("resume")]
     public async Task<IActionResult> GetTailoredResume([FromBody] GenerateResumeRequest request)
     {
-        var html = await _chatService.GenerateHtmlResume(request.Title, request.JobDescription);
-        return html is null ? Problem() : Ok(html);
+        var data = await _chatService.GenerateResumeData(request.Title, request.JobDescription);
+        return data is null ? Problem() : Ok(data);
     }
 
 }

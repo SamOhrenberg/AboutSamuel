@@ -35,7 +35,6 @@ public class ChatService
         DateTimeOffset ReceivedAt,
         Stopwatch Stopwatch);
 
-    // Add these in ChatService or a shared models file
     public record StreamChunk
     {
         public string? Token { get; init; }
@@ -43,6 +42,34 @@ public class ChatService
         public bool IsToken => Token != null;
         public bool IsMeta => Meta != null;
     }
+
+    public record ResumeData(
+    string Name,
+    string Title,
+    string Summary,
+    List<string> CoreSkills,
+    List<ResumeJob> Experience,
+    List<ResumeProject> AdditionalProjects
+);
+
+    public record ResumeJob(
+        string Employer,
+        string Title,
+        string? Years,
+        string Summary,
+        List<string> Achievements,
+        List<ResumeProject> Projects
+    );
+
+    public record ResumeProject(
+        string Title,
+        string Role,
+        string? Years,
+        string Summary,
+        string? Impact,
+        List<string> TechStack,
+        bool IsFeatured
+    );
 
     public record StreamMeta(
         string? RedirectToPage = null,
@@ -62,7 +89,7 @@ public class ChatService
     private readonly IAmazonBedrockRuntime _bedrockClient;
     private readonly ContactService _contactService;
     private readonly EmbeddingService _embeddingService;
-    
+
     private record ModelSettings(string Model);
     private readonly ModelSettings _toolUse;
     private readonly ModelSettings _questions;
@@ -201,8 +228,8 @@ public class ChatService
         {
             if (ct.IsCancellationRequested) break;
 
-            if (chunk is ContentBlockDeltaEvent delta 
-                && delta.Delta?.Text != null 
+            if (chunk is ContentBlockDeltaEvent delta
+                && delta.Delta?.Text != null
                 && !string.IsNullOrEmpty(delta.Delta.Text))
             {
                 fullResponse.Append(delta.Delta.Text);
@@ -247,32 +274,20 @@ public class ChatService
         return response;
     }
 
-    public async Task<string?> GenerateHtmlResume(string? title, string? jobDescription)
+    public async Task<ResumeData?> GenerateResumeData(string? title, string? jobDescription)
     {
-        var allInformation = await _dbContext.Information
-            .OrderBy(t => t.Text)
-            .ToListAsync();
-
+        var allInformation = await _dbContext.Information.OrderBy(t => t.Text).ToListAsync();
         var allJobs = await _dbContext.WorkExperiences
-            .Where(j => j.IsActive)
-            .OrderBy(j => j.DisplayOrder)
-            .ToListAsync();
-
-        // Include WorkExperience so employer name is available for unlinked projects
+            .Where(j => j.IsActive).OrderBy(j => j.DisplayOrder).ToListAsync();
         var allProjects = await _dbContext.Projects
             .Include(p => p.WorkExperiences)
             .Where(p => p.IsActive)
             .OrderByDescending(p => p.IsFeatured)
-            .ThenBy(p => p.WorkExperiences.Any()
-                ? p.WorkExperiences.Min(w => w.DisplayOrder)
-                : int.MaxValue)
+            .ThenBy(p => p.WorkExperiences.Any() ? p.WorkExperiences.Min(w => w.DisplayOrder) : int.MaxValue)
             .ThenBy(p => p.DisplayOrder)
             .ToListAsync();
 
-
-        var infoBlock = string.Join(
-            "\r\n\r\nNew Information:\r\n",
-            allInformation.Select(i => i.Text));
+        var infoBlock = string.Join("\r\n\r\nNew Information:\r\n", allInformation.Select(i => i.Text));
 
         var jobsBlock = string.Join("\r\n\r\n", allJobs.Select(j =>
         {
@@ -282,178 +297,148 @@ public class ChatService
 
             var years = BuildYearRange(j.StartYear, j.EndYear);
             var sb = new StringBuilder();
-
             sb.AppendLine($"Role: {j.Title}");
             sb.AppendLine($"Employer: {j.Employer}{(years != null ? $" | {years}" : "")}");
-            if (!string.IsNullOrWhiteSpace(j.Summary))
-                sb.AppendLine($"Summary: {j.Summary}");
+            if (!string.IsNullOrWhiteSpace(j.Summary)) sb.AppendLine($"Summary: {j.Summary}");
             if (achievements.Count > 0)
             {
                 sb.AppendLine("Achievements:");
-                foreach (var a in achievements)
-                    sb.AppendLine($"  - {a}");
+                foreach (var a in achievements) sb.AppendLine($"  - {a}");
             }
 
-            // Attach linked projects directly under their employer job entry
-            var linkedProjects = allProjects
+            var linked = allProjects
                 .Where(p => p.WorkExperiences.Any(w => w.WorkExperienceId == j.WorkExperienceId))
                 .ToList();
 
-            if (linkedProjects.Count > 0)
+            if (linked.Count > 0)
             {
-                sb.AppendLine("  Related Projects:");
-                foreach (var p in linkedProjects)
+                sb.AppendLine("Related Projects:");
+                foreach (var p in linked)
                 {
-                    var techStack = DeserializeTechStack(p.TechStack);
-                    var projectYears = BuildYearRange(p.StartYear, p.EndYear);
-                    sb.AppendLine($"    Project: {p.Title} | Role: {p.Role}{(projectYears != null ? $" | {projectYears}" : "")}");
-                    if (!string.IsNullOrWhiteSpace(p.Summary)) sb.AppendLine($"      Summary: {p.Summary}");
-                    if (!string.IsNullOrWhiteSpace(p.Detail)) sb.AppendLine($"      Detail: {p.Detail}");
-                    if (!string.IsNullOrWhiteSpace(p.ImpactStatement)) sb.AppendLine($"      Impact: {p.ImpactStatement}");
-                    if (techStack.Count > 0) sb.AppendLine($"      Tech Stack: {string.Join(", ", techStack)}");
+                    var tech = DeserializeTechStack(p.TechStack);
+                    sb.AppendLine($"  Project: {p.Title} | Role: {p.Role} | Featured: {p.IsFeatured}");
+                    if (!string.IsNullOrWhiteSpace(p.Summary)) sb.AppendLine($"    Summary: {p.Summary}");
+                    if (!string.IsNullOrWhiteSpace(p.ImpactStatement)) sb.AppendLine($"    Impact: {p.ImpactStatement}");
+                    if (tech.Count > 0) sb.AppendLine($"    Tech: {string.Join(", ", tech)}");
                 }
             }
 
             return sb.ToString().Trim();
         }));
 
-        // Only include projects that are not linked to any job (unlinked orphans)
-        var unlinkedProjects = allProjects.Where(p => !p.WorkExperiences.Any()).ToList();
-        var unlinkedProjectsBlock = unlinkedProjects.Count > 0
-            ? string.Join("\r\n\r\n", unlinkedProjects.Select(p =>
+        var unlinked = allProjects.Where(p => !p.WorkExperiences.Any()).ToList();
+        var unlinkedBlock = unlinked.Count > 0
+            ? string.Join("\r\n\r\n", unlinked.Select(p =>
             {
-                var techStack = DeserializeTechStack(p.TechStack);
-                var years = BuildYearRange(p.StartYear, p.EndYear);
+                var tech = DeserializeTechStack(p.TechStack);
                 var sb = new StringBuilder();
-
-                sb.AppendLine($"Project: {p.Title}");
-                sb.AppendLine($"Role: {p.Role}{(years != null ? $" | {years}" : "")}");
+                sb.AppendLine($"Project: {p.Title} | Role: {p.Role} | Featured: {p.IsFeatured}");
                 if (!string.IsNullOrWhiteSpace(p.Summary)) sb.AppendLine($"Summary: {p.Summary}");
-                if (!string.IsNullOrWhiteSpace(p.Detail)) sb.AppendLine($"Detail: {p.Detail}");
                 if (!string.IsNullOrWhiteSpace(p.ImpactStatement)) sb.AppendLine($"Impact: {p.ImpactStatement}");
-                if (techStack.Count > 0) sb.AppendLine($"Tech Stack: {string.Join(", ", techStack)}");
-
+                if (tech.Count > 0) sb.AppendLine($"Tech: {string.Join(", ", tech)}");
                 return sb.ToString().Trim();
             }))
             : null;
 
         bool hasTailoring = !string.IsNullOrWhiteSpace(title) || !string.IsNullOrWhiteSpace(jobDescription);
-
-        var titleInstruction = hasTailoring
+        var tailorInstruction = hasTailoring
             ? $"""
-          Tailor this resume for the following:
-
-          {(!string.IsNullOrWhiteSpace(title) ? $"Target Role: {title}" : "")}
-
-          {(!string.IsNullOrWhiteSpace(jobDescription) ? $"""
-          Job Description:
-          {jobDescription}
-
-          Instructions:
-          - Mirror the language, keywords, and terminology used in the job description naturally throughout the resume
-          - Identify the top 5-7 required or preferred skills from the job description and ensure they are visible
-            and substantiated with real experience from Samuel's background — never fabricate
-          - Prioritize and feature projects and experience most directly relevant to the job description
-          - Lead every bullet point with the accomplishment or outcome most relevant to this role
-          - If the job description mentions specific technologies, methodologies, or domains Samuel has
-            experience with, make sure they appear prominently rather than buried
-          - Write the professional summary specifically for this role, referencing the employer's priorities
-            where you can infer them from the job description
-          - De-emphasize or condense experience and projects with little relevance to this role
-          """ : """
-          - Prioritize projects and experience most relevant to this role title
-          - Use language and keywords appropriate for this type of role
-          - Write the professional summary targeting this role
+          TAILORING: Target Role: {title ?? ""}
+          {(string.IsNullOrWhiteSpace(jobDescription) ? "" : $"""
+          Job Description: {jobDescription}
+          - Mirror keywords from the job description
+          - Rewrite the summary to target this role specifically
+          - Reorder achievements within each role to lead with most relevant
+          - In each project summary, emphasize aspects relevant to this role
+          - Condense less relevant entries but include ALL entries
           """)}
           """
-            : "Include all experience and projects. Featured projects should appear more prominently.";
+            : "No tailoring — present all experience neutrally. Featured projects should be prominent.";
 
-        var systemPrompt = $$"""
-        You are a professional resume generator. I will provide raw information about Samuel Ohrenberg's 
-        professional experience, education, and skills. Each job entry may include a list of related projects
-        that were delivered during that role. Unlinked projects (not tied to a specific employer) will be
-        provided separately at the end.
+        var employerManifest = string.Join(", ", allJobs.Select(j => $"{j.Employer} ({j.Title})"));
+        var projectManifest = string.Join(", ", allProjects.Select(p => p.Title));
 
-        Generate an HTML resume that meets these requirements:
+        const string jsonSchema = """
+        {
+          "name": "Samuel Ohrenberg",
+          "title": "string",
+          "summary": "string",
+          "coreSkills": ["string"],
+          "experience": [
+            {
+              "employer": "string",
+              "title": "string",
+              "years": "string or null",
+              "summary": "string",
+              "achievements": ["string"],
+              "projects": [
+                {
+                  "title": "string",
+                  "role": "string",
+                  "years": "string or null",
+                  "summary": "string",
+                  "impact": "string or null",
+                  "techStack": ["string"],
+                  "isFeatured": false
+                }
+              ]
+            }
+          ],
+          "additionalProjects": [
+            {
+              "title": "string",
+              "role": "string",
+              "years": "string or null",
+              "summary": "string",
+              "impact": "string or null",
+              "techStack": ["string"],
+              "isFeatured": false
+            }
+          ]
+        }
+        """;
 
-        - Slots within a Vue.js <template></template> (do NOT include the <template> tags themselves)
-        - Does NOT include a contact section
-        - Uses ONLY inline style attributes — no <style> tags, no CSS class names
-        - Includes ALL jobs, education, and important skills
-        - For projects, you have flexibility in how you present them — choose whichever approach
-          produces the strongest, most readable resume:
-            Option A: Show each project as a sub-section directly under its employer job entry
-            Option B: Collect all projects into a dedicated Projects section after Professional Experience
-            Option C: A hybrid — inline the most impactful projects under their employer, and group
-                      lesser projects in a standalone section
-          Featured projects should always be prominent regardless of placement.
-          Unlinked projects (no employer) should appear in a standalone Projects section.
-        - Each project entry should show: title, role, year range, a concise summary or bullet
-          points from the detail, the impact statement as a highlighted callout if present, and
-          the tech stack as small inline tags
-        - Is visually appealing, accessible (screen-reader friendly), and responsive
-        - Has strong contrast between foreground text and background colors
-        - Paraphrases and summarizes as needed while retaining all important details
+        var systemPrompt = $"""
+        You generate structured resume data as JSON for Samuel Ohrenberg.
 
-        Use this color theme throughout. These are NON-NEGOTIABLE — do not deviate:
-            Page background:         #e6eeee  (light)
-            Card/section background: #FFFFFF
-            ALL body text:           #1a1a1a  (near-black — must be readable on light backgrounds)
-            ALL headings:            #1a1a1a  (near-black)
-            Accent / section titles: #006a6a
-            Highlighted text / links:#48A9A6
-            Impact callout background:#e0f4f4
-            Impact callout text:     #004d4d
-            Tech tag background:     #d0ecec
-            Tech tag text:           #006a6a
-            Subtle dividers:         #c0d8d8
+        COMPLETENESS — NON-NEGOTIABLE:
+        You MUST include ALL {allJobs.Count} employer roles: {employerManifest}
+        You MUST include ALL {allProjects.Count} projects: {projectManifest}
+        If tailoring, condense less relevant entries — never omit them.
 
-        CRITICAL: This resume will always render on a LIGHT background.
-        Every text element must have dark text (#1a1a1a or similar) to ensure readability.
-        Never use white, near-white, or light-colored text anywhere.
-        Never use the site's dark theme colors (#001e1e, #003131, rgba with low opacity) for text.
+        {tailorInstruction}
 
-        {{titleInstruction}}
+        OUTPUT: Return ONLY a valid JSON object matching this exact schema.
+        No markdown, no code fences, no extra text.
 
-        You MUST output ONLY a valid JSON object in exactly this format with no markdown, no code fences, and no extra text:
-        {"html": "<your complete html string here>"}
+        {jsonSchema}
         """;
 
         var userContent = new StringBuilder();
         userContent.AppendLine("=== BIOGRAPHICAL & SKILLS INFORMATION ===");
         userContent.AppendLine(infoBlock);
         userContent.AppendLine();
-        userContent.AppendLine("=== PROFESSIONAL EXPERIENCE (projects linked where applicable) ===");
+        userContent.AppendLine($"=== PROFESSIONAL EXPERIENCE ({allJobs.Count} roles) ===");
         userContent.AppendLine(jobsBlock);
-
-        if (unlinkedProjectsBlock is not null)
+        if (unlinkedBlock is not null)
         {
             userContent.AppendLine();
-            userContent.AppendLine("=== ADDITIONAL PROJECTS (not tied to a specific employer) ===");
-            userContent.AppendLine(unlinkedProjectsBlock);
+            userContent.AppendLine($"=== UNLINKED PROJECTS ({unlinked.Count}) ===");
+            userContent.AppendLine(unlinkedBlock);
         }
 
         var request = new ConverseRequest
         {
             ModelId = _questions.Model,
             System = [new SystemContentBlock { Text = systemPrompt }],
-            Messages =
-            [
-                new Message
-                {
-                    Role = "user",
-                    Content = [new ContentBlock { Text = userContent.ToString() }]
-                }
-            ],
+            Messages = [new Message { Role = "user", Content = [new ContentBlock { Text = userContent.ToString() }] }],
             InferenceConfig = new InferenceConfiguration { MaxTokens = 8192 }
         };
 
         var result = await _bedrockClient.ConverseAsync(request);
-        var raw = result.Output.Message.Content
-            .FirstOrDefault(c => c.Text != null)?.Text ?? string.Empty;
+        var raw = result.Output.Message.Content.FirstOrDefault(c => c.Text != null)?.Text ?? string.Empty;
 
         raw = raw.Trim();
-
         if (raw.StartsWith("```"))
         {
             raw = string.Join('\n', raw.Split('\n').Skip(1));
@@ -464,24 +449,13 @@ public class ChatService
 
         try
         {
-            var node = JsonNode.Parse(raw, new JsonNodeOptions { PropertyNameCaseInsensitive = true });
-            var html = node?["html"]?.ToString();
-            if (!string.IsNullOrWhiteSpace(html))
-                return html;
+            return JsonSerializer.Deserialize<ResumeData>(raw, _jsonOptions);
         }
-        catch { }
-
-        var htmlStart = raw.IndexOf('<');
-        if (htmlStart > 0)
+        catch (Exception ex)
         {
-            var extracted = raw[htmlStart..].Trim();
-            if (extracted.EndsWith("}\"") || extracted.EndsWith("\"}"))
-                extracted = extracted[..extracted.LastIndexOf('<')].Trim();
-            return extracted;
+            _logger.LogError(ex, "Failed to deserialize resume JSON. Raw: {Raw}", raw[..Math.Min(500, raw.Length)]);
+            return null;
         }
-
-        _logger.LogWarning("Could not extract HTML from resume response");
-        return raw;
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -931,7 +905,7 @@ public class ChatService
             Role = message.Role,
             Content = cleanBlocks
         };
-    } 
+    }
 
     private async Task<ToolExecutionResult> ExecuteTool(
     string toolName,

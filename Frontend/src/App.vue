@@ -80,9 +80,6 @@ router.afterEach(() => {
 
 
 onMounted(() => {
-  if (!resumeStore.resumeContent) {
-    resumeStore.fetchResume()
-  }
 
   // Preload main route chunks during idle time so nav feels instant
   const preload = () => {
@@ -392,5 +389,33 @@ function startResize(e) {
   width: 100vw !important;
   height: 100dvh !important;
   z-index: 2000;
+}
+
+@media print {
+  /* Hide everything except main content */
+  #chat-box,
+  .chatbox-fab,
+  .chatbox-mobile-fab,
+  .chat-panel-wrapper,
+  nav,
+  footer,
+  .v-navigation-drawer {
+    display: none !important;
+  }
+
+  /* Let main content fill the full page */
+  #content-wrapper {
+    display: block !important;
+  }
+
+  #main-content {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  #app-shell {
+    height: auto !important;
+    overflow: visible !important;
+  }
 }
 </style>
