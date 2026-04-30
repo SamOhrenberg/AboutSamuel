@@ -8,6 +8,8 @@ using PortfolioWebsite.Api.Middlewares;
 using PortfolioWebsite.Api.Services;
 using Serilog;
 using Serilog.Events;
+using Serilog.Formatting.Compact;
+using Serilog.Formatting.Elasticsearch;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -34,10 +36,21 @@ namespace PortfolioWebsite.Api
 
                 var builder = WebApplication.CreateBuilder(args);
 
-                builder.Host.UseSerilog((context, services, configuration) => configuration
-                    .ReadFrom.Configuration(context.Configuration)
-                    .ReadFrom.Services(services)
-                    .Enrich.FromLogContext());
+                builder.Host.UseSerilog((context, services, configuration) =>
+                {
+                    var axiomToken = context.Configuration["Axiom:Token"];
+                    var axiomDataset = context.Configuration["Axiom:Dataset"];
+
+                    configuration
+                        .ReadFrom.Configuration(context.Configuration)
+                        .WriteTo.Http(
+                            requestUri: $"https://api.axiom.co/v1/datasets/{axiomDataset}/ingest",
+                            queueLimitBytes: null,
+                            httpClient: new AxiomHttpService(axiomToken),
+                            textFormatter: new ElasticsearchJsonFormatter(renderMessageTemplate: false, inlineFields: true)
+                        )
+                        .Enrich.FromLogContext();
+                });
 
                 builder.Services.AddControllers();
                 builder.Services.AddEndpointsApiExplorer();
