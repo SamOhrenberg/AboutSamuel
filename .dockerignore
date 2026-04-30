@@ -1,0 +1,14 @@
+**/.vs
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.git
+**/Logs
+**/*.user
+**/*.bak
+Frontend/
+DataMigrator/
+.github/
+*.md
+*.ps1
