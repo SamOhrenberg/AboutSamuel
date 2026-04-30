@@ -131,6 +131,13 @@ namespace PortfolioWebsite.Api
 
                 app.MapControllers();
 
+                // deploy migrations. We can't do this as part of the build since we're leaving docker and railway to handle them
+                using (var scope = app.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<SqlDbContext>();
+                    db.Database.Migrate();
+                }
+
                 app.Run();
             }
             catch (Exception ex)
