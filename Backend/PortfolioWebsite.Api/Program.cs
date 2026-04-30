@@ -135,11 +135,11 @@ namespace PortfolioWebsite.Api
                 {
                     app.UseSwagger();
                     app.UseSwaggerUI();
+                    app.UseHttpsRedirection();
                 }
 
                 app.UseMiddleware<ExceptionLoggerMiddleware>();
                 app.UseExceptionHandler("/error");
-                app.UseHttpsRedirection();
                 app.UseRateLimiter();
 
                 app.UseCors(PublicCorsPolicy);
