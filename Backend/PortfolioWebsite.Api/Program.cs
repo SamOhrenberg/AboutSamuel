@@ -21,6 +21,8 @@ namespace PortfolioWebsite.Api
         {
             try
             {
+                AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", false);
+
                 var builder = WebApplication.CreateBuilder(args);
 
                 Log.Logger = new LoggerConfiguration()
@@ -93,7 +95,7 @@ namespace PortfolioWebsite.Api
                 });
 
                 builder.Services.AddPooledDbContextFactory<SqlDbContext>(options =>
-                    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
                 builder.Services.AddScoped(sp =>
                     sp.GetRequiredService<IDbContextFactory<SqlDbContext>>().CreateDbContext());

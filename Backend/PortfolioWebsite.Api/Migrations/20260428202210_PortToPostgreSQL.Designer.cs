@@ -2,9 +2,9 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PortfolioWebsite.Api.Data;
 
 #nullable disable
@@ -12,8 +12,8 @@ using PortfolioWebsite.Api.Data;
 namespace PortfolioWebsite.Api.Migrations
 {
     [DbContext(typeof(SqlDbContext))]
-    [Migration("20260220064536_AddWorkExperience")]
-    partial class AddWorkExperience
+    [Migration("20260428202210_PortToPostgreSQL")]
+    partial class PortToPostgreSQL
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -21,31 +21,31 @@ namespace PortfolioWebsite.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "8.0.12")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.AdminToken", b =>
                 {
                     b.Property<Guid>("AdminTokenId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RequestIp")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("Used")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.HasKey("AdminTokenId");
 
@@ -56,34 +56,34 @@ namespace PortfolioWebsite.Api.Migrations
                 {
                     b.Property<Guid>("ChatId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("Error")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("History")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("ReceivedAt")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Response")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<float>("ResponseTookMs")
                         .HasColumnType("real");
 
                     b.Property<Guid?>("SessionTrackingId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("TokenLimitReached")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.HasKey("ChatId");
 
@@ -94,10 +94,13 @@ namespace PortfolioWebsite.Api.Migrations
                 {
                     b.Property<Guid>("InformationId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EmbeddingJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("Text")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("InformationId");
 
@@ -108,14 +111,14 @@ namespace PortfolioWebsite.Api.Migrations
                 {
                     b.Property<Guid>("KeywordId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("InformationId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("KeywordId");
 
@@ -128,48 +131,47 @@ namespace PortfolioWebsite.Api.Migrations
                 {
                     b.Property<Guid>("ProjectId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Detail")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    b.Property<string>("Employer")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("EmbeddingJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("EndYear")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ImpactStatement")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsFeatured")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("StartYear")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Summary")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("TechStack")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("ProjectId");
 
@@ -180,45 +182,63 @@ namespace PortfolioWebsite.Api.Migrations
                 {
                     b.Property<Guid>("WorkExperienceId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Achievements")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasDefaultValue("[]");
 
                     b.Property<int>("DisplayOrder")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasDefaultValue(0);
+
+                    b.Property<string>("EmbeddingJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("Employer")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("EndYear")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<string>("StartYear")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Summary")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("WorkExperienceId");
 
                     b.ToTable("WorkExperiences");
+                });
+
+            modelBuilder.Entity("ProjectWorkExperience", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkExperienceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ProjectId", "WorkExperienceId");
+
+                    b.HasIndex("WorkExperienceId");
+
+                    b.ToTable("ProjectWorkExperience");
                 });
 
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.Keyword", b =>
@@ -230,6 +250,21 @@ namespace PortfolioWebsite.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Information");
+                });
+
+            modelBuilder.Entity("ProjectWorkExperience", b =>
+                {
+                    b.HasOne("PortfolioWebsite.Api.Data.Models.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PortfolioWebsite.Api.Data.Models.WorkExperience", null)
+                        .WithMany()
+                        .HasForeignKey("WorkExperienceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.Information", b =>

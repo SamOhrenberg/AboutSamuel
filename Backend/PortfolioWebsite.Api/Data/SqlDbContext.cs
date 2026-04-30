@@ -19,28 +19,29 @@ public class SqlDbContext : DbContext
     {
         modelBuilder.Entity<Chat>()
             .Property(i => i.ChatId)
-            .HasValueGenerator<SequentialGuidValueGenerator>()
+            .HasValueGenerator<GuidValueGenerator>()
             .ValueGeneratedOnAdd();
 
         modelBuilder.Entity<Information>()
             .Property(i => i.InformationId)
-            .HasValueGenerator<SequentialGuidValueGenerator>()
+            .HasValueGenerator<GuidValueGenerator>()
             .ValueGeneratedOnAdd();
 
         modelBuilder.Entity<Keyword>()
             .Property(k => k.KeywordId)
-            .HasValueGenerator<SequentialGuidValueGenerator>()
+            .HasValueGenerator<GuidValueGenerator>()
             .ValueGeneratedOnAdd();
 
         modelBuilder.Entity<AdminToken>()
             .Property(k => k.AdminTokenId)
-            .HasValueGenerator<SequentialGuidValueGenerator>()
+            .HasValueGenerator<GuidValueGenerator>()
             .ValueGeneratedOnAdd();
 
         modelBuilder.Entity<WorkExperience>(entity =>
         {
             entity.HasKey(e => e.WorkExperienceId);
-            entity.Property(e => e.WorkExperienceId).HasDefaultValueSql("NEWSEQUENTIALID()");
+            entity.Property(e => e.WorkExperienceId)
+                .HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Achievements).HasDefaultValue("[]");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.DisplayOrder).HasDefaultValue(0);
@@ -50,7 +51,7 @@ public class SqlDbContext : DbContext
         {
             entity.HasKey(e => e.ProjectId);
             entity.Property(e => e.ProjectId)
-                .HasValueGenerator<SequentialGuidValueGenerator>()
+                .HasValueGenerator<GuidValueGenerator>()
                 .ValueGeneratedOnAdd();
 
             // Many-to-many with explicit join table and clean column names
