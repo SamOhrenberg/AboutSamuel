@@ -7,6 +7,7 @@ using PortfolioWebsite.Api.Data;
 using PortfolioWebsite.Api.Middlewares;
 using PortfolioWebsite.Api.Services;
 using Serilog;
+using Serilog.Events;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -19,15 +20,24 @@ namespace PortfolioWebsite.Api
 
         public static void Main(string[] args)
         {
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                .Enrich.FromLogContext()
+                .WriteTo.Console()
+                .CreateBootstrapLogger();
+
             try
             {
+                Log.Information("Starting PortfolioWebsite.Api host...");
+
                 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", false);
 
                 var builder = WebApplication.CreateBuilder(args);
 
-                Log.Logger = new LoggerConfiguration()
-                    .ReadFrom.Configuration(builder.Configuration)
-                    .CreateLogger();
+                builder.Host.UseSerilog((context, services, configuration) => configuration
+                    .ReadFrom.Configuration(context.Configuration)
+                    .ReadFrom.Services(services)
+                    .Enrich.FromLogContext());
 
                 builder.Services.AddControllers();
                 builder.Services.AddEndpointsApiExplorer();
@@ -36,28 +46,28 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
                 builder.Services.AddSingleton<IAmazonBedrockRuntime>(_ =>
                 {
-                    var region = Amazon.RegionEndpoint.GetBySystemName(
-                        Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1");
+                    var regionStr = Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1";
+                    Log.Information("Initializing AWS Bedrock Runtime in region: {Region}", regionStr);
+                    var region = Amazon.RegionEndpoint.GetBySystemName(regionStr);
                     return new AmazonBedrockRuntimeClient(region);
                 });
+
                 builder.Services.AddScoped<EmbeddingService>();
 
-                var allowedOrigins = builder.Configuration
-                    .GetSection("AllowedOrigins").Get<string[]>();
+                var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
+                Log.Information("CORS allowed origins: {Origins}", string.Join(", ", allowedOrigins ?? ["None"]));
 
                 builder.Services.AddCors(options =>
                 {
-                    options.AddPolicy(PublicCorsPolicy,
-                        policy => policy
-                            .WithOrigins(allowedOrigins ?? Array.Empty<string>())
-                            .AllowAnyMethod()
-                            .AllowAnyHeader());
+                    options.AddPolicy(PublicCorsPolicy, policy => policy
+                        .WithOrigins(allowedOrigins ?? Array.Empty<string>())
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
 
-                    options.AddPolicy(AdminCorsPolicy,
-                        policy => policy
-                            .WithOrigins(allowedOrigins ?? Array.Empty<string>())
-                            .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
-                            .AllowAnyHeader());
+                    options.AddPolicy(AdminCorsPolicy, policy => policy
+                        .WithOrigins(allowedOrigins ?? Array.Empty<string>())
+                        .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
+                        .AllowAnyHeader());
                 });
 
                 var jwtSecret = builder.Configuration.GetValue<string>("AdminSettings:JwtSecret")
@@ -75,7 +85,7 @@ namespace PortfolioWebsite.Api
                             ValidateAudience = true,
                             ValidAudience = "aboutsamuel-admin",
                             ValidateLifetime = true,
-                            ClockSkew = TimeSpan.Zero // No grace period — token expiry is exact
+                            ClockSkew = TimeSpan.Zero
                         };
                     });
 
@@ -90,7 +100,6 @@ namespace PortfolioWebsite.Api
                         limiterOptions.QueueLimit = 0;
                         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     });
-
                     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 });
 
@@ -100,17 +109,14 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddScoped(sp =>
                     sp.GetRequiredService<IDbContextFactory<SqlDbContext>>().CreateDbContext());
 
-
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();
                 builder.Services.AddScoped<AdminService>();
                 builder.Services.AddSingleton<MailgunService>();
 
-                builder.Logging.AddSerilog();
-
-                Log.Information("Starting PortfolioWebsite.Api");
-
                 var app = builder.Build();
+
+                app.UseSerilogRequestLogging();
 
                 if (app.Environment.IsDevelopment())
                 {
@@ -123,26 +129,39 @@ namespace PortfolioWebsite.Api
                 app.UseHttpsRedirection();
                 app.UseRateLimiter();
 
-                app.MapControllers().RequireCors(PublicCorsPolicy);
-
                 app.UseCors(PublicCorsPolicy);
                 app.UseAuthentication();
                 app.UseAuthorization();
 
                 app.MapControllers();
 
-                // deploy migrations. We can't do this as part of the build since we're leaving docker and railway to handle them
                 using (var scope = app.Services.CreateScope())
                 {
                     var db = scope.ServiceProvider.GetRequiredService<SqlDbContext>();
-                    db.Database.Migrate();
+                    var pendingMigrations = db.Database.GetPendingMigrations().ToList();
+
+                    if (pendingMigrations.Any())
+                    {
+                        Log.Information("Applying {Count} pending migrations: {Migrations}",
+                            pendingMigrations.Count, string.Join(", ", pendingMigrations));
+                        db.Database.Migrate();
+                        Log.Information("Migrations applied successfully.");
+                    }
+                    else
+                    {
+                        Log.Information("No pending migrations found.");
+                    }
                 }
 
                 app.Run();
             }
             catch (Exception ex)
             {
-                Log.Fatal(ex, ex.Message);
+                Log.Fatal(ex, "Host terminated unexpectedly during startup");
+            }
+            finally
+            {
+                Log.CloseAndFlush();
             }
         }
     }
