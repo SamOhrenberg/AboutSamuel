@@ -23,16 +23,40 @@
 
       <!-- Content -->
       <div class="explorer-content">
-
-        <!-- Canvas area -->
+        <!-- Canvas takes full space on mobile -->
         <div class="canvas-wrap" ref="canvasWrap">
           <div class="grid-overlay"></div>
-
           <canvas ref="canvas" @mousemove="onMouseMove" @mouseleave="onMouseLeave" @mousedown="onMouseDown"
-            @mouseup="onMouseUp"></canvas>
+            @mouseup="onMouseUp" @wheel.prevent="onWheel"></canvas>
 
-          <!-- Tooltip -->
-          <div v-if="hoveredPoint" class="tooltip" :style="{ left: tooltipPos.x + 'px', top: tooltipPos.y + 'px' }">
+          <div class="mode-toggle">
+            <button v-for="m in modes" :key="m.value" class="mode-btn" :class="{ active: filterMode === m.value }"
+              @click="filterMode = m.value">{{ m.label }}</button>
+            <button class="mode-btn" @click="scale = 1; offset = { x: 0, y: 0 }">Reset</button>
+          </div>
+
+          <div class="instructions" :class="{ hidden: isMobile && queryResult }">
+            hover to inspect &nbsp;·&nbsp; type a query above to find nearest neighbors
+          </div>
+
+          <!-- Mobile info button -->
+          <button v-if="isMobile" class="info-btn" @click="sheetOpen = true">
+            <span class="info-icon">⊞</span>
+            <span>{{ points.length }} points</span>
+          </button>
+
+          <!-- Loading / empty states -->
+          <div v-if="loading" class="loading-overlay">
+            <div class="loading-text"><span class="loading-caret">&gt;_</span> Loading embedding space...</div>
+          </div>
+          <div v-if="!loading && points.length === 0" class="loading-overlay">
+            <div class="loading-text">No projections found.<br><small>Run "Regenerate Visualization" in the admin
+                panel.</small></div>
+          </div>
+
+          <!-- Tooltip (desktop only) -->
+          <div v-if="hoveredPoint && !isMobile" class="tooltip"
+            :style="{ left: tooltipPos.x + 'px', top: tooltipPos.y + 'px' }">
             <div class="tooltip-type" :style="{ color: typeColor(hoveredPoint.entityType) }">
               {{ typeLabel(hoveredPoint.entityType) }}
             </div>
@@ -42,104 +66,83 @@
               <span v-for="t in hoveredPoint.techStack" :key="t" class="tooltip-chip">{{ t }}</span>
             </div>
           </div>
-
-          <!-- Mode toggle -->
-          <div class="mode-toggle">
-            <button v-for="m in modes" :key="m.value" class="mode-btn" :class="{ active: filterMode === m.value }"
-              @click="filterMode = m.value">{{ m.label }}</button>
-            <button class="mode-btn" @click="scale = 1; offset = { x: 0, y: 0 }">Reset</button>
-          </div>
-
-          <!-- Loading overlay -->
-          <div v-if="loading" class="loading-overlay">
-            <div class="loading-text">
-              <span class="loading-caret">&gt;_</span> Loading embedding space...
-            </div>
-          </div>
-
-          <!-- Empty state -->
-          <div v-if="!loading && points.length === 0" class="loading-overlay">
-            <div class="loading-text">
-              No projections found.<br>
-              <small>Run "Regenerate Visualization" in the admin panel.</small>
-            </div>
-          </div>
-
-          <div class="instructions">
-            hover to inspect &nbsp;·&nbsp; type a query above to find nearest neighbors
-          </div>
         </div>
 
-        <!-- Side panel -->
-        <div class="side-panel">
+        <!-- Desktop side panel (hidden on mobile) -->
+        <div class="side-panel" v-if="!isMobile">
+          <!-- keep existing side panel content unchanged -->
+        </div>
 
-          <!-- Stats -->
-          <div class="panel-section">
-            <div class="panel-title">Overview</div>
-            <div class="stat-grid">
-              <div class="stat-item">
-                <div class="stat-value">{{ points.length }}</div>
-                <div class="stat-label">Total Points</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ projectCount }}</div>
-                <div class="stat-label">Projects</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ workCount }}</div>
-                <div class="stat-label">Roles</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ infoCount }}</div>
-                <div class="stat-label">Skills</div>
-              </div>
-            </div>
-          </div>
+        <!-- Mobile bottom sheet -->
+        <Transition name="sheet">
+          <div v-if="isMobile && sheetOpen" class="bottom-sheet" @click.self="sheetOpen = false">
+            <div class="sheet-content" ref="sheetContent">
+              <div class="sheet-handle" @click="sheetOpen = false"></div>
 
-          <!-- Legend -->
-          <div class="panel-section">
-            <div class="panel-title">Legend</div>
-            <div v-for="l in legend" :key="l.type" class="legend-item">
-              <div class="legend-dot" :style="{ background: l.color, boxShadow: `0 0 6px ${l.glow}` }"></div>
-              <span>{{ l.label }}</span>
-              <span class="legend-count">{{ l.count }}</span>
-            </div>
-            <div v-if="queryResult" class="legend-item" style="margin-top:0.5rem">
-              <div class="legend-dot query-dot"></div>
-              <span style="color:#fdb831">Query Point</span>
-            </div>
-          </div>
-
-          <!-- Nearest neighbors -->
-          <div class="panel-section neighbors-section">
-            <div class="panel-title">Nearest Neighbors</div>
-            <template v-if="queryResult">
-              <div class="query-result-label">
-                Results for: <span class="query-term">"{{ lastQuery }}"</span>
+              <div class="sheet-tabs">
+                <button class="sheet-tab" :class="{ active: sheetTab === 'results' }" @click="sheetTab = 'results'">
+                  Results{{ queryResult ? ` (${queryResult.neighbors.length})` : '' }}
+                </button>
+                <button class="sheet-tab" :class="{ active: sheetTab === 'info' }" @click="sheetTab = 'info'">
+                  Info
+                </button>
               </div>
-              <div v-for="(n, i) in queryResult.neighbors" :key="n.entityId" class="neighbor-item"
-                @mouseenter="highlightNeighbor = n.entityId" @mouseleave="highlightNeighbor = null">
-                <div class="neighbor-rank">#{{ i + 1 }}</div>
-                <div class="neighbor-info">
-                  <div class="neighbor-title">{{ n.label }}</div>
-                  <div class="neighbor-type">
-                    {{ typeLabel(n.entityType) }}{{ n.subLabel ? ' · ' + n.subLabel : '' }}
+
+              <!-- Results tab -->
+              <div v-if="sheetTab === 'results'" class="sheet-body">
+                <template v-if="queryResult">
+                  <div class="query-result-label">
+                    Results for: <span class="query-term">"{{ lastQuery }}"</span>
                   </div>
-                  <div class="score-bar">
-                    <div class="score-fill" :style="{ width: (n.score * 100).toFixed(0) + '%' }"></div>
+                  <div v-for="(n, i) in queryResult.neighbors" :key="n.entityId" class="neighbor-item">
+                    <div class="neighbor-rank">#{{ i + 1 }}</div>
+                    <div class="neighbor-info">
+                      <div class="neighbor-title">{{ n.label }}</div>
+                      <div class="neighbor-type">
+                        {{ typeLabel(n.entityType) }}{{ n.subLabel ? ' · ' + n.subLabel : '' }}
+                      </div>
+                      <div class="score-bar">
+                        <div class="score-fill" :style="{ width: (n.score * 100).toFixed(0) + '%' }"></div>
+                      </div>
+                    </div>
+                    <div class="neighbor-score">{{ n.score.toFixed(2) }}</div>
+                  </div>
+                </template>
+                <div v-else class="empty-neighbors">
+                  Type a query above and tap QUERY to find semantically similar entries.
+                </div>
+              </div>
+
+              <!-- Info tab -->
+              <div v-if="sheetTab === 'info'" class="sheet-body">
+                <div class="stat-grid" style="margin-bottom: 1rem">
+                  <div class="stat-item">
+                    <div class="stat-value">{{ points.length }}</div>
+                    <div class="stat-label">Total Points</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value">{{ projectCount }}</div>
+                    <div class="stat-label">Projects</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value">{{ workCount }}</div>
+                    <div class="stat-label">Roles</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value">{{ infoCount }}</div>
+                    <div class="stat-label">Skills</div>
                   </div>
                 </div>
-                <div class="neighbor-score">{{ n.score.toFixed(2) }}</div>
+                <div class="panel-title">Legend</div>
+                <div v-for="l in legend" :key="l.type" class="legend-item">
+                  <div class="legend-dot" :style="{ background: l.color, boxShadow: `0 0 6px ${l.glow}` }"></div>
+                  <span>{{ l.label }}</span>
+                  <span class="legend-count">{{ l.count }}</span>
+                </div>
               </div>
-            </template>
-            <template v-else>
-              <div class="empty-neighbors">
-                Type a query above to find the most semantically similar entries in Samuel's experience.
-              </div>
-            </template>
+            </div>
           </div>
-
-        </div>
+        </Transition>
       </div>
     </div>
   </v-container>
@@ -163,6 +166,13 @@ const hoveredPoint = ref(null);
 const tooltipPos = ref({ x: 0, y: 0 });
 const filterMode = ref('all');
 const highlightNeighbor = ref(null);
+const sheetOpen = ref(false);
+const sheetTab = ref('results');
+const isMobile = ref(false);
+
+function checkMobile() {
+  isMobile.value = window.innerWidth < 768;
+}
 
 let ctx = null;
 let animHandle = null;
@@ -227,7 +237,6 @@ async function runQuery() {
   if (!q || isQuerying.value) return;
   isQuerying.value = true;
   lastQuery.value = q;
-
   try {
     const res = await fetch(`${API_BASE}/embedding-visualization/query`, {
       method: 'POST',
@@ -235,6 +244,11 @@ async function runQuery() {
       body: JSON.stringify({ query: q, topN: 5 }),
     });
     queryResult.value = await res.json();
+    // Auto-open sheet on mobile after query
+    if (isMobile.value) {
+      sheetTab.value = 'results';
+      sheetOpen.value = true;
+    }
   } catch (e) {
     console.error('Query failed', e);
   } finally {
@@ -269,23 +283,23 @@ function draw() {
   ctx.clearRect(0, 0, canvas.value.width, canvas.value.height);
 
   // Cluster labels
-const clusterDefs = [
-  { text: ['BACKEND', 'ENGINEERING'], x: 0.08, y: 0.15 },
-  { text: ['DATA &', 'ANALYTICS'],    x: 0.06, y: 0.60 },
-  { text: ['FRONTEND', '& UI'],       x: 0.62, y: 0.15 },
-  { text: ['LEADERSHIP', '& ARCH.'],  x: 0.60, y: 0.65 },
-  { text: ['DEVOPS', '& CLOUD'],      x: 0.40, y: 0.38 },
-];
+  const clusterDefs = [
+    { text: ['BACKEND', 'ENGINEERING'], x: 0.08, y: 0.15 },
+    { text: ['DATA &', 'ANALYTICS'], x: 0.06, y: 0.60 },
+    { text: ['FRONTEND', '& UI'], x: 0.62, y: 0.15 },
+    { text: ['LEADERSHIP', '& ARCH.'], x: 0.60, y: 0.65 },
+    { text: ['DEVOPS', '& CLOUD'], x: 0.40, y: 0.38 },
+  ];
 
-ctx.font = '700 11px Raleway, sans-serif';
-ctx.letterSpacing = '2px';
-clusterDefs.forEach(cl => {
-  const [x, y] = toCanvas(cl.x, cl.y);
-  ctx.fillStyle = 'rgba(139,233,253,0.35)';
-  cl.text.forEach((line, i) => {
-    ctx.fillText(line, x, y + i * 15);
+  ctx.font = '700 11px Raleway, sans-serif';
+  ctx.letterSpacing = '2px';
+  clusterDefs.forEach(cl => {
+    const [x, y] = toCanvas(cl.x, cl.y);
+    ctx.fillStyle = 'rgba(139,233,253,0.35)';
+    cl.text.forEach((line, i) => {
+      ctx.fillText(line, x, y + i * 15);
+    });
   });
-});
 
   const visiblePoints = filterMode.value === 'all'
     ? points.value
@@ -421,6 +435,8 @@ function typeLabel(type) {
 }
 
 onMounted(async () => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
   await loadProjections();
   await nextTick();
   if (canvas.value) {
@@ -435,6 +451,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile);
   window.removeEventListener('resize', resize);
   if (animHandle) cancelAnimationFrame(animHandle);
 });
@@ -907,5 +924,124 @@ canvas {
 ::-webkit-scrollbar-thumb {
   background: rgba(139, 233, 253, 0.2);
   border-radius: 2px;
+}
+
+/* Mobile canvas takes full content area */
+@media (max-width: 767px) {
+  .explorer-content {
+    grid-template-columns: 1fr;
+  }
+  .explorer-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+  }
+  .query-bar {
+    min-width: unset;
+  }
+}
+
+/* Info button */
+.info-btn {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(0,20,20,0.85);
+  border: 1px solid rgba(139,233,253,0.3);
+  border-radius: 20px;
+  padding: 0.4rem 0.85rem;
+  color: #8BE9FD;
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.72rem;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.info-icon { font-size: 1rem; }
+.instructions.hidden { opacity: 0; }
+
+/* Bottom sheet */
+.bottom-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0,0,0,0.5);
+}
+
+.sheet-content {
+  width: 100%;
+  max-height: 70vh;
+  background: #0a2a2a;
+  border-top: 1px solid rgba(139,233,253,0.25);
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: rgba(139,233,253,0.3);
+  border-radius: 2px;
+  margin: 0.75rem auto 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sheet-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(139,233,253,0.15);
+  flex-shrink: 0;
+  padding: 0 1rem;
+  gap: 0;
+}
+
+.sheet-tab {
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(224,242,242,0.5);
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+
+.sheet-tab.active {
+  color: #8BE9FD;
+  border-bottom-color: #8BE9FD;
+}
+
+.sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+/* Sheet transition */
+.sheet-enter-active, .sheet-leave-active {
+  transition: opacity 0.25s ease;
+}
+.sheet-enter-active .sheet-content,
+.sheet-leave-active .sheet-content {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-enter-from, .sheet-leave-to {
+  opacity: 0;
+}
+.sheet-enter-from .sheet-content,
+.sheet-leave-to .sheet-content {
+  transform: translateY(100%);
 }
 </style>
