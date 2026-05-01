@@ -8,6 +8,9 @@
         <span class="admin-title">Admin Panel</span>
       </div>
       <div class="d-flex align-center" style="gap:0.5rem">
+        <v-btn variant="tonal" color="secondary" size="small" :loading="regenerating" @click="regenerateVisualization">
+          <v-icon start>mdi-scatter-plot</v-icon>Regenerate Skill Map
+        </v-btn>
         <v-btn variant="tonal" color="secondary" size="small" :loading="embeddingLoading"
           @click="generateAllEmbeddings">
           <v-icon start>mdi-brain</v-icon>Generate Embeddings
@@ -66,6 +69,7 @@ const tab = ref('work-experience')
 const stats = ref(null)
 const embeddingLoading = ref(false)
 const snackbar = ref({ show: false, text: '', color: 'success' })
+const regenerating = ref(false);
 
 // Child component refs — used to trigger reloads after global embedding generation
 const workRef = ref(null)
@@ -108,6 +112,22 @@ async function generateAllEmbeddings() {
 function handleLogout() {
   adminStore.logout()
   router.replace('/admin/login')
+}
+
+async function regenerateVisualization() {
+  regenerating.value = true;
+  try {
+    const res = await adminStore.apiFetch(`/admin/embedding-visualization/regenerate`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    // show success — data.message will say how many points were projected
+    console.log(data.message);
+  } catch (e) {
+    console.error('Regeneration failed', e);
+  } finally {
+    regenerating.value = false;
+  }
 }
 
 onMounted(loadStats)

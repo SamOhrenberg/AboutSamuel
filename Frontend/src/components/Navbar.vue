@@ -17,6 +17,7 @@ const navLinks = [
   { label: 'Resume', to: '/resume' },
   { label: 'Experience', to: '/work-experience' },
   { label: 'Projects', to: '/projects' },
+  { label: 'Skill Map', to: '/skill-map' },
   { label: 'Contact', to: '/contact' },
 ]
 

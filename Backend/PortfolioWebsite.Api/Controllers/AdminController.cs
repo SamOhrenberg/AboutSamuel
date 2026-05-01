@@ -176,4 +176,27 @@ public class AdminController(
 
         return Ok(new { Message = "Embedding generated successfully." });
     }
+
+    [HttpPost("embedding-visualization/regenerate")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RegenerateVisualization([FromServices] EmbeddingProjectionService projectionService)
+    {
+        _logger.LogInformation("Admin triggered UMAP projection regeneration.");
+
+        try
+        {
+            var count = await projectionService.RegenerateProjectionsAsync();
+
+            if (count == 0)
+                return BadRequest(new { Message = "No embedded items found. Run Generate Embeddings first." });
+
+            return Ok(new { Message = $"Visualization regenerated with {count} points." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error regenerating visualization.");
+            return StatusCode(500, new { Message = "Regeneration failed. Check logs." });
+        }
+    }
+
 }

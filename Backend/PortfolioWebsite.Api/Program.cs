@@ -61,6 +61,8 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddScoped<EmbeddingService>(sp =>
                     (EmbeddingService)sp.GetRequiredService<IEmbeddingService>());
 
+                builder.Services.AddScoped<EmbeddingProjectionService>();
+
                 var allowedOrigins = builder.Configuration
                     .GetSection("AllowedOrigins").Get<string[]>();
 
