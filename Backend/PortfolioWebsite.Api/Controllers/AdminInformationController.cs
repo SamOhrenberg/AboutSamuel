@@ -65,7 +65,7 @@ public class AdminInformationController(
         if (info is null) return NotFound();
 
         info.Text = request.Text;
-        info.EmbeddingJson = null;
+        info.Embedding = null;
 
         // Replace keywords entirely — remove old, add new
         _db.Keywords.RemoveRange(info.Keywords);
@@ -147,7 +147,7 @@ public class AdminInformationController(
         InformationId = info.InformationId,
         Text = info.Text,
         Keywords = info.Keywords.Select(k => k.Text).ToList(),
-        HasEmbedding = info.EmbeddingJson != null
+        HasEmbedding = info.Embedding != null
     };
 }
 

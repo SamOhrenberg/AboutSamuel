@@ -39,7 +39,7 @@ public class WorkExperienceDto
             Achievements    = achievements,
             DisplayOrder    = job.DisplayOrder,
             IsActive        = job.IsActive,
-            HasEmbedding    = job.EmbeddingJson != null
+            HasEmbedding    = job.Embedding != null
         };
     }
 }

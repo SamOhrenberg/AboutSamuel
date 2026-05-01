@@ -96,7 +96,7 @@ public class AdminWorkExperienceController(SqlDbContext dbContext) : ControllerB
         Work.Achievements = JsonSerializer.Serialize(request.Achievements);
         Work.DisplayOrder = request.DisplayOrder;
         Work.IsActive     = request.IsActive;
-        Work.EmbeddingJson = null;
+        Work.Embedding = null;
         return Work;
     }
 }
