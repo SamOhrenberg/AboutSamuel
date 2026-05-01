@@ -81,7 +81,10 @@ public class AdminController(
         {
             var embedding = await _embeddingService.GetEmbeddingAsync(entry.Text!);
             if (embedding != null)
-            { entry.EmbeddingJson = EmbeddingService.SerializeEmbedding(embedding); success++; }
+            {
+                entry.EmbeddingJson = _embeddingService.SerializeEmbedding(embedding);
+                success++; 
+            }
             else failed++;
             await Task.Delay(100);
         }
@@ -91,7 +94,10 @@ public class AdminController(
             var text = ChatService.BuildProjectRagText(project);
             var embedding = await _embeddingService.GetEmbeddingAsync(text);
             if (embedding != null)
-            { project.EmbeddingJson = EmbeddingService.SerializeEmbedding(embedding); success++; }
+            { 
+                project.EmbeddingJson = _embeddingService.SerializeEmbedding(embedding); 
+                success++; 
+            }
             else failed++;
             await Task.Delay(100);
         }
@@ -101,7 +107,10 @@ public class AdminController(
             var text = ChatService.BuildWorkRagText(job);
             var embedding = await _embeddingService.GetEmbeddingAsync(text);
             if (embedding != null)
-            { job.EmbeddingJson = EmbeddingService.SerializeEmbedding(embedding); success++; }
+            { 
+                job.EmbeddingJson = _embeddingService.SerializeEmbedding(embedding); 
+                success++; 
+            }
             else failed++;
             await Task.Delay(100);
         }
@@ -164,7 +173,7 @@ public class AdminController(
         if (embedding is null)
             return StatusCode(502, new { Message = "Embedding service failed. Check Bedrock logs." });
 
-        persist(EmbeddingService.SerializeEmbedding(embedding));
+        persist(_embeddingService.SerializeEmbedding(embedding));
         await _dbContext.SaveChangesAsync();
 
         return Ok(new { Message = "Embedding generated successfully." });

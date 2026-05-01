@@ -1,4 +1,6 @@
-﻿namespace PortfolioWebsite.Api.Data.Models;
+﻿using Pgvector;
+
+namespace PortfolioWebsite.Api.Data.Models;
 
 public class Project
 {
@@ -22,5 +24,10 @@ public class Project
     public string? StartYear { get; set; }
     public string? EndYear { get; set; }
 
+    /// <summary>Legacy JSON embedding — kept until pgvector migration is confirmed.</summary>
     public string? EmbeddingJson { get; set; }
+
+    /// <summary>Native pgvector embedding (1536 dimensions).</summary>
+    public Vector? Embedding { get; set; }
+
 }

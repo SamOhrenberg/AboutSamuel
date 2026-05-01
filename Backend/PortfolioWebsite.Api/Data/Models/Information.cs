@@ -1,10 +1,23 @@
-﻿namespace PortfolioWebsite.Api.Data.Models;
+﻿using Pgvector;
+
+namespace PortfolioWebsite.Api.Data.Models;
 
 public class Information
 {
     public Guid InformationId { get; set; }
     public string? Text { get; set; } = null;
+
+    /// <summary>
+    /// Legacy JSON-serialized embedding — kept until pgvector migration is complete.
+    /// </summary>
     public string? EmbeddingJson { get; set; }
+
+    /// <summary>
+    /// Native pgvector embedding (1536 dimensions, text-embedding-3-small).
+    /// This replaces EmbeddingJson.
+    /// </summary>
+    public Vector? Embedding { get; set; }
+
     public virtual List<Keyword> Keywords { get; set; } = [];
 
     public Information() { }

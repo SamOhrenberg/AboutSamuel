@@ -1,5 +1,5 @@
-using Amazon.BedrockRuntime;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -8,7 +8,6 @@ using PortfolioWebsite.Api.Middlewares;
 using PortfolioWebsite.Api.Services;
 using Serilog;
 using Serilog.Events;
-using Serilog.Formatting.Compact;
 using Serilog.Formatting.Elasticsearch;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -46,8 +45,9 @@ namespace PortfolioWebsite.Api
                         .WriteTo.Http(
                             requestUri: $"https://api.axiom.co/v1/datasets/{axiomDataset}/ingest",
                             queueLimitBytes: null,
-                            httpClient: new AxiomHttpService(axiomToken),
-                            textFormatter: new ElasticsearchJsonFormatter(renderMessageTemplate: false, inlineFields: true)
+                            httpClient: new AxiomHttpService(axiomToken!),
+                            textFormatter: new ElasticsearchJsonFormatter(
+                                renderMessageTemplate: false, inlineFields: true)
                         )
                         .Enrich.FromLogContext();
                 });
@@ -56,19 +56,13 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddEndpointsApiExplorer();
                 builder.Services.AddSwaggerGen();
 
-                builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-                builder.Services.AddSingleton<IAmazonBedrockRuntime>(_ =>
-                {
-                    var regionStr = Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1";
-                    Log.Information("Initializing AWS Bedrock Runtime in region: {Region}", regionStr);
-                    var region = Amazon.RegionEndpoint.GetBySystemName(regionStr);
-                    return new AmazonBedrockRuntimeClient(region);
-                });
+                builder.Services.AddSingleton<IEmbeddingService, EmbeddingService>();
+                builder.Services.AddSingleton<ILlmService, AzureLlmService>();
+                builder.Services.AddScoped<EmbeddingService>(sp =>
+                    (EmbeddingService)sp.GetRequiredService<IEmbeddingService>());
 
-                builder.Services.AddScoped<EmbeddingService>();
-
-                var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
-                Log.Information("CORS allowed origins: {Origins}", string.Join(", ", allowedOrigins ?? ["None"]));
+                var allowedOrigins = builder.Configuration
+                    .GetSection("AllowedOrigins").Get<string[]>();
 
                 builder.Services.AddCors(options =>
                 {
@@ -92,7 +86,8 @@ namespace PortfolioWebsite.Api
                         options.TokenValidationParameters = new TokenValidationParameters
                         {
                             ValidateIssuerSigningKey = true,
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                            IssuerSigningKey = new SymmetricSecurityKey(
+                                Encoding.UTF8.GetBytes(jwtSecret)),
                             ValidateIssuer = true,
                             ValidIssuer = "aboutsamuel.com",
                             ValidateAudience = true,
@@ -117,7 +112,9 @@ namespace PortfolioWebsite.Api
                 });
 
                 builder.Services.AddPooledDbContextFactory<SqlDbContext>(options =>
-                    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+                    options.UseNpgsql(
+                        builder.Configuration.GetConnectionString("DefaultConnection"),
+                        o => o.UseVector())); // ← pgvector extension
 
                 builder.Services.AddScoped(sp =>
                     sp.GetRequiredService<IDbContextFactory<SqlDbContext>>().CreateDbContext());
@@ -127,36 +124,43 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddScoped<AdminService>();
                 builder.Services.AddSingleton<MailgunService>();
 
+                // Behind Nginx / Railway reverse proxy
+                builder.Services.Configure<ForwardedHeadersOptions>(options =>
+                {
+                    options.ForwardedHeaders =
+                        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                    options.KnownProxies.Clear();
+                    options.KnownNetworks.Clear();
+                });
+
                 var app = builder.Build();
 
+                app.UseForwardedHeaders();
                 app.UseSerilogRequestLogging();
 
                 if (app.Environment.IsDevelopment())
                 {
                     app.UseSwagger();
                     app.UseSwaggerUI();
-                    app.UseHttpsRedirection();
                 }
 
                 app.UseMiddleware<ExceptionLoggerMiddleware>();
                 app.UseExceptionHandler("/error");
                 app.UseRateLimiter();
-
                 app.UseCors(PublicCorsPolicy);
                 app.UseAuthentication();
                 app.UseAuthorization();
-
                 app.MapControllers();
 
+                // Auto-migrate on startup
                 using (var scope = app.Services.CreateScope())
                 {
                     var db = scope.ServiceProvider.GetRequiredService<SqlDbContext>();
-                    var pendingMigrations = db.Database.GetPendingMigrations().ToList();
-
-                    if (pendingMigrations.Any())
+                    var pending = db.Database.GetPendingMigrations().ToList();
+                    if (pending.Any())
                     {
                         Log.Information("Applying {Count} pending migrations: {Migrations}",
-                            pendingMigrations.Count, string.Join(", ", pendingMigrations));
+                            pending.Count, string.Join(", ", pending));
                         db.Database.Migrate();
                         Log.Information("Migrations applied successfully.");
                     }
