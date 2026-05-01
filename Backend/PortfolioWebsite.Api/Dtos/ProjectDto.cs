@@ -44,7 +44,7 @@ public class ProjectDto
             IsFeatured = project.IsFeatured,
             StartYear = project.StartYear,
             EndYear = project.EndYear,
-            HasEmbedding = project.EmbeddingJson != null
+            HasEmbedding = project.Embedding != null
         };
     }
 }

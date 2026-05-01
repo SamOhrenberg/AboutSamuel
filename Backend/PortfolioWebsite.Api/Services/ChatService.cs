@@ -633,59 +633,60 @@ public class ChatService
     private async Task<string> GetRelevantInformation(IEnumerable<string> tokens, string queryText)
     {
         var tokenList = tokens.Where(t => t.Length >= MinTokenLength).ToList();
-
-        await using var ctx1 = await _dbContextFactory.CreateDbContextAsync();
-        await using var ctx2 = await _dbContextFactory.CreateDbContextAsync();
-        await using var ctx3 = await _dbContextFactory.CreateDbContextAsync();
-
-        var informationTask = ctx1.Information.Include(i => i.Keywords).ToListAsync();
-        var projectsTask = ctx2.Projects.Include(p => p.WorkExperiences).Where(p => p.IsActive).ToListAsync();
-        var workTask = ctx3.WorkExperiences.Where(j => j.IsActive).ToListAsync();
-        var queryEmbeddingTask = _embeddings.GetEmbeddingAsync(queryText);
-
-        await Task.WhenAll(informationTask, projectsTask, workTask, queryEmbeddingTask);
-
-        var informations = await informationTask;
-        var projects = await projectsTask;
-        var work = await workTask;
-        var queryEmbedding = await queryEmbeddingTask;
-
-        var projectInfos = projects.Select(BuildProjectInformation).ToList();
-        var workInfos = work.Select(BuildWorkExperienceInformation).ToList();
-        var allEntries = informations.Concat(projectInfos).Concat(workInfos).ToList();
-
-        foreach (var info in allEntries)
-        {
-            var cached = _keywordCache.GetOrAdd(
-                info.InformationId,
-                _ => Tokenizer.Tokenize(info.Text).ToList());
-
-            var newKeywords = cached
-                .Where(t => info.Keywords.All(k => k.Text != t))
-                .Select(t => new Keyword(t, info))
-                .ToList();
-
-            info.Keywords.AddRange(newKeywords);
-        }
-
-        if (allEntries.Count <= MaxContextEntries)
-            return BuildContextBlock(allEntries);
+        var queryEmbedding = await _embeddings.GetEmbeddingAsync(queryText);
 
         List<Information> top;
 
         if (queryEmbedding != null)
         {
-            // Use pgvector if entries have embeddings, fall back to in-memory cosine otherwise
+            var queryVector = new Pgvector.Vector(queryEmbedding);
+
+            // Query all three tables in parallel using pgvector native similarity
+            await using var ctx1 = await _dbContextFactory.CreateDbContextAsync();
+            await using var ctx2 = await _dbContextFactory.CreateDbContextAsync();
+            await using var ctx3 = await _dbContextFactory.CreateDbContextAsync();
+
+            var infoTask = ctx1.Information
+                .Include(i => i.Keywords)
+                .Where(i => i.Embedding != null)
+                .OrderBy(i => i.Embedding!.CosineDistance(queryVector))
+                .Take(MaxContextEntries)
+                .ToListAsync();
+
+            var projectsTask = ctx2.Projects
+                .Include(p => p.WorkExperiences)
+                .Where(p => p.IsActive && p.Embedding != null)
+                .OrderBy(p => p.Embedding!.CosineDistance(queryVector))
+                .Take(MaxContextEntries)
+                .ToListAsync();
+
+            var workTask = ctx3.WorkExperiences
+                .Where(w => w.IsActive && w.Embedding != null)
+                .OrderBy(w => w.Embedding!.CosineDistance(queryVector))
+                .Take(MaxContextEntries)
+                .ToListAsync();
+
+            await Task.WhenAll(infoTask, projectsTask, workTask);
+
+            var informations = await infoTask;
+            var projects = await projectsTask;
+            var workEntries = await workTask;
+
+            // Convert projects and work to Information objects for unified ranking
+            var projectInfos = projects.Select(BuildProjectInformation).ToList();
+            var workInfos = workEntries.Select(BuildWorkExperienceInformation).ToList();
+            var allEntries = informations.Concat(projectInfos).Concat(workInfos).ToList();
+
+            // Re-rank the combined pool by cosine similarity in memory
+            // (pgvector already narrowed each table down to top N candidates)
             top = allEntries
                 .Select(entry =>
                 {
-                    var entryEmbedding = entry.Embedding != null
-                        ? entry.Embedding.ToArray()
-                        : _embeddings.DeserializeEmbedding(entry.EmbeddingJson);
+                    var entryEmbedding = entry.Embedding?.ToArray();
 
                     float score = entryEmbedding != null
                         ? _embeddings.CosineSimilarity(queryEmbedding, entryEmbedding)
-                        : ScoreEntry(entry, tokenList) / 100f;
+                        : 0f;
 
                     return (entry, score);
                 })
@@ -696,7 +697,37 @@ public class ChatService
         }
         else
         {
+            // Fallback: no embedding available, use keyword scoring
             _logger.LogWarning("Query embedding unavailable, falling back to keyword scoring");
+
+            await using var ctx1 = await _dbContextFactory.CreateDbContextAsync();
+            await using var ctx2 = await _dbContextFactory.CreateDbContextAsync();
+            await using var ctx3 = await _dbContextFactory.CreateDbContextAsync();
+
+            var informationTask = ctx1.Information.Include(i => i.Keywords).ToListAsync();
+            var projectsTask = ctx2.Projects.Include(p => p.WorkExperiences).Where(p => p.IsActive).ToListAsync();
+            var workTask = ctx3.WorkExperiences.Where(j => j.IsActive).ToListAsync();
+
+            await Task.WhenAll(informationTask, projectsTask, workTask);
+
+            var allEntries = (await informationTask)
+                .Concat((await projectsTask).Select(BuildProjectInformation))
+                .Concat((await workTask).Select(BuildWorkExperienceInformation))
+                .ToList();
+
+            foreach (var info in allEntries)
+            {
+                var cached = _keywordCache.GetOrAdd(
+                    info.InformationId,
+                    _ => Tokenizer.Tokenize(info.Text).ToList());
+
+                var newKeywords = cached
+                    .Where(t => info.Keywords.All(k => k.Text != t))
+                    .Select(t => new Keyword(t, info))
+                    .ToList();
+
+                info.Keywords.AddRange(newKeywords);
+            }
 
             var scored = allEntries
                 .Select(i => (Information: i, Score: ScoreEntry(i, tokenList)))
@@ -838,7 +869,7 @@ public class ChatService
             .ToList();
 
         var info = new Information(project.ProjectId, text, keywords);
-        info.EmbeddingJson = project.EmbeddingJson;
+        info.Embedding = project.Embedding;
         if (project.Embedding != null)
             info.Embedding = project.Embedding;
         return info;
@@ -857,7 +888,7 @@ public class ChatService
             .ToList();
 
         var info = new Information(job.WorkExperienceId, text, keywords);
-        info.EmbeddingJson = job.EmbeddingJson;
+        info.Embedding = job.Embedding;
         if (job.Embedding != null)
             info.Embedding = job.Embedding;
         return info;
