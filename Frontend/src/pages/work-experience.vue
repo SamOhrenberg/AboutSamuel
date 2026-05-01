@@ -19,8 +19,12 @@
 
     <!-- ── Skeleton ─────────────────────────────────────────────────────── -->
     <div v-if="store.loading" class="timeline" aria-busy="true" aria-label="Loading work experience">
-      <div v-for="n in 3" :key="n" class="timeline-item"
-        :class="n % 2 === 0 ? 'timeline-item--right' : 'timeline-item--left'">
+      <div v-for="n in 3" :key="n" class="timeline-item" :class="[
+        i % 2 === 0 ? 'timeline-item--left' : 'timeline-item--right',
+        'card-animate',
+        { 'card-animate--visible': visibleCards.has(job.workExperienceId) },
+        { 'timeline-item--highlighted': highlightedId === job.workExperienceId }
+      ]">
         <div class="timeline-dot timeline-dot--skeleton" aria-hidden="true" />
         <div class="timeline-card skeleton-card">
           <div class="skeleton-line" style="width: 55%; height: 20px; margin-bottom: 0.5rem" />
@@ -148,12 +152,13 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useWorkExperienceStore } from '@/stores/workExperienceStore'
 import { useProjectStore } from '@/stores/projectStore'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const store = useWorkExperienceStore()
 const projectStore = useProjectStore()
 const router = useRouter()
-
+const highlightedId = ref(null)
+const route = useRoute()
 
 const sortedWork = computed(() => {
   return [...store.work].sort((a, b) => {
@@ -201,7 +206,7 @@ const stats = computed(() => {
 
   return [
     { label: 'Years Experience', value: `${totalYears}+` },
-      { label: 'Employers', value: distinctEmployers },
+    { label: 'Employers', value: distinctEmployers },
     { label: 'Roles', value: store.work.length },
     { label: 'Achievements', value: totalAchievements },
   ]
@@ -289,6 +294,23 @@ onMounted(async () => {
     projectStore.projects.length ? Promise.resolve() : projectStore.fetchProjects(),
   ])
   observeCards()
+
+  const idParam = route.query.id
+  if (idParam) {
+    await nextTick()
+    const job = store.work.find(j => j.workExperienceId === idParam)
+    if (job) {
+      highlightedId.value = job.workExperienceId
+      await nextTick()
+      const el = document.querySelector(`[data-job-id="${job.workExperienceId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Also expand achievements for context
+      const s = new Set(expandedJobs.value)
+      s.add(job.workExperienceId)
+      expandedJobs.value = s
+      setTimeout(() => { highlightedId.value = null }, 3000)
+    }
+  }
 })
 
 onBeforeUnmount(() => {
@@ -878,7 +900,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(var(--v-theme-secondary), 0.18);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s,
-              color 0.15s, transform 0.12s ease;
+    color 0.15s, transform 0.12s ease;
   outline: none;
   letter-spacing: 0.02em;
 }
@@ -906,5 +928,26 @@ onBeforeUnmount(() => {
   background: rgba(var(--v-theme-yellow, var(--v-theme-secondary)), 0.15);
   border-color: rgba(var(--v-theme-yellow, var(--v-theme-secondary)), 0.45);
   color: rgb(var(--v-theme-yellow, var(--v-theme-secondary)));
+}
+
+.timeline-item--highlighted .timeline-card {
+  border-color: rgb(var(--v-theme-secondary)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-secondary), 0.3),
+    0 0 24px rgba(var(--v-theme-secondary), 0.15) !important;
+  animation: highlight-pulse 3s ease forwards;
+}
+
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 4px rgba(var(--v-theme-secondary), 0.4);
+  }
+
+  60% {
+    box-shadow: 0 0 0 8px rgba(var(--v-theme-secondary), 0.15);
+  }
+
+  100% {
+    box-shadow: 0 0 0 1px rgba(var(--v-theme-secondary), 0.1);
+  }
 }
 </style>
