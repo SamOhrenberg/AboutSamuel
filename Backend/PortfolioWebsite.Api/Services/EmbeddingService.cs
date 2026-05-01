@@ -1,59 +1,52 @@
-﻿using Amazon.BedrockRuntime;
-using Amazon.BedrockRuntime.Model;
+﻿using Azure;
+using Azure.AI.OpenAI;
+using OpenAI.Embeddings;
 using System.Text.Json;
 
 namespace PortfolioWebsite.Api.Services;
 
-public class EmbeddingService
+public class EmbeddingService : IEmbeddingService
 {
-    private const string ModelId = "amazon.titan-embed-text-v2:0";
-
-    private readonly IAmazonBedrockRuntime _bedrockClient;
+    private readonly EmbeddingClient _client;
     private readonly ILogger<EmbeddingService> _logger;
 
-    public EmbeddingService(
-        IAmazonBedrockRuntime bedrockClient,
-        ILogger<EmbeddingService> logger)
+    public int Dimensions => 1536;
+
+    public EmbeddingService(IConfiguration configuration, ILogger<EmbeddingService> logger)
     {
-        _bedrockClient = bedrockClient;
         _logger = logger;
+
+        var endpoint = configuration["AzureOpenAI:Endpoint"]
+            ?? throw new InvalidOperationException("AzureOpenAI:Endpoint must be configured.");
+        var apiKey = configuration["AzureOpenAI:ApiKey"]
+            ?? throw new InvalidOperationException("AzureOpenAI:ApiKey must be configured.");
+        var deployment = configuration["AzureOpenAI:EmbeddingDeployment"]
+            ?? "text-embedding-3-small";
+
+        var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+        _client = azureClient.GetEmbeddingClient(deployment);
     }
 
     public async Task<float[]?> GetEmbeddingAsync(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
 
-        // Titan has an 8192 token limit — truncate to stay safe
-        var truncated = text.Length > 4000 ? text[..4000] : text;
+        var truncated = text.Length > 8000 ? text[..8000] : text;
 
         try
         {
-            var body = JsonSerializer.SerializeToUtf8Bytes(new { inputText = truncated });
-
-            var response = await _bedrockClient.InvokeModelAsync(new InvokeModelRequest
-            {
-                ModelId = ModelId,
-                ContentType = "application/json",
-                Accept = "application/json",
-                Body = new MemoryStream(body)
-            });
-
-            using var doc = JsonDocument.Parse(response.Body);
-            return doc.RootElement
-                .GetProperty("embedding")
-                .EnumerateArray()
-                .Select(e => e.GetSingle())
-                .ToArray();
+            var result = await _client.GenerateEmbeddingAsync(truncated);
+            return result.Value.ToFloats().ToArray();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get embedding for: {Preview}",
+            _logger.LogError(ex, "Failed to generate embedding for: {Preview}",
                 text[..Math.Min(50, text.Length)]);
             return null;
         }
     }
 
-    public static float CosineSimilarity(float[] a, float[] b)
+    public float CosineSimilarity(float[] a, float[] b)
     {
         if (a.Length != b.Length) return 0f;
 
@@ -69,13 +62,13 @@ public class EmbeddingService
         return denominator < 1e-8f ? 0f : dot / denominator;
     }
 
-    public static float[]? DeserializeEmbedding(string? json)
+    public float[]? DeserializeEmbedding(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
         try { return JsonSerializer.Deserialize<float[]>(json); }
         catch { return null; }
     }
 
-    public static string SerializeEmbedding(float[] embedding)
+    public string SerializeEmbedding(float[] embedding)
         => JsonSerializer.Serialize(embedding);
 }

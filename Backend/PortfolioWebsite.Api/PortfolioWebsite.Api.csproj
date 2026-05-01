@@ -23,8 +23,8 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Serilog.Sinks.Http" Version="8.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
-	  <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.*" />
-	  <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.*" />
+	  <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+	  <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.2.0" />
 	  <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
   </ItemGroup>
 

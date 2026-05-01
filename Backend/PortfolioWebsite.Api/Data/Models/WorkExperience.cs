@@ -1,3 +1,5 @@
+using Pgvector;
+
 namespace PortfolioWebsite.Api.Data.Models;
 
 public class WorkExperience
@@ -22,7 +24,11 @@ public class WorkExperience
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Legacy JSON embedding — kept until pgvector migration is confirmed.</summary>
     public string? EmbeddingJson { get; set; }
+
+    /// <summary>Native pgvector embedding (1536 dimensions).</summary>
+    public Vector? Embedding { get; set; }
 
     public virtual ICollection<Project> Projects { get; set; } = [];
 }

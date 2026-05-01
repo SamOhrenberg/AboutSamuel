@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ValueGeneration;
+using Pgvector.EntityFrameworkCore;
 using PortfolioWebsite.Api.Data.Models;
 
 namespace PortfolioWebsite.Api.Data;
@@ -22,10 +23,16 @@ public class SqlDbContext : DbContext
             .HasValueGenerator<GuidValueGenerator>()
             .ValueGeneratedOnAdd();
 
-        modelBuilder.Entity<Information>()
-            .Property(i => i.InformationId)
-            .HasValueGenerator<GuidValueGenerator>()
-            .ValueGeneratedOnAdd();
+        modelBuilder.Entity<Information>(entity =>
+        {
+            entity.Property(i => i.InformationId)
+                .HasValueGenerator<GuidValueGenerator>()
+                .ValueGeneratedOnAdd();
+
+            // Native pgvector column — 1536 dims for text-embedding-3-small
+            entity.Property(i => i.Embedding)
+                .HasColumnType("vector(1536)");
+        });
 
         modelBuilder.Entity<Keyword>()
             .Property(k => k.KeywordId)
@@ -45,6 +52,9 @@ public class SqlDbContext : DbContext
             entity.Property(e => e.Achievements).HasDefaultValue("[]");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.DisplayOrder).HasDefaultValue(0);
+
+            entity.Property(e => e.Embedding)
+                .HasColumnType("vector(1536)");
         });
 
         modelBuilder.Entity<Project>(entity =>
@@ -54,7 +64,9 @@ public class SqlDbContext : DbContext
                 .HasValueGenerator<GuidValueGenerator>()
                 .ValueGeneratedOnAdd();
 
-            // Many-to-many with explicit join table and clean column names
+            entity.Property(e => e.Embedding)
+                .HasColumnType("vector(1536)");
+
             entity.HasMany(p => p.WorkExperiences)
                 .WithMany(w => w.Projects)
                 .UsingEntity<Dictionary<string, object>>(
