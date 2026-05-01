@@ -15,6 +15,7 @@ public class SqlDbContext : DbContext
     public DbSet<Project> Projects { get; set; } = null!;
     public DbSet<WorkExperience> WorkExperiences { get; set; } = null!;
     public DbSet<AdminToken> AdminTokens { get; set; } = null!;
+    public DbSet<EmbeddingProjection> EmbeddingProjections { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -80,5 +81,18 @@ public class SqlDbContext : DbContext
                           .HasForeignKey("ProjectId")
                           .OnDelete(DeleteBehavior.Cascade));
         });
+
+        modelBuilder.Entity<EmbeddingProjection>(entity =>
+        {
+            entity.HasKey(e => e.EmbeddingProjectionId);
+            entity.Property(e => e.EmbeddingProjectionId)
+                .HasValueGenerator<GuidValueGenerator>()
+                .ValueGeneratedOnAdd();
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.EntityId);
+            entity.HasIndex(e => e.EntityType);
+        });
+
     }
 }
