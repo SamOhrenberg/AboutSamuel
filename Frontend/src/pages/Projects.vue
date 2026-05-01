@@ -323,15 +323,34 @@ const groupOptions = [
   { value: 'none', label: 'All' },
 ]
 
-// ── Chatbot integration: ?highlight=TechName ────────────────────────────────
 onMounted(async () => {
   createObserver()
   if (!store.projects.length) await store.fetchProjects()
   observeCards()
 
-  // Apply highlight param from chatbot redirect
   const hlParam = route.query.highlight
-  if (hlParam) {
+  const idParam = route.query.id
+
+  if (idParam) {
+    // Direct deep link to a specific project by ID
+    await nextTick()
+    const project = store.projects.find(p => p.projectId === idParam)
+    if (project) {
+      // Make sure its group is not collapsed
+      if (groupBy.value === 'employer') {
+        const employers = project.employers?.length ? project.employers : ['Personal / Independent']
+        const s = new Set(collapsedGroups.value)
+        employers.forEach(e => s.delete(e))
+        collapsedGroups.value = s
+      }
+      highlightedId.value = project.projectId
+      await nextTick()
+      const el = document.querySelector(`[data-project-id="${project.projectId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => { highlightedId.value = null }, 3000)
+    }
+  } else if (hlParam) {
+    // Existing chatbot redirect behavior — keep unchanged
     const techQuery = decodeURIComponent(hlParam).toLowerCase()
     const matched = store.projects
       .flatMap(p => p.techStack)
@@ -339,7 +358,6 @@ onMounted(async () => {
     if (matched) {
       selectedTechs.value = [matched]
     } else {
-      // Try matching a specific project title
       const matchedProject = store.projects.find(
         p => p.title.toLowerCase().includes(techQuery)
       )
@@ -353,6 +371,7 @@ onMounted(async () => {
     }
   }
 })
+
 
 onBeforeUnmount(() => {
   observer?.disconnect()
