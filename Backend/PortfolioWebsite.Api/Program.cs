@@ -116,7 +116,7 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddPooledDbContextFactory<SqlDbContext>(options =>
                     options.UseNpgsql(
                         builder.Configuration.GetConnectionString("DefaultConnection"),
-                        o => o.UseVector())); // ← pgvector extension
+                        o => o.UseVector()));
 
                 builder.Services.AddScoped(sp =>
                     sp.GetRequiredService<IDbContextFactory<SqlDbContext>>().CreateDbContext());

@@ -16,11 +16,11 @@ public class AxiomHttpService : IHttpClient
 
     public void Dispose() => _httpClient.Dispose();
 
-    public async Task<HttpResponseMessage> PostAsync(string requestUri, Stream contentStream)
+    public async Task<HttpResponseMessage> PostAsync(string requestUri, Stream contentStream, CancellationToken cancellationToken)
     {
         using var content = new StreamContent(contentStream);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        var response = await _httpClient.PostAsync(requestUri, content);
+        var response = await _httpClient.PostAsync(requestUri, content, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
