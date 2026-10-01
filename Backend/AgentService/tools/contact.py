@@ -39,7 +39,12 @@ def get_resume() -> str:
     Display Samuel's resume to the user.
     Use this when the user asks to see, view, or download the resume.
     """
-    return "__DISPLAY_RESUME__"
+    # The frontend has no handler for display_resume; the resume is its own page
+    return "__REDIRECT__resume__"
+
+
+# Must match the Vue file-based routes in Frontend/src/pages
+VALID_PAGES = ["projects", "work-experience", "skill-map", "contact", "resume"]
 
 
 @tool
@@ -47,11 +52,11 @@ def redirect_to_page(page: str) -> str:
     """
     Redirect the user to a specific page on the portfolio.
     Use this when the user asks about projects, work experience, or contact.
-    Available pages: Projects, Experience, Contact, SkillMap
+    Available pages: projects, work-experience, skill-map, contact, resume
     """
-    valid_pages = {"Projects", "Experience", "Contact", "SkillMap"}
-    if page not in valid_pages:
-        return f"Unknown page '{page}'. Valid options: {', '.join(valid_pages)}"
+    page = page.strip().lower()
+    if page not in VALID_PAGES:
+        return f"Unknown page '{page}'. Valid options: {', '.join(VALID_PAGES)}"
     return f"__REDIRECT__{page}__"
 
 

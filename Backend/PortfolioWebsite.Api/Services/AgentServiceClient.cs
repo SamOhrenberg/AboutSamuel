@@ -32,7 +32,6 @@ public class AgentServiceClient
 
     public record StreamMeta(
         string? RedirectToPage = null,
-        bool DisplayResume = false,
         bool Error = false,
         string? FullResponse = null);
 
@@ -130,8 +129,6 @@ public class AgentServiceClient
                 {
                     var redirect = metaEl.TryGetProperty("redirect_to_page", out var r)
                         ? r.GetString() : null;
-                    var resume = metaEl.TryGetProperty("display_resume", out var res)
-                        && res.GetBoolean();
                     var error = metaEl.TryGetProperty("error", out var err)
                         && err.GetBoolean();
                     _logger.LogDebug("Meta JSON received: {Json}", metaEl.GetRawText());
@@ -140,7 +137,7 @@ public class AgentServiceClient
 
                     chunk = new StreamChunk
                     {
-                        Meta = new StreamMeta(redirect, resume, error, fullResponse)
+                        Meta = new StreamMeta(redirect, error, fullResponse)
                     };
                 }
             }

@@ -38,7 +38,6 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
         return new SamuelLMResponse
         {
             Message = chatResponse.Message,
-            DisplayResume = chatResponse.ReturnResume,
             RedirectToPage = chatResponse.RedirectToPage
         };
     }
@@ -62,7 +61,6 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
         bool error = false;
         bool tokenLimitReached = false;
         string? redirectToPage = null;
-        bool displayResume = false;
 
         await foreach (var chunk in agentClient.StreamChatAsync(chat, ct))
         {
@@ -78,7 +76,6 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
             {
                 error = chunk.Meta!.Error;
                 redirectToPage = chunk.Meta.RedirectToPage;
-                displayResume = chunk.Meta.DisplayResume;
 
                 // If the meta has the full response from Python, use that for logging
                 if (!string.IsNullOrEmpty(chunk.Meta.FullResponse))
@@ -86,18 +83,17 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
 
                 var metaPayload = System.Text.Json.JsonSerializer.Serialize(new
                 {
-                    meta = new
-                    {
-                        redirectToPage,
-                        displayResume,
-                        tokenLimitReached,
-                        error
-                    }
+                    redirectToPage,
+                    tokenLimitReached,
+                    error
                 });
                 await Response.WriteAsync($"data: {metaPayload}\n\n", ct);
                 await Response.Body.FlushAsync(ct);
             }
         }
+        
+        await Response.WriteAsync("data: [DONE]\n\n", ct);
+        await Response.Body.FlushAsync(ct);
 
         sw.Stop();
 

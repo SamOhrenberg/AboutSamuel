@@ -17,7 +17,6 @@ export async function getResponse(message, messageHistory, userTrackingId) {
       text: response.data.message,
       tokenLimitReached: response.headers['x-token-limit-reached'],
       redirectToPage: response.data.redirectToPage,
-      displayResume: response.data.displayResume,
     }
   } catch (error) {
     console.error('Error fetching response:', error)
@@ -32,7 +31,7 @@ export async function getResponse(message, messageHistory, userTrackingId) {
  * @param {string} userTrackingId
  * @param {(token: string) => void} onToken - called for each token as it arrives
  * @param {AbortSignal} signal - for cancellation
- * @returns {Promise<{ redirectToPage?: string, displayResume?: boolean, tokenLimitReached?: boolean }>}
+ * @returns {Promise<{ redirectToPage?: string, tokenLimitReached?: boolean }>}
  */
 export async function getStreamingResponse(
   message, messageHistory, userTrackingId, onToken, signal, onShortCircuit
@@ -61,7 +60,6 @@ export async function getStreamingResponse(
   const decoder = new TextDecoder()
   let buffer = ''
   let redirectToPage = null
-  let displayResume = false
   let tokenLimitReached = false
   const allTokens = []
 
@@ -85,7 +83,6 @@ export async function getStreamingResponse(
           onToken(parsed.token)
         }
         if (parsed.redirectToPage) redirectToPage = parsed.redirectToPage
-        if (parsed.displayResume)  displayResume  = parsed.displayResume
         if (parsed.tokenLimitReached) tokenLimitReached = parsed.tokenLimitReached
       } catch { /* skip malformed */ }
     }
@@ -97,7 +94,7 @@ export async function getStreamingResponse(
     onShortCircuit(allTokens[0])
   }
 
-  return { redirectToPage, displayResume, tokenLimitReached }
+  return { redirectToPage, tokenLimitReached }
 }
 
 export async function getResume() {
