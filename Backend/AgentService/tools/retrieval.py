@@ -1,0 +1,118 @@
+from langchain_core.tools import tool
+from langchain_openai import AzureOpenAIEmbeddings
+from database.connection import get_pool
+from config import get_settings
+import structlog
+
+logger = structlog.get_logger()
+
+
+def _get_embeddings() -> AzureOpenAIEmbeddings:
+    settings = get_settings()
+    return AzureOpenAIEmbeddings(
+        azure_endpoint=settings.azure_openai_endpoint,
+        api_key=settings.azure_openai_api_key,
+        azure_deployment=settings.azure_openai_embedding_deployment,
+        api_version=settings.azure_openai_api_version,
+    )
+
+
+async def embed_query(text: str) -> list[float]:
+    embeddings = _get_embeddings()
+    return await embeddings.aembed_query(text)
+
+
+async def search_pgvector(query_embedding: list[float], limit: int = 8) -> list[dict]:
+    """
+    Query all three entity tables using pgvector cosine distance,
+    merge results, and return the top entries by similarity score.
+    """
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        info_rows = await conn.fetch(
+            """
+            SELECT "InformationId"::text AS id,
+                   "Text"               AS content,
+                   'information'        AS entity_type,
+                   NULL                 AS sub_label,
+                   '[]'::text           AS tech_stack,
+                   1 - ("Embedding" <=> $1) AS score
+            FROM "Information"
+            WHERE "Embedding" IS NOT NULL
+            ORDER BY "Embedding" <=> $1
+            LIMIT $2
+            """,
+            query_embedding, limit,
+        )
+
+        project_rows = await conn.fetch(
+            """
+            SELECT p."ProjectId"::text AS id,
+                   (
+                       'Project: ' || p."Title" || E'\n' ||
+                       'Role: '    || p."Role"  || E'\n' ||
+                       COALESCE('Summary: ' || p."Summary", '')
+                   )                   AS content,
+                   'project'           AS entity_type,
+                   p."Title"           AS sub_label,
+                   p."TechStack"       AS tech_stack,
+                   1 - (p."Embedding" <=> $1) AS score
+            FROM "Projects" p
+            WHERE p."IsActive" = true AND p."Embedding" IS NOT NULL
+            ORDER BY p."Embedding" <=> $1
+            LIMIT $2
+            """,
+            query_embedding, limit,
+        )
+
+        work_rows = await conn.fetch(
+            """
+            SELECT "WorkExperienceId"::text AS id,
+                   (
+                       'Role: '     || "Title"    || E'\n' ||
+                       'Employer: ' || "Employer" || E'\n' ||
+                       COALESCE('Summary: ' || "Summary", '')
+                   )                         AS content,
+                   'work'                    AS entity_type,
+                   "Employer"                AS sub_label,
+                   '[]'::text                AS tech_stack,
+                   1 - ("Embedding" <=> $1) AS score
+            FROM "WorkExperiences"
+            WHERE "IsActive" = true AND "Embedding" IS NOT NULL
+            ORDER BY "Embedding" <=> $1
+            LIMIT $2
+            """,
+            query_embedding, limit,
+        )
+
+    # Merge and re-rank across all three tables
+    all_rows = list(info_rows) + list(project_rows) + list(work_rows)
+    sorted_rows = sorted(all_rows, key=lambda r: r["score"], reverse=True)
+    return [dict(r) for r in sorted_rows[:limit]]
+
+
+@tool
+async def search_experience(query: str) -> str:
+    """
+    Search Samuel's experience, projects, skills, and background
+    using semantic similarity. Use this whenever the user asks anything
+    about Samuel's work, skills, projects, or background.
+    Returns relevant context passages.
+    """
+    try:
+        embedding = await embed_query(query)
+        results = await search_pgvector(embedding, limit=8)
+
+        if not results:
+            return "No relevant experience found for this query."
+
+        passages = []
+        for r in results:
+            passages.append(r["content"])
+
+        return "\n\n---\n\n".join(passages)
+
+    except Exception as e:
+        logger.error("search_experience_failed", error=str(e))
+        return "Search temporarily unavailable."
