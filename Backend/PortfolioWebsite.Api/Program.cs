@@ -21,6 +21,9 @@ namespace PortfolioWebsite.Api
 
         public static void Main(string[] args)
         {
+            // Surface sink failures (e.g. Axiom ingest throwing) instead of dropping them silently
+            Serilog.Debugging.SelfLog.Enable(Console.Error);
+
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                 .Enrich.FromLogContext()
@@ -40,8 +43,11 @@ namespace PortfolioWebsite.Api
                     var axiomToken = context.Configuration["Axiom:Token"];
                     var axiomDataset = context.Configuration["Axiom:Dataset"];
 
+                    // Console is set here, not in appsettings, because appsettings.json
+                    // is gitignored and never reaches Railway
                     configuration
                         .ReadFrom.Configuration(context.Configuration)
+                        .WriteTo.Console()
                         .WriteTo.Http(
                             requestUri: $"https://api.axiom.co/v1/datasets/{axiomDataset}/ingest",
                             queueLimitBytes: null,
