@@ -10,6 +10,7 @@ It only talks to the C# API, never to the browser directly.
 
 ```
 main.py                 FastAPI app. Starts the queue consumers on startup
+run.py                  production entrypoint (dual-stack socket, see Gotchas)
 config.py               settings, read from .env
 api/
   chat.py               POST /chat/stream, POST /chat/query
@@ -111,6 +112,7 @@ The LLM usually still writes a sentence after a redirect even though the prompt 
 
 - The folder is called `messaging` and not `queue` because `queue` is a Python stdlib module and naming it that breaks imports.
 - pgvector: let `pgvector.asyncpg.register_vector` handle it (already done in `database/connection.py`) and pass embeddings as plain Python lists. Don't format them as `"[1.0,2.0,...]"` strings yourself.
+- The Dockerfile runs `run.py`, not `uvicorn --host ::`. Railway's healthcheck comes in over IPv4 and its private network uses IPv6, and `uvicorn --host ::` only listens on IPv6 (asyncio sets `IPV6_V6ONLY`). `run.py` binds one socket that takes both. Don't "simplify" it back, the healthcheck will time out.
 - `tools/contact.py` uses `verify=False` because the C# API uses a self-signed dev cert locally. On Railway it's plain HTTP on the private network, so it doesn't matter there.
 
 ## Deploying

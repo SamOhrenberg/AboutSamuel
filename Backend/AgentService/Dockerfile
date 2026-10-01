@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD uvicorn main:app --host :: --port ${PORT:-8000}
+CMD ["python", "run.py"]
