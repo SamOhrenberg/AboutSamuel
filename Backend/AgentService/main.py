@@ -3,6 +3,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from log_config import configure_logging, flush_logs
+
+configure_logging()
+
 from api.chat import router as chat_router
 from api.health import router as health_router
 from database.connection import close_pool
@@ -27,6 +31,7 @@ async def lifespan(app: FastAPI):
     logger.info("agent_service_shutting_down")
     await close_pool()
     await close_connection()
+    flush_logs()
 
 
 app = FastAPI(

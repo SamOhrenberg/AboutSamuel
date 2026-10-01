@@ -11,6 +11,7 @@ It only talks to the C# API, never to the browser directly.
 ```
 main.py                 FastAPI app. Starts the queue consumers on startup
 run.py                  production entrypoint (dual-stack socket, see Gotchas)
+log_config.py           structlog setup, ships logs to Axiom when configured
 config.py               settings, read from .env
 api/
   chat.py               POST /chat/stream, POST /chat/query
@@ -55,6 +56,9 @@ CSHARP_API_INTERNAL_SECRET=
 - `AZURE_OPENAI_ENDPOINT` is the resource URL, not the `/openai/v1` one the Foundry portal shows. LangChain adds its own path.
 - `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` has to be the same model the C# API used to build the embeddings, or search quietly returns garbage.
 - `CSHARP_API_INTERNAL_SECRET` has to match `AgentService:InternalSecret` in the C# API.
+- `AXIOM_TOKEN` and `AXIOM_DATASET` are optional. Leave them out locally and logs only go to the console. On Railway they ship every structlog event to Axiom with `service: agent-service` on it.
+
+Axiom shipping runs on a background thread so logging never blocks the event loop (which would stall token streaming). If Axiom is down, that batch gets dropped and you'll see `axiom_ingest_failed` on stderr. uvicorn's own access log lines (`POST /chat/stream ...`) aren't structlog, so they only show up in Railway.
 
 Settings are cached, and `--reload` only watches `.py` files, so restart the server after changing `.env`.
 
