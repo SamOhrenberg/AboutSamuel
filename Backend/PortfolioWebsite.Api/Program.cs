@@ -79,6 +79,18 @@ namespace PortfolioWebsite.Api
                         .AllowAnyHeader());
                 });
 
+                builder.Services.AddHttpClient<AgentServiceClient>(client =>
+                {
+                    var agentServiceUrl = builder.Configuration["AgentService:Url"]
+                        ?? "http://localhost:8000";
+                    client.BaseAddress = new Uri(agentServiceUrl);
+                    client.Timeout = TimeSpan.FromSeconds(120); 
+                    client.DefaultRequestHeaders.Add(
+                        "X-Internal-Secret",
+                        builder.Configuration["AgentService:InternalSecret"] ?? "");
+                });
+
+
                 var jwtSecret = builder.Configuration.GetValue<string>("AdminSettings:JwtSecret")
                     ?? throw new InvalidOperationException("AdminSettings:JwtSecret must be configured.");
 

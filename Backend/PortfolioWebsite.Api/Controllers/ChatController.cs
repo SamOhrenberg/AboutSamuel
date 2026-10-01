@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PortfolioWebsite.Api.Data;
 using PortfolioWebsite.Api.Data.Models;
 using PortfolioWebsite.Api.Dtos;
 using PortfolioWebsite.Api.Services;
@@ -37,34 +38,87 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
         return new SamuelLMResponse
         {
             Message = chatResponse.Message,
-            DisplayResume = chatResponse.ReturnResume,
             RedirectToPage = chatResponse.RedirectToPage
         };
     }
 
     [HttpPost("stream")]
-    public async Task StreamChat([FromBody] ChatLog chat, CancellationToken ct)
+    public async Task StreamChat(
+    [FromBody] ChatLog chat,
+    CancellationToken ct,
+    [FromServices] AgentServiceClient agentClient,
+    [FromServices] ILogger<ChatController> logger,
+    [FromServices] SqlDbContext db)
     {
-        Response.ContentType = "text/event-stream";
-        Response.Headers["Cache-Control"] = "no-cache";
-        Response.Headers["X-Accel-Buffering"] = "no";
+        Response.Headers.Append("Content-Type", "text/event-stream");
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("X-Accel-Buffering", "no");
 
-        await foreach (var chunk in _chatService.StreamChat(chat, ct))
+        var receivedAt = DateTimeOffset.UtcNow;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        var fullResponse = new System.Text.StringBuilder();
+        bool error = false;
+        bool tokenLimitReached = false;
+        string? redirectToPage = null;
+
+        await foreach (var chunk in agentClient.StreamChatAsync(chat, ct))
         {
-            string payload;
-
             if (chunk.IsToken)
-                payload = JsonSerializer.Serialize(new { token = chunk.Token });
-            else
-                payload = JsonSerializer.Serialize(chunk.Meta); // { redirectToPage, displayResume, tokenLimitReached }
+            {
+                fullResponse.Append(chunk.Token);
+                var payload = System.Text.Json.JsonSerializer.Serialize(
+                    new { token = chunk.Token });
+                await Response.WriteAsync($"data: {payload}\n\n", ct);
+                await Response.Body.FlushAsync(ct);
+            }
+            else if (chunk.IsMeta)
+            {
+                error = chunk.Meta!.Error;
+                redirectToPage = chunk.Meta.RedirectToPage;
 
-            await Response.WriteAsync($"data: {payload}\n\n", ct);
-            await Response.Body.FlushAsync(ct);
+                // If the meta has the full response from Python, use that for logging
+                if (!string.IsNullOrEmpty(chunk.Meta.FullResponse))
+                    fullResponse.Clear().Append(chunk.Meta.FullResponse);
+
+                var metaPayload = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    redirectToPage,
+                    tokenLimitReached,
+                    error
+                });
+                await Response.WriteAsync($"data: {metaPayload}\n\n", ct);
+                await Response.Body.FlushAsync(ct);
+            }
         }
-
+        
         await Response.WriteAsync("data: [DONE]\n\n", ct);
         await Response.Body.FlushAsync(ct);
+
+        sw.Stop();
+
+        // Save chat log to PostgreSQL via C# as before
+        try
+        {
+            db.Chats.Add(new PortfolioWebsite.Api.Data.Models.Chat
+            {
+                History = chat.PrintHistory(),
+                Message = chat.Message,
+                Response = fullResponse.ToString(),
+                ReceivedAt = receivedAt,
+                ResponseTookMs = sw.ElapsedMilliseconds,
+                Error = error,
+                TokenLimitReached = tokenLimitReached,
+                SessionTrackingId = chat.UserTrackingId
+            });
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save chat log");
+        }
     }
+
 
 
     [HttpGet("resume")]

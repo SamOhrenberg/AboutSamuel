@@ -4,3 +4,6 @@ obj
 Backend/PortfolioWebsite.Api/appsettings.json
 Logs
 *.pubxml.user
+.venv
+.env
+**/__pycache__/
