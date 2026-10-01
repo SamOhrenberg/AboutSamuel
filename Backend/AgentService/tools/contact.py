@@ -29,7 +29,7 @@ async def contact_samuel(email: str, message: str = "") -> str:
         await _call_csharp_api("/contact/internal", {"email": email, "message": message})
         return f"Contact request sent successfully from {email}."
     except Exception as e:
-        logger.error("contact_samuel_failed", error=str(e))
+        logger.error("contact_samuel_failed", error=str(e), error_type=type(e).__name__, exc_info=True)
         return "Failed to send contact request. Please try the contact page directly."
 
 
