@@ -4,13 +4,14 @@ namespace PortfolioWebsite.Api.Services;
 
 public class ContactService
 {
-    private readonly string? _toEmail;
-    private readonly MailgunService _mailgun;
+    private readonly string _toEmail;
+    private readonly AzureEmailService _email;
 
-    public ContactService(IConfiguration configuration, MailgunService mailgunService)
+    public ContactService(IConfiguration configuration, AzureEmailService emailService)
     {
-        _toEmail = configuration.GetValue<string>("MailgunSettings:To");
-        _mailgun = mailgunService;
+        _toEmail = configuration.GetValue<string>("EmailSettings:To")
+            ?? throw new InvalidOperationException("EmailSettings:To must be configured.");
+        _email = emailService;
     }
 
     public async Task SendContactRequest(string email, string? message)
@@ -24,6 +25,7 @@ public class ContactService
             messageBuilder.AppendFormat("<br/>Message: {0}", message);
         }
 
-        await _mailgun.SendEmailAsync(_toEmail, $"Contact Request for {email}", messageBuilder.ToString());
+        // Reply-To the visitor so hitting Reply goes to them, not DoNotReply@
+        await _email.SendEmailAsync(_toEmail, $"Contact Request for {email}", messageBuilder.ToString(), replyTo: email);
     }
 }

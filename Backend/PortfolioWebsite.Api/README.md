@@ -19,7 +19,9 @@ The ASP.NET Core API behind aboutsamuel.com. It owns the database and everything
 | `AdminSettings:JwtSecret` | `openssl rand -base64 32` |
 | `AdminSettings:AdminEmail` | Where the admin magic link goes |
 | `AdminSettings:BaseUrl` | Frontend URL the magic link points to |
-| `MailgunSettings:*` | Email for the contact form and magic links |
+| `EmailSettings:ConnectionString` | Azure Communication Services connection string, from the **Communication Services** resource's Keys page (not the Email Communication Service one) |
+| `EmailSettings:From` | `DoNotReply@aboutsamuel.com`. Has to be a MailFrom address on the verified ACS domain |
+| `EmailSettings:To` | Where contact form emails go |
 | `Axiom:Token` / `Axiom:Dataset` | Log shipping. Optional locally, you'll just see Axiom 401s in the console |
 | `AgentService:Url` | `http://localhost:8000` locally, the `*.railway.internal` address on Railway |
 | `AgentService:InternalSecret` | Shared secret with the agent service. Must match its `CSHARP_API_INTERNAL_SECRET` |

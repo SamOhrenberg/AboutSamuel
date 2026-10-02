@@ -142,7 +142,7 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();
                 builder.Services.AddScoped<AdminService>();
-                builder.Services.AddSingleton<MailgunService>();
+                builder.Services.AddSingleton<AzureEmailService>();
 
                 // Behind Nginx / Railway reverse proxy
                 builder.Services.Configure<ForwardedHeadersOptions>(options =>
