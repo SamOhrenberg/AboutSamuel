@@ -12,7 +12,7 @@ namespace PortfolioWebsite.Api.Services;
 public class AdminService
 {
     private readonly SqlDbContext _db;
-    private readonly MailgunService _mailgun;
+    private readonly AzureEmailService _email;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AdminService> _logger;
 
@@ -23,12 +23,12 @@ public class AdminService
 
     public AdminService(
         SqlDbContext db,
-        MailgunService mailgun,
+        AzureEmailService email,
         IConfiguration configuration,
         ILogger<AdminService> logger)
     {
         _db = db;
-        _mailgun = mailgun;
+        _email = email;
         _configuration = configuration;
         _logger = logger;
     }
@@ -71,7 +71,7 @@ public class AdminService
             <p style="color:#999;font-size:12px;">Requested from IP: {requestIp}</p>
             """;
 
-        await _mailgun.SendEmailAsync(adminEmail, "Admin Login — AboutSamuel.com", body);
+        await _email.SendEmailAsync(adminEmail, "Admin Login — AboutSamuel.com", body);
 
         _logger.LogInformation("Magic link sent to admin from IP {Ip}", requestIp);
     }
