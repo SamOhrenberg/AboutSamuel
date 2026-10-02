@@ -37,8 +37,5 @@ async def _dispatch(queue_key: str, body: dict) -> None:
     elif queue_key == "portfolio.adversarial.test":
         from agents.adversarial.agent import run_adversarial_test
         await run_adversarial_test(body)
-    elif queue_key == "portfolio.job_fit.request":
-        from agents.job_fit.agent import run_job_fit
-        await run_job_fit(body)
     else:
         logger.warning("queue_unknown_key", queue_key=queue_key)

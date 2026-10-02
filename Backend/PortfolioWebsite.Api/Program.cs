@@ -128,6 +128,19 @@ namespace PortfolioWebsite.Api
                         limiterOptions.QueueLimit = 0;
                         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     });
+                    // Each Job Fit run is ~3 LLM calls, so cap it per visitor. Partitioned by
+                    // IP (unlike AdminLogin, which is one shared bucket). RemoteIpAddress is
+                    // the real client because ForwardedHeaders takes Railway's X-Forwarded-For.
+                    options.AddPolicy("JobFit", httpContext =>
+                        RateLimitPartition.GetFixedWindowLimiter(
+                            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                            _ => new FixedWindowRateLimiterOptions
+                            {
+                                Window = TimeSpan.FromHours(1),
+                                PermitLimit = 5,
+                                QueueLimit = 0
+                            }));
+
                     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 });
 

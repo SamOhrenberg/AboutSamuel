@@ -157,4 +157,51 @@ public class AgentServiceClient
             yield return new StreamChunk { Meta = new StreamMeta(Error: true) };
         }
     }
+
+    private record JobFitAgentRequest(string JobDescription);
+
+    /// <summary>
+    /// Streams the Job Fit run from the agent service. Yields each SSE payload as raw
+    /// JSON, since the agent already sends events in the shape the frontend wants.
+    /// Connection failures come back as an error event followed by done.
+    /// </summary>
+    public async IAsyncEnumerable<string> StreamJobFitAsync(
+        string jobDescription,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        HttpResponseMessage? response = null;
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/job-fit/stream")
+            {
+                Content = JsonContent.Create(new JobFitAgentRequest(jobDescription))
+            };
+            response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Failed to connect to agent service for job fit");
+            response = null;
+        }
+
+        if (response == null)
+        {
+            yield return """{"error":"I'm having trouble connecting right now. Please try again."}""";
+            yield return """{"done":true}""";
+            yield break;
+        }
+
+        using (response)
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+
+            while (await reader.ReadLineAsync(ct) is { } line)
+            {
+                if (line.StartsWith("data: "))
+                    yield return line["data: ".Length..];
+            }
+        }
+    }
 }

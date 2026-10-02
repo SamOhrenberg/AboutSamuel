@@ -22,6 +22,12 @@ async def embed_query(text: str) -> list[float]:
     return await embeddings.aembed_query(text)
 
 
+async def embed_queries(texts: list[str]) -> list[list[float]]:
+    """Embed several texts in one API call instead of one call each."""
+    embeddings = _get_embeddings()
+    return await embeddings.aembed_documents(texts)
+
+
 async def search_pgvector(query_embedding: list[float], limit: int = 8) -> list[dict]:
     """
     Query all three entity tables using pgvector cosine distance,
@@ -52,6 +58,7 @@ async def search_pgvector(query_embedding: list[float], limit: int = 8) -> list[
                    (
                        'Project: ' || p."Title" || E'\n' ||
                        'Role: '    || p."Role"  || E'\n' ||
+                       COALESCE('Years: ' || p."StartYear" || ' - ' || COALESCE(p."EndYear", 'present') || E'\n', '') ||
                        COALESCE('Summary: ' || p."Summary", '')
                    )                   AS content,
                    'project'           AS entity_type,
@@ -72,6 +79,7 @@ async def search_pgvector(query_embedding: list[float], limit: int = 8) -> list[
                    (
                        'Role: '     || "Title"    || E'\n' ||
                        'Employer: ' || "Employer" || E'\n' ||
+                       COALESCE('Years: ' || "StartYear" || ' - ' || COALESCE("EndYear", 'present') || E'\n', '') ||
                        COALESCE('Summary: ' || "Summary", '')
                    )                         AS content,
                    'work'                    AS entity_type,
@@ -90,6 +98,23 @@ async def search_pgvector(query_embedding: list[float], limit: int = 8) -> list[
     all_rows = list(info_rows) + list(project_rows) + list(work_rows)
     sorted_rows = sorted(all_rows, key=lambda r: r["score"], reverse=True)
     return [dict(r) for r in sorted_rows[:limit]]
+
+
+async def get_career_timeline() -> list[dict]:
+    """Every active role with its years, oldest first. Ground truth for questions about
+    total experience, which similarity search can't answer (it only returns a few hits)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT "Employer" AS employer, "Title" AS title,
+                   "StartYear" AS start_year, "EndYear" AS end_year
+            FROM "WorkExperiences"
+            WHERE "IsActive" = true
+            ORDER BY "StartYear" NULLS LAST, "DisplayOrder"
+            """
+        )
+    return [dict(r) for r in rows]
 
 
 @tool
