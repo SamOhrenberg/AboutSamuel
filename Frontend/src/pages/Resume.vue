@@ -142,6 +142,11 @@
               </a>
             </p>
 
+            <p class="prompt-pdf-note">
+              Want an honest read on how I fit a specific role?
+              <router-link to="/job-fit" class="prompt-pdf-link">Try Job Fit</router-link>
+            </p>
+
           </div>
         </div>
 

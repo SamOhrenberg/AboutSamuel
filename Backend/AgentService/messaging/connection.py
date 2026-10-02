@@ -7,7 +7,6 @@ _channel: aio_pika.RobustChannel | None = None
 QUEUES = {
     "portfolio.curator.analyze": "portfolio.curator.analyze",
     "portfolio.adversarial.test": "portfolio.adversarial.test",
-    "portfolio.job_fit.request": "portfolio.job_fit.request",
 }
 
 

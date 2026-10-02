@@ -16,6 +16,8 @@ public class SqlDbContext : DbContext
     public DbSet<WorkExperience> WorkExperiences { get; set; } = null!;
     public DbSet<AdminToken> AdminTokens { get; set; } = null!;
     public DbSet<EmbeddingProjection> EmbeddingProjections { get; set; } = null!;
+    public DbSet<JobFitRun> JobFitRuns { get; set; } = null!;
+    public DbSet<JobFitRequirement> JobFitRequirements { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -92,6 +94,32 @@ public class SqlDbContext : DbContext
                 .HasDefaultValueSql("now()");
             entity.HasIndex(e => e.EntityId);
             entity.HasIndex(e => e.EntityType);
+        });
+
+        modelBuilder.Entity<JobFitRun>(entity =>
+        {
+            entity.HasKey(e => e.JobFitRunId);
+            entity.Property(e => e.JobFitRunId)
+                .HasValueGenerator<GuidValueGenerator>()
+                .ValueGeneratedOnAdd();
+            entity.HasIndex(e => e.ReceivedAt);
+
+            entity.HasMany(e => e.Requirements)
+                .WithOne()
+                .HasForeignKey(r => r.JobFitRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<JobFitRequirement>(entity =>
+        {
+            entity.HasKey(e => e.JobFitRequirementId);
+            entity.Property(e => e.JobFitRequirementId)
+                .HasValueGenerator<GuidValueGenerator>()
+                .ValueGeneratedOnAdd();
+            entity.Property(e => e.Citations).HasDefaultValue("[]");
+
+            // For the gap queries: no_evidence must-haves across all runs
+            entity.HasIndex(e => new { e.Status, e.Importance });
         });
 
     }

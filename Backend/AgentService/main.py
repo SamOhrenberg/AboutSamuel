@@ -9,6 +9,7 @@ configure_logging()
 
 from api.chat import router as chat_router
 from api.health import router as health_router
+from api.job_fit import router as job_fit_router
 from database.connection import close_pool
 from messaging.connection import close_connection
 from messaging.consumer import start_consumers
@@ -55,3 +56,4 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(chat_router)
+app.include_router(job_fit_router)

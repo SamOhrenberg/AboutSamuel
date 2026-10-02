@@ -8,7 +8,8 @@
       <div id="content-wrapper">
         <div id="main-content" role="main">
           <RouterView v-slot="{ Component, route }">
-            <Transition :name="transitionName" mode="out-in">
+            <Transition :name="transitionName" mode="out-in"
+              @before-enter="applyScroll('before-enter')" @after-enter="applyScroll('after-enter')">
               <component :is="Component" :key="route.path" />
             </Transition>
           </RouterView>
@@ -55,8 +56,34 @@ const chatWidth = ref(CHAT_DEFAULT_WIDTH)
 // Route order — used to determine slide direction
 const routeOrder = ['/', '/resume', '/work-experience', '/projects', '/contact']
 
+// Scroll memory. Pages scroll inside #main-content, not the window, so the
+// router's scrollBehavior can't help. Back/forward restores where you were
+// (e.g. back to Job Fit after clicking a cited project), a normal link click
+// starts the new page at the top.
+const scrollPositions = new Map()
+let isHistoryNavigation = false
+// { top, when }: new pages reset at 'before-enter' (old page is gone, new page's
+// onMounted hasn't run, so Projects ?id= can still scroll itself). Returning pages
+// restore at 'after-enter', once their content is in place.
+let pendingScroll = null
+// Not window 'popstate': the router's own popstate listener runs first and finishes
+// the whole navigation (it's all promise callbacks) before a later listener fires.
+// history.listen is called synchronously inside it, before the guards run, and only
+// for back/forward.
+router.options.history.listen(() => { isHistoryNavigation = true })
+
+function applyScroll(hook) {
+  if (pendingScroll?.when !== hook) return
+  const el = document.getElementById('main-content')
+  if (el) el.scrollTop = pendingScroll.top
+  pendingScroll = null
+}
+
 const transitionName = ref('page-forward')
 router.beforeEach((to, from) => {
+  const scroller = document.getElementById('main-content')
+  if (scroller) scrollPositions.set(from.fullPath, scroller.scrollTop)
+
   // Set transition direction before the component swaps
   const toIdx = routeOrder.indexOf(to.path)
   const fromIdx = routeOrder.indexOf(from.path)
@@ -72,7 +99,15 @@ router.beforeEach((to, from) => {
   appShell.value?.classList.remove('route-loading--done')
 })
 
-router.afterEach(() => {
+router.afterEach((to, from) => {
+  // Same path (only the query changed) keeps the component, so no transition hooks fire
+  if (to.path !== from.path) {
+    pendingScroll = isHistoryNavigation
+      ? { top: scrollPositions.get(to.fullPath) ?? 0, when: 'after-enter' }
+      : { top: 0, when: 'before-enter' }
+  }
+  isHistoryNavigation = false
+
   appShell.value?.classList.remove('route-loading')
   appShell.value?.classList.add('route-loading--done')
   setTimeout(() => appShell.value?.classList.remove('route-loading--done'), 400)
