@@ -2,7 +2,9 @@
 
 This is the code behind [aboutsamuel.com](https://aboutsamuel.com), my portfolio site. It's also my playground for keeping my skills sharp, so it's a little more over-engineered than a portfolio site has any right to be.
 
-The main attraction is SamuelLM, a chat bot that answers questions about me. It uses RAG over my own work history, projects, and notes (stored as pgvector embeddings in Postgres), so it can tell you what I've actually done instead of making things up. Mostly. That's what the adversarial testing agent is going to be for.
+The main attraction is SamuelLM, a chat bot that answers questions about me. It uses RAG over my own work history, projects, and notes (stored as pgvector embeddings in Postgres), so it can tell you what I've actually done instead of making things up. Mostly. That's what the adversarial testing agent is for: it throws trick questions at SamuelLM and grades the answers, so "mostly" is an actual number.
+
+There's also Job Fit, where you paste a job posting and get an honest read on how I match it, with every claim linked to the project or job that backs it up.
 
 There's also a Skill Map page that projects all of those embeddings down to 2D with UMAP, so you can poke around and see how my experience clusters together.
 
@@ -11,22 +13,22 @@ There's also a Skill Map page that projects all of those embeddings down to 2D w
 ```
  Vue 3 + Vuetify (Frontend/)
         |
-        |  HTTPS, SSE for chat
+        |  HTTPS, SSE for chat and Job Fit
         v
  ASP.NET Core API (Backend/PortfolioWebsite.Api)  ----->  PostgreSQL + pgvector
         |                         ^                              ^
-        |  /chat/stream           |  /contact/internal           |
+        |  /chat, /job-fit,       |  /contact/internal           |
+        |  /adversarial           |                              |
         v                         |                              |
  Python agent service (Backend/AgentService)  -------------------+
    FastAPI + LangGraph
         |
         +----> Azure OpenAI (gpt-4.1-mini, text-embedding-3-small)
-        +----> RabbitMQ (background agents)
 ```
 
 - **Frontend** is the site itself. It only ever talks to the C# API.
 - **C# API** owns the database, the admin panel, embeddings, the Skill Map, email, and chat logging. For chat it's a proxy now and forwards the stream from the Python service.
-- **Agent service** is where the LLM work lives. SamuelLM is a LangGraph ReAct agent with tools for searching my experience, redirecting to pages, and sending me a contact request (which calls back into the C# API).
+- **Agent service** is where the LLM work lives. SamuelLM is a LangGraph ReAct agent with tools for searching my experience, redirecting to pages, and sending me a contact request (which calls back into the C# API). Job Fit and the adversarial tester are fixed LangGraph pipelines.
 
 ## Repo layout
 
@@ -53,16 +55,11 @@ You'll need:
 - Python 3.11+
 - Node (whatever's current, it's Vite)
 - PostgreSQL with the pgvector extension
-- Docker, for RabbitMQ
 - An Azure OpenAI resource with `gpt-4.1-mini` and `text-embedding-3-small` deployed
 
 Start things in this order, since each one depends on the one before it:
 
-1. **Postgres and RabbitMQ.** Postgres I run as a normal Windows install. RabbitMQ runs in Docker:
-   ```
-   docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
-   ```
-   After the first time it's just `docker start rabbitmq`.
+1. **Postgres.** I run it as a normal Windows install.
 2. **Agent service** on port 8000. See its README for the `.env` setup.
    ```
    cd Backend/AgentService
@@ -81,7 +78,7 @@ Start things in this order, since each one depends on the one before it:
    npm run dev
    ```
 
-If everything is happy, http://localhost:8000/health shows the database and queue as healthy and the chat box on the site streams responses.
+If everything is happy, http://localhost:8000/health shows the database as healthy and the chat box on the site streams responses.
 
 ## Hosting
 
@@ -96,11 +93,18 @@ Done:
 
 - Moved off SQL Server and AWS Bedrock to Postgres + pgvector and Azure OpenAI, all hosted on Railway
 - Skill Map (embedding space visualizer)
-- SamuelLM moved into the Python agent service (works locally, not deployed to Railway yet)
+- SamuelLM moved into the Python agent service
+- **Job Fit agent.** Paste in a job description and get back an evidence-cited fit analysis and a cover letter, streamed step by step.
+- **Adversarial Testing agent.** Tries to trick SamuelLM into making things up about me, has a judge model grade every answer, and reports back in the admin panel.
+- Email moved from Mailgun to Azure Communication Services
+
+- **Hardened SamuelLM** against what the adversarial tests caught. Its pass rate went from about 68% to 98%, mostly by giving it my complete work history so it can actually tell "I never worked there" from "that just didn't come up in the search".
 
 Next up:
 
-- Deploy the agent service and RabbitMQ to Railway
-- **Job Fit agent.** Paste in a job description and get back a gap analysis, a tailored resume section, and a cover letter.
-- **Portfolio Curator agent.** Reads chat logs in the background, finds questions SamuelLM couldn't answer, and drafts new content for me to approve.
-- **Adversarial Testing agent.** Tries to trick SamuelLM into making things up about me and reports back.
+- Swap the adversarial judge to a stronger model once the quota comes through, and see if it finds anything the current judge missed
+
+Maybe someday:
+
+- **Recruiter inbox triage.** Watch my Gmail for recruiter emails, score them against what I'm looking for, politely decline the way-off ones, and queue the good ones for me.
+- **Portfolio Curator.** Mine the chat logs for questions SamuelLM couldn't answer and draft new content. Needs actual traffic first.

@@ -158,6 +158,32 @@ public class AgentServiceClient
         }
     }
 
+    public enum StartRunOutcome { Started, AlreadyRunning, Failed }
+
+    /// <summary>
+    /// Asks the agent service to start an adversarial test run in the background.
+    /// Returns right away with the run id; progress and results land in the
+    /// AdversarialRuns tables.
+    /// </summary>
+    public async Task<(StartRunOutcome Outcome, Guid? RunId)> StartAdversarialRunAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await _http.PostAsync("/adversarial/runs", content: null, ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+                return (StartRunOutcome.AlreadyRunning, null);
+
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            return (StartRunOutcome.Started, Guid.Parse(doc.RootElement.GetProperty("runId").GetString()!));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Failed to start adversarial run");
+            return (StartRunOutcome.Failed, null);
+        }
+    }
+
     private record JobFitAgentRequest(string JobDescription);
 
     /// <summary>

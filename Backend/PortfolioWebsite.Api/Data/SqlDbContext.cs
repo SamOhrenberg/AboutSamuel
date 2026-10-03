@@ -18,6 +18,8 @@ public class SqlDbContext : DbContext
     public DbSet<EmbeddingProjection> EmbeddingProjections { get; set; } = null!;
     public DbSet<JobFitRun> JobFitRuns { get; set; } = null!;
     public DbSet<JobFitRequirement> JobFitRequirements { get; set; } = null!;
+    public DbSet<AdversarialRun> AdversarialRuns { get; set; } = null!;
+    public DbSet<AdversarialCaseResult> AdversarialCaseResults { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -120,6 +122,30 @@ public class SqlDbContext : DbContext
 
             // For the gap queries: no_evidence must-haves across all runs
             entity.HasIndex(e => new { e.Status, e.Importance });
+        });
+
+        // Written by the agent service, which generates its own ids, so no value
+        // generators here. Defaults matter because Python inserts with raw SQL.
+        modelBuilder.Entity<AdversarialRun>(entity =>
+        {
+            entity.HasKey(e => e.AdversarialRunId);
+            entity.HasIndex(e => e.StartedAt);
+            entity.Property(e => e.Status).HasDefaultValue("running");
+
+            entity.HasMany(e => e.Cases)
+                .WithOne()
+                .HasForeignKey(c => c.AdversarialRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AdversarialCaseResult>(entity =>
+        {
+            entity.HasKey(e => e.AdversarialCaseResultId);
+            entity.Property(e => e.History).HasDefaultValue("[]");
+            entity.Property(e => e.ToolCalls).HasDefaultValue("[]");
+            entity.Property(e => e.Claims).HasDefaultValue("[]");
+            // Comparing one case across runs ("did fp-01 start passing?")
+            entity.HasIndex(e => e.CaseKey);
         });
 
     }

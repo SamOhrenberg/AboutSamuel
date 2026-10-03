@@ -7,12 +7,12 @@ from log_config import configure_logging, flush_logs
 
 configure_logging()
 
+from agents.adversarial.store import mark_interrupted_runs
+from api.adversarial import router as adversarial_router
 from api.chat import router as chat_router
 from api.health import router as health_router
 from api.job_fit import router as job_fit_router
 from database.connection import close_pool
-from messaging.connection import close_connection
-from messaging.consumer import start_consumers
 
 logger = structlog.get_logger()
 
@@ -21,17 +21,16 @@ logger = structlog.get_logger()
 async def lifespan(app: FastAPI):
     logger.info("agent_service_starting")
     try:
-        await start_consumers()
-        logger.info("agent_service_ready")
+        if interrupted := await mark_interrupted_runs():
+            logger.warning("adversarial_runs_marked_interrupted", count=interrupted)
     except Exception as e:
-        # Queue startup failure is non-fatal — HTTP endpoints still work
-        logger.warning("queue_startup_failed", error=str(e))
+        logger.warning("adversarial_cleanup_failed", error=str(e))
+    logger.info("agent_service_ready")
 
     yield
 
     logger.info("agent_service_shutting_down")
     await close_pool()
-    await close_connection()
     flush_logs()
 
 
@@ -57,3 +56,4 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(chat_router)
 app.include_router(job_fit_router)
+app.include_router(adversarial_router)
