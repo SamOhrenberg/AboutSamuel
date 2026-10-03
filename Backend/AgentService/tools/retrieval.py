@@ -1,3 +1,6 @@
+import json
+import time
+
 from langchain_core.tools import tool
 from langchain_openai import AzureOpenAIEmbeddings
 from database.connection import get_pool
@@ -100,6 +103,16 @@ async def search_pgvector(query_embedding: list[float], limit: int = 8) -> list[
     return [dict(r) for r in sorted_rows[:limit]]
 
 
+def with_tech_stack(content: str, tech_stack: str | None) -> str:
+    """Projects keep their technologies in a separate JSON column. Without it the
+    LLM can't tell that, say, a project used Python."""
+    try:
+        techs = json.loads(tech_stack or "[]")
+    except json.JSONDecodeError:
+        techs = []
+    return f"{content}\nTech stack: {', '.join(techs)}" if techs else content
+
+
 async def get_career_timeline() -> list[dict]:
     """Every active role with its years, oldest first. Ground truth for questions about
     total experience, which similarity search can't answer (it only returns a few hits)."""
@@ -115,6 +128,63 @@ async def get_career_timeline() -> list[dict]:
             """
         )
     return [dict(r) for r in rows]
+
+
+async def get_project_catalog() -> list[dict]:
+    """Every active project with its role, years, and tech stack (as a list)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT "Title" AS title, "Role" AS role, "TechStack" AS tech_stack,
+                   "StartYear" AS start_year, "EndYear" AS end_year
+            FROM "Projects"
+            WHERE "IsActive" = true
+            ORDER BY "DisplayOrder"
+            """
+        )
+    catalog = []
+    for r in rows:
+        try:
+            techs = json.loads(r["tech_stack"] or "[]")
+        except json.JSONDecodeError:
+            techs = []
+        catalog.append({**dict(r), "tech_stack": techs})
+    return catalog
+
+
+def format_portfolio_overview(timeline: list[dict], catalog: list[dict]) -> str:
+    """Timeline plus project catalog. SamuelLM gets it as context, the adversarial
+    generator builds attacks from it, and the adversarial judge uses it as ground truth."""
+    lines = ["CAREER TIMELINE"]
+    lines += [f"- {r['title']} at {r['employer']}: {r['start_year'] or '?'} - {r['end_year'] or 'present'}"
+              for r in timeline]
+    lines += ["", "PROJECTS"]
+    lines += [f"- {p['title']} ({p['role']}, {p['start_year'] or '?'} - {p['end_year'] or 'present'}): "
+              f"{', '.join(p['tech_stack']) or 'no tech stack listed'}"
+              for p in catalog]
+    return "\n".join(lines)
+
+
+PORTFOLIO_OVERVIEW_TTL_SECONDS = 600
+_overview_cache: tuple[float, str] | None = None
+
+
+async def get_portfolio_overview_cached() -> str:
+    """The overview, cached so chat doesn't query Postgres on every message. Admin edits
+    show up within the TTL. If the database is unreachable, returns the last good copy
+    (or "" if there never was one) so chat keeps working without it."""
+    global _overview_cache
+    now = time.monotonic()
+    if _overview_cache and now - _overview_cache[0] < PORTFOLIO_OVERVIEW_TTL_SECONDS:
+        return _overview_cache[1]
+    try:
+        overview = format_portfolio_overview(await get_career_timeline(), await get_project_catalog())
+        _overview_cache = (now, overview)
+        return overview
+    except Exception as e:
+        logger.warning("portfolio_overview_unavailable", error=str(e), error_type=type(e).__name__)
+        return _overview_cache[1] if _overview_cache else ""
 
 
 @tool

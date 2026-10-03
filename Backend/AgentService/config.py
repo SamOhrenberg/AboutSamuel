@@ -10,11 +10,14 @@ class Settings(BaseSettings):
     azure_openai_embedding_deployment: str = "text-embedding-3-small"
     azure_openai_api_version: str = "2024-08-01-preview"
 
+    # Adversarial test judge. Ideally a different, stronger model than the one it
+    # grades. Unset falls back to the chat deployment. Newer reasoning models
+    # (gpt-5, o-series) may need a newer API version.
+    azure_openai_judge_deployment: str | None = None
+    azure_openai_judge_api_version: str | None = None
+
     # PostgreSQL
     database_url: str  
-
-    # RabbitMQ
-    rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
 
     # C# API
     csharp_api_url: str = "http://portfolioapi.railway.internal:8080"
@@ -31,6 +34,9 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        # pydantic-settings rejects unknown keys in .env by default, so removing a
+        # setting (like RABBITMQ_URL) would crash startup for anyone who still has it
+        extra = "ignore"
 
 
 @lru_cache()

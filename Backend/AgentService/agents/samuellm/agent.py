@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.graph import StateGraph, MessagesState, END
 from langgraph.prebuilt import ToolNode, tools_condition
 from agents.samuellm.prompts import SYSTEM_PROMPT
-from tools.retrieval import search_experience
+from tools.retrieval import get_portfolio_overview_cached, search_experience
 from tools.contact import contact_samuel, get_resume, redirect_to_page, ask_clarification
 from config import get_settings
 import structlog
@@ -27,17 +27,22 @@ def _build_llm() -> AzureChatOpenAI:
     )
 
 
-def _build_graph():
+def build_graph(tools: list = TOOLS):
+    """The live site uses the real tools. The adversarial tests pass a copy where
+    contact_samuel is a fake, so a test can't send Samuel a real email."""
     llm = _build_llm()
-    llm_with_tools = llm.bind_tools(TOOLS)
+    llm_with_tools = llm.bind_tools(tools)
 
-    def agent_node(state: MessagesState):
-        # Prepend system prompt on every call
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-        response = llm_with_tools.invoke(messages)
+    async def agent_node(state: MessagesState):
+        # Prepend the system prompt on every call, with the complete timeline and project
+        # list. Search only returns a few passages, so without this SamuelLM can't tell
+        # "Google isn't an employer" from "Google just didn't come up in the search".
+        overview = await get_portfolio_overview_cached()
+        system = SYSTEM_PROMPT + (f"\nPORTFOLIO FACTS (complete):\n{overview}\n" if overview else "")
+        response = await llm_with_tools.ainvoke([SystemMessage(content=system)] + state["messages"])
         return {"messages": [response]}
 
-    tool_node = ToolNode(TOOLS)
+    tool_node = ToolNode(tools)
 
     workflow = StateGraph(MessagesState)
     workflow.add_node("agent", agent_node)
@@ -50,10 +55,10 @@ def _build_graph():
 
 
 # Single graph instance — built once on module import
-_graph = _build_graph()
+_graph = build_graph()
 
 
-def _build_input(history: list[dict], message: str) -> dict:
+def build_input(history: list[dict], message: str) -> dict:
     """Convert the C# ChatLog format into LangGraph MessagesState input."""
     messages = []
     for h in history:
@@ -72,7 +77,7 @@ async def stream_chat(history: list[dict], message: str) -> AsyncIterator[dict]:
     Stream chat tokens and metadata events back to the caller.
     Yields dicts with either {"token": str} or {"meta": {...}}
     """
-    graph_input = _build_input(history, message)
+    graph_input = build_input(history, message)
 
     redirect = None
     full_response = []
@@ -116,7 +121,7 @@ async def stream_chat(history: list[dict], message: str) -> AsyncIterator[dict]:
 
 async def query_chat(history: list[dict], message: str) -> dict:
     """Non-streaming version for background agents that need a complete response."""
-    graph_input = _build_input(history, message)
+    graph_input = build_input(history, message)
     result = await _graph.ainvoke(graph_input)
     last_message = result["messages"][-1]
     return {"response": last_message.content}

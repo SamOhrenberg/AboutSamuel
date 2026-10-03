@@ -1,5 +1,4 @@
 import asyncio
-import json
 import warnings
 from datetime import datetime
 from functools import lru_cache
@@ -21,7 +20,7 @@ from agents.job_fit.state import (
     RequirementsExtraction,
 )
 from config import get_settings
-from tools.retrieval import embed_queries, get_career_timeline, search_pgvector
+from tools.retrieval import embed_queries, get_career_timeline, search_pgvector, with_tech_stack
 
 logger = structlog.get_logger()
 
@@ -111,15 +110,6 @@ async def extract_requirements(state: JobFitState) -> JobFitState:
     }
 
 
-def _with_tech_stack(content: str, tech_stack: str | None) -> str:
-    """Projects keep their technologies in a separate JSON column. Without it the
-    LLM can't tell that, say, a project used Python."""
-    try:
-        techs = json.loads(tech_stack or "[]")
-    except json.JSONDecodeError:
-        techs = []
-    return f"{content}\nTech stack: {', '.join(techs)}" if techs else content
-
 
 async def retrieve_evidence(state: JobFitState) -> JobFitState:
     """Find the closest pieces of Samuel's history for each requirement. No LLM involved."""
@@ -141,7 +131,7 @@ async def retrieve_evidence(state: JobFitState) -> JobFitState:
                 id=f"{row['entity_type']}:{row['id']}",
                 entity_type=row["entity_type"],
                 label=row["sub_label"],
-                content=_with_tech_stack(row["content"], row["tech_stack"]),
+                content=with_tech_stack(row["content"], row["tech_stack"]),
                 score=round(float(row["score"]), 3),
             )
             for row in rows
