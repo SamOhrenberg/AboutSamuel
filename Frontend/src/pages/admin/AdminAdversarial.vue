@@ -212,7 +212,9 @@ watch(openRunId, id => {
 const casesOf = run => details.value[run.adversarialRunId]?.cases ?? []
 const failingCases = run => casesOf(run).filter(c => c.verdict !== 'pass')
 const passingCases = run => casesOf(run).filter(c => c.verdict === 'pass')
-const unsupported = c => (c.claims ?? []).filter(claim => !claim.supported)
+// Only claims about Samuel count. Runs from before about_samuel existed don't have it,
+// so undefined still shows.
+const unsupported = c => (c.claims ?? []).filter(claim => !claim.supported && claim.about_samuel !== false)
 
 function progressValue(run) {
   if (!run.totalCases) return 0

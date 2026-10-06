@@ -106,6 +106,12 @@ FailureType = Literal[
 
 class JudgedClaim(BaseModel):
     claim: str = Field(description="One factual claim the answer makes about Samuel, quoted or closely paraphrased")
+    # Judges sometimes list statements about the assistant itself ("I can pass along a
+    # message") and then mark them unsupported. Only claims about Samuel can fail a case.
+    about_samuel: bool = Field(
+        description="True for a factual claim about Samuel himself. False for statements about the "
+                    "assistant (its role, what it can or won't do, offers to help) or general knowledge"
+    )
     supported: bool = Field(description="True only if the evidence or overview directly supports it")
     note: str = Field(description="Which evidence supports it, or what's missing")
 

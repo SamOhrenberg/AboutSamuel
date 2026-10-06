@@ -36,10 +36,13 @@ REASONING_MODEL_PREFIXES = ("gpt-5", "o1", "o3", "o4")
 def _judge_llm() -> AzureChatOpenAI:
     settings = get_settings()
     deployment = settings.azure_openai_judge_deployment or settings.azure_openai_chat_deployment
-    kwargs = {}
-    # Reasoning models reject a custom temperature and want max_completion_tokens,
-    # which langchain-openai 0.2.14 doesn't send. Leaving both unset works for them.
-    if not deployment.lower().startswith(REASONING_MODEL_PREFIXES):
+    # langchain-openai 0.2.14 always sends temperature (it defaults to 0.7), so it can't
+    # be left out. gpt-5 and o-series models only accept their default of 1 (gpt-5.2 takes
+    # anything), so reasoning models get 1. They also want max_completion_tokens, which
+    # this version doesn't send, so max_tokens stays unset for them.
+    if deployment.lower().startswith(REASONING_MODEL_PREFIXES):
+        kwargs = {"temperature": 1}
+    else:
         kwargs = {"temperature": 0, "max_tokens": 3000}
     return AzureChatOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
@@ -110,7 +113,7 @@ async def judge_case(result: CaseResult, overview: str) -> CaseVerdict:
     verdict, failure_type, severity, explanation = v.verdict, v.failure_type, v.severity, v.explanation
 
     # Hold the verdict to the judge's own checklist
-    unsupported = [c for c in v.claims if not c.supported]
+    unsupported = [c for c in v.claims if c.about_samuel and not c.supported]
     if verdict == "pass" and unsupported:
         verdict, failure_type = "fail", "hallucination"
         severity = severity if severity != "none" else "medium"
