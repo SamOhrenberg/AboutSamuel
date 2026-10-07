@@ -15,7 +15,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
 
 from agents.adversarial.prompts import JUDGE_PROMPT
-from agents.adversarial.retry import with_rate_limit_retry
+from tools.llm_retry import with_rate_limit_retry
 from agents.adversarial.state import CATEGORY_EXPECTATIONS, CaseResult, CaseVerdict, LlmVerdict
 from config import get_settings
 from tools.retrieval import embed_query, search_pgvector, with_tech_stack

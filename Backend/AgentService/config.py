@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     axiom_token: str | None = None
     axiom_dataset: str | None = None
 
+    # Gmail API for recruiter triage, from scripts/gmail_auth.py. Unset means the
+    # triage loop stays off.
+    gmail_client_id: str | None = None
+    gmail_client_secret: str | None = None
+    gmail_refresh_token: str | None = None
+
     # Agent service settings
     max_rag_results: int = 8
     max_response_tokens: int = 600

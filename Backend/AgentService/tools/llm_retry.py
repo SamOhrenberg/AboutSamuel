@@ -14,10 +14,10 @@ MAX_ATTEMPTS = 5
 
 async def with_rate_limit_retry(call: Callable[[], Awaitable[T]], label: str) -> T:
     """
-    A run is ~100 LLM calls on the same deployment as the live chat, so it can hit the
-    tokens-per-minute quota (back-to-back runs did). The OpenAI client only retries a
-    429 twice, quickly. A background test run can afford to wait: honor Retry-After,
-    back off, and only give up after several tries.
+    For background work that makes many LLM calls on the shared gpt-4.1-mini deployment
+    (adversarial runs, recruiter triage backfills) and can hit its tokens-per-minute
+    quota. The OpenAI client only retries a 429 twice, quickly. Background work can
+    afford to wait: honor Retry-After, back off, and only give up after several tries.
     """
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:

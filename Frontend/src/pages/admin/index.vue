@@ -36,6 +36,7 @@
       <v-tab value="information"><v-icon start>mdi-database</v-icon>Information</v-tab>
       <v-tab value="chats"><v-icon start>mdi-chat</v-icon>Chat Logs</v-tab>
       <v-tab value="adversarial"><v-icon start>mdi-shield-bug</v-icon>Adversarial Tests</v-tab>
+      <v-tab value="recruiters"><v-icon start>mdi-account-tie</v-icon>Recruiters</v-tab>
     </v-tabs>
 
     <v-divider />
@@ -47,6 +48,7 @@
       <AdminInformation    v-if="tab === 'information'"     ref="infoRef" />
       <AdminChatLogs       v-if="tab === 'chats'"           ref="chatRef" />
       <AdminAdversarial    v-if="tab === 'adversarial'" />
+      <AdminRecruiters     v-if="tab === 'recruiters'" />
     </div>
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000" location="bottom right">
@@ -64,6 +66,7 @@ import AdminProjects from './AdminProjects.vue'
 import AdminInformation from './AdminInformation.vue'
 import AdminChatLogs from './AdminChatLog.vue'
 import AdminAdversarial from './AdminAdversarial.vue'
+import AdminRecruiters from './AdminRecruiters.vue'
 
 const router = useRouter()
 const adminStore = useAdminStore()
