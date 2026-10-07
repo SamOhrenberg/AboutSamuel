@@ -7,3 +7,6 @@ Logs
 .venv
 .env
 **/__pycache__/
+# Google OAuth client secrets and tokens (recruiter triage)
+client_secret*.json
+gmail_token*.json

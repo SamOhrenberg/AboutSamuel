@@ -1,3 +1,5 @@
+import asyncio
+
 import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -8,6 +10,7 @@ from log_config import configure_logging, flush_logs
 configure_logging()
 
 from agents.adversarial.store import mark_interrupted_runs
+from agents.recruiter.loop import run_forever as run_recruiter_triage
 from api.adversarial import router as adversarial_router
 from api.chat import router as chat_router
 from api.health import router as health_router
@@ -25,11 +28,13 @@ async def lifespan(app: FastAPI):
             logger.warning("adversarial_runs_marked_interrupted", count=interrupted)
     except Exception as e:
         logger.warning("adversarial_cleanup_failed", error=str(e))
+    triage_task = asyncio.create_task(run_recruiter_triage())
     logger.info("agent_service_ready")
 
     yield
 
     logger.info("agent_service_shutting_down")
+    triage_task.cancel()
     await close_pool()
     flush_logs()
 

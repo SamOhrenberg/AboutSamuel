@@ -23,3 +23,8 @@ httpx==0.27.2
 python-dotenv==1.0.1
 structlog==24.4.0
 axiom-py==0.15.0
+
+# Gmail API (recruiter triage). google-auth refreshes tokens at runtime;
+# google-auth-oauthlib is only used by scripts/gmail_auth.py for the one-time login.
+google-auth==2.60.0
+google-auth-oauthlib==1.5.0

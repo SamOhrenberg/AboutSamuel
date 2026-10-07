@@ -20,6 +20,10 @@ public class SqlDbContext : DbContext
     public DbSet<JobFitRequirement> JobFitRequirements { get; set; } = null!;
     public DbSet<AdversarialRun> AdversarialRuns { get; set; } = null!;
     public DbSet<AdversarialCaseResult> AdversarialCaseResults { get; set; } = null!;
+    public DbSet<RecruiterTriageSettings> RecruiterTriageSettings { get; set; } = null!;
+    public DbSet<RecruiterPosting> RecruiterPostings { get; set; } = null!;
+    public DbSet<RecruiterEmail> RecruiterEmails { get; set; } = null!;
+    public DbSet<RecruiterPitch> RecruiterPitches { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -146,6 +150,80 @@ public class SqlDbContext : DbContext
             entity.Property(e => e.Claims).HasDefaultValue("[]");
             // Comparing one case across runs ("did fp-01 start passing?")
             entity.HasIndex(e => e.CaseKey);
+        });
+
+        // Recruiter triage. Written by the agent service (which makes its own ids), read and
+        // edited by the admin panel. Defaults matter because Python inserts with raw SQL.
+        modelBuilder.Entity<RecruiterTriageSettings>(entity =>
+        {
+            entity.HasKey(e => e.RecruiterTriageSettingsId);
+            entity.Property(e => e.RecruiterTriageSettingsId).ValueGeneratedNever();
+            entity.Property(e => e.ShadowMode).HasDefaultValue(true);
+            entity.Property(e => e.HomeState).HasDefaultValue("OK");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
+
+            // The single row, seeded with the preferences agreed on 2026-10-06
+            entity.HasData(new RecruiterTriageSettings
+            {
+                RecruiterTriageSettingsId = 1,
+                TriageEnabled = false,
+                ShadowMode = true,
+                RemotePayFloor = 90_000,
+                HybridPayFloor = 90_000,
+                OnsitePayFloor = 90_000,
+                HoursPerYear = 2080,
+                AllowRemote = true,
+                AllowHybrid = true,
+                AllowOnsite = true,
+                AcceptableLocations = "[\"Oklahoma City\",\"OKC\",\"Edmond\",\"Moore\",\"Midwest City\",\"Del City\","
+                    + "\"Yukon\",\"Mustang\",\"Bethany\",\"Warr Acres\",\"Nichols Hills\",\"The Village\",\"Choctaw\","
+                    + "\"Norman\",\"Tinker AFB\",\"Tinker Air Force Base\",\"Piedmont\",\"Newcastle\",\"Spencer\","
+                    + "\"Harrah\",\"Jones\"]",
+                HomeState = "OK",
+                AllowedEmploymentTypes = "[\"full_time\",\"contract_to_hire\"]",
+                DealbreakerContractTerms = "[\"c2c\",\"1099\"]",
+                FreeTextRequirements = "The role must be primarily hands-on software development or AI engineering, "
+                    + "where I'm writing code. Not desktop support, help desk, manual QA, project management, "
+                    + "security analysis, or BI reporting without real development.",
+                UpdatedAt = new DateTimeOffset(2026, 10, 6, 0, 0, 0, TimeSpan.Zero),
+            });
+        });
+
+        modelBuilder.Entity<RecruiterPosting>(entity =>
+        {
+            entity.HasKey(e => e.RecruiterPostingId);
+            entity.Property(e => e.Embedding).HasColumnType("vector(1536)");
+            entity.Property(e => e.ReviewStatus).HasDefaultValue("pending");
+            entity.Property(e => e.Role).HasDefaultValue("{}");
+            entity.Property(e => e.Reasons).HasDefaultValue("[]");
+            entity.Property(e => e.Missing).HasDefaultValue("[]");
+            entity.Property(e => e.Conflicts).HasDefaultValue("[]");
+            entity.HasIndex(e => new { e.ReviewStatus, e.LastSeenAt });  // the review queue
+            entity.HasIndex(e => e.LastSeenAt);                          // matching recent postings
+
+            entity.HasMany(e => e.Pitches)
+                .WithOne(p => p.Posting)
+                .HasForeignKey(p => p.RecruiterPostingId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RecruiterEmail>(entity =>
+        {
+            entity.HasKey(e => e.RecruiterEmailId);
+            entity.HasIndex(e => e.GmailMessageId).IsUnique();  // never process a message twice
+            entity.HasIndex(e => e.GmailThreadId);
+            entity.Property(e => e.Action).HasDefaultValue("none");
+
+            entity.HasMany(e => e.Pitches)
+                .WithOne(p => p.Email)
+                .HasForeignKey(p => p.RecruiterEmailId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RecruiterPitch>(entity =>
+        {
+            entity.HasKey(e => e.RecruiterPitchId);
+            entity.Property(e => e.Role).HasDefaultValue("{}");
         });
 
     }

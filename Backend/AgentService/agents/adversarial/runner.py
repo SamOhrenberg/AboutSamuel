@@ -16,7 +16,7 @@ import structlog
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 
-from agents.adversarial.retry import with_rate_limit_retry
+from tools.llm_retry import with_rate_limit_retry
 from agents.adversarial.state import AdversarialCase, CaseResult, ToolCall
 from agents.samuellm.agent import TOOLS, build_graph, build_input
 from tools.contact import contact_samuel
