@@ -18,8 +18,19 @@
           <v-icon size="14" :color="triageColor">mdi-circle</v-icon>
           {{ triageLabel }}<template v-if="stats?.lastSyncedAt"> · last run {{ formatDateTime(stats.lastSyncedAt) }}</template>
         </span>
+        <v-btn variant="text" size="small" color="secondary" @click="toggleSelecting">
+          <v-icon start>{{ selecting ? 'mdi-close' : 'mdi-checkbox-multiple-outline' }}</v-icon>{{ selecting ? 'Cancel' : 'Select' }}
+        </v-btn>
         <v-btn variant="text" size="small" color="secondary" @click="refresh">
           <v-icon start>mdi-refresh</v-icon>Refresh
+        </v-btn>
+      </div>
+
+      <div v-if="selecting" class="merge-bar">
+        <span>{{ selected.length }} selected. Pick the postings that are really the same job.</span>
+        <v-btn size="small" color="secondary" variant="flat" :disabled="selected.length < 2" :loading="merging"
+          @click="mergeSelected">
+          <v-icon start>mdi-call-merge</v-icon>Mark as same job
         </v-btn>
       </div>
 
@@ -31,6 +42,8 @@
       <v-expansion-panels v-else v-model="openId" variant="accordion" class="postings-panels">
         <v-expansion-panel v-for="p in postings" :key="p.recruiterPostingId" :value="p.recruiterPostingId" class="posting-panel">
           <v-expansion-panel-title class="posting-header">
+            <v-checkbox-btn v-if="selecting" :model-value="selected.includes(p.recruiterPostingId)" color="secondary"
+              density="compact" class="posting-select" @click.stop="toggleSelected(p.recruiterPostingId)" />
             <div class="posting-header__main">
               <div class="posting-title">
                 <v-chip size="x-small" :color="STATUS[p.reviewStatus].color" variant="tonal" class="mr-2">
@@ -231,6 +244,9 @@ const loading = ref(false)
 const saving = ref(null)
 const savingSettings = ref(false)
 const snackbar = ref({ show: false, text: '', color: 'success' })
+const selecting = ref(false)
+const selected = ref([])
+const merging = ref(false)
 
 const notify = (text, color = 'success') => { snackbar.value = { show: true, text, color } }
 
@@ -307,6 +323,31 @@ async function saveNotes(p) {
   }
 }
 
+function toggleSelecting() {
+  selecting.value = !selecting.value
+  selected.value = []
+}
+
+function toggleSelected(id) {
+  selected.value = selected.value.includes(id) ? selected.value.filter(x => x !== id) : [...selected.value, id]
+}
+
+async function mergeSelected() {
+  merging.value = true
+  try {
+    const res = await adminStore.apiFetch('/admin/recruiters/postings/merge', {
+      method: 'POST', body: JSON.stringify({ postingIds: selected.value }),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) { notify(body.message ?? 'Merge failed', 'error'); return }
+    notify(`Merged ${selected.value.length} postings into one`)
+    selecting.value = false
+    selected.value = []
+    refresh()
+  } catch { notify('Merge failed', 'error') }
+  finally { merging.value = false }
+}
+
 async function loadSettings() {
   try {
     const res = await adminStore.apiFetch('/admin/recruiters/settings')
@@ -358,6 +399,8 @@ onMounted(refresh)
 .loading-state--small { padding: 1rem; }
 .empty-state { text-align: center; padding: 3rem; color: rgba(var(--v-theme-on-surface), 0.5); }
 
+.merge-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 0.6rem 0.9rem; margin-bottom: 0.75rem; border-radius: 10px; font-size: 0.82rem; background: rgba(var(--v-theme-secondary), 0.08); border: 1px solid rgba(var(--v-theme-secondary), 0.25); }
+.posting-select { flex: 0 0 auto; margin-right: 0.5rem; }
 .postings-panels { border-radius: 12px !important; overflow: hidden; }
 .posting-panel { background: rgb(var(--v-theme-surface)) !important; border-bottom: 1px solid rgba(255,255,255,0.06) !important; }
 .posting-header { font-family: 'Raleway', sans-serif; }

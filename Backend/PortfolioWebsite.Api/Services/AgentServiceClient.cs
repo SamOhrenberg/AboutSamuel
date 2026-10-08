@@ -184,6 +184,34 @@ public class AgentServiceClient
         }
     }
 
+    public enum MergeOutcome { Merged, Busy, NotFound, Failed }
+
+    private record MergePostingsRequest(Guid TargetId, List<Guid> SourceIds);
+
+    /// <summary>
+    /// Asks the agent service to merge recruiter postings Samuel marked as the same job.
+    /// The agent re-merges the details and re-decides, the same way it does for
+    /// duplicates it finds itself.
+    /// </summary>
+    public async Task<MergeOutcome> MergeRecruiterPostingsAsync(Guid targetId, List<Guid> sourceIds,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await _http.PostAsJsonAsync("/recruiters/postings/merge",
+                new MergePostingsRequest(targetId, sourceIds), ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict) return MergeOutcome.Busy;
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return MergeOutcome.NotFound;
+            response.EnsureSuccessStatusCode();
+            return MergeOutcome.Merged;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Failed to merge recruiter postings");
+            return MergeOutcome.Failed;
+        }
+    }
+
     private record JobFitAgentRequest(string JobDescription);
 
     /// <summary>

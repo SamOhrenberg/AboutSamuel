@@ -15,6 +15,7 @@ from api.adversarial import router as adversarial_router
 from api.chat import router as chat_router
 from api.health import router as health_router
 from api.job_fit import router as job_fit_router
+from api.recruiters import router as recruiters_router
 from database.connection import close_pool
 
 logger = structlog.get_logger()
@@ -62,3 +63,4 @@ app.include_router(health_router)
 app.include_router(chat_router)
 app.include_router(job_fit_router)
 app.include_router(adversarial_router)
+app.include_router(recruiters_router)

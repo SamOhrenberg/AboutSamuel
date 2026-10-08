@@ -118,11 +118,19 @@ class StoredPosting:
 
 async def recent_postings(days: int = 60) -> list[StoredPosting]:
     """Postings seen recently, with their pitches, for matching new emails against."""
+    return await _load_postings('"LastSeenAt" > now() - make_interval(days => $1)', days)
+
+
+async def postings_by_id(ids: list[uuid.UUID]) -> list[StoredPosting]:
+    return await _load_postings('"RecruiterPostingId" = ANY($1)', ids)
+
+
+async def _load_postings(where: str, arg) -> list[StoredPosting]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         postings = await conn.fetch(
-            """SELECT "RecruiterPostingId", "Role", "Embedding", "ReviewStatus" FROM "RecruiterPostings"
-               WHERE "LastSeenAt" > now() - make_interval(days => $1)""", days)
+            f"""SELECT "RecruiterPostingId", "Role", "Embedding", "ReviewStatus" FROM "RecruiterPostings"
+                WHERE {where}""", arg)
         pitches = await conn.fetch(
             """SELECT p."RecruiterPostingId", p."Role", e."FromAddress", e."Subject", e."GmailThreadId", e."Category"
                FROM "RecruiterPitches" p JOIN "RecruiterEmails" e ON e."RecruiterEmailId" = p."RecruiterEmailId"
