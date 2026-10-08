@@ -22,7 +22,7 @@ from agents.recruiter.decide import PLATFORM_DOMAINS, Decision, annualized_pay, 
 from agents.recruiter.preferences import DEFAULT_PREFERENCES, Preferences
 from agents.recruiter.prompts import TRIAGE_PROMPT
 from agents.recruiter.state import EmailTriage, RoleDetails
-from agents.recruiter.store import StoredPosting
+from agents.recruiter.store import StoredPitch, StoredPosting
 from config import get_settings
 from tools.gmail import EmailMessage, MessageSummary, get_message, get_message_summary, list_message_ids
 from tools.llm_retry import with_rate_limit_retry
@@ -323,13 +323,17 @@ async def group_into_postings(pitches: list[Pitch], prefs: Preferences,
     for root, new_pitches in groups.items():
         stored = existing[has_existing[root] - n] if root in has_existing else None
         # Re-merge with everything already on file, so new info updates the posting
-        old = [Pitch(EmailMessage(id="", thread_id=sp.thread_id, from_name="", from_address=sp.from_address,
-                                  reply_to=None, subject=sp.subject, date="", body=""), None, sp.role, sp.category)
-               for sp in (stored.pitches if stored else [])]
+        old = [stored_pitch(sp) for sp in (stored.pitches if stored else [])]
         role, conflicts = _merge(old + new_pitches, prefs)
         postings.append(Posting(pitches=old + new_pitches, role=role, conflicts=conflicts,
                                 new_pitches=new_pitches, stored=stored))
     return postings
+
+
+def stored_pitch(sp: StoredPitch) -> Pitch:
+    """A pitch from the database, with just enough of its email to re-merge and re-decide."""
+    return Pitch(EmailMessage(id="", thread_id=sp.thread_id, from_name="", from_address=sp.from_address,
+                              reply_to=None, subject=sp.subject, date="", body=""), None, sp.role, sp.category)
 
 
 async def decide_posting(posting: Posting, prefs: Preferences) -> Decision:

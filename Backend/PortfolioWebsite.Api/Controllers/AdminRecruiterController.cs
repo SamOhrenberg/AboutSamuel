@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using PortfolioWebsite.Api.Data;
 using PortfolioWebsite.Api.Data.Models;
 using PortfolioWebsite.Api.Dtos.Admin;
+using PortfolioWebsite.Api.Services;
+using static PortfolioWebsite.Api.Services.AgentServiceClient;
 
 namespace PortfolioWebsite.Api.Controllers;
 
@@ -16,7 +18,8 @@ namespace PortfolioWebsite.Api.Controllers;
 [ApiController]
 [Route("admin/recruiters")]
 [Authorize(Roles = "Admin")]
-public class AdminRecruiterController(ILogger<AdminRecruiterController> _logger, SqlDbContext _db) : ControllerBase
+public class AdminRecruiterController(
+    ILogger<AdminRecruiterController> _logger, SqlDbContext _db, AgentServiceClient _agentClient) : ControllerBase
 {
     private static readonly HashSet<string> ReviewStatuses = ["pending", "interested", "passed"];
     private static readonly HashSet<string> EmploymentTypes = ["full_time", "contract", "contract_to_hire", "part_time"];
@@ -110,6 +113,38 @@ public class AdminRecruiterController(ILogger<AdminRecruiterController> _logger,
         await _db.SaveChangesAsync();
         _logger.LogInformation("Recruiter posting {Id} reviewed: {Status}", id, posting.ReviewStatus);
         return NoContent();
+    }
+
+    public record MergeRequest(List<Guid> PostingIds);
+
+    /// <summary>
+    /// Samuel marking postings as the same job. The oldest one is kept, so its id (and any
+    /// links to it) survive.
+    /// </summary>
+    [HttpPost("postings/merge")]
+    public async Task<IActionResult> MergePostings([FromBody] MergeRequest request, CancellationToken ct)
+    {
+        var ids = request.PostingIds.Distinct().ToList();
+        if (ids.Count is < 2 or > 50)
+            return BadRequest(new { Message = "Pick between 2 and 50 postings." });
+
+        var found = await _db.RecruiterPostings.AsNoTracking()
+            .Where(p => ids.Contains(p.RecruiterPostingId))
+            .OrderBy(p => p.FirstSeenAt)
+            .Select(p => p.RecruiterPostingId)
+            .ToListAsync(ct);
+        if (found.Count != ids.Count) return NotFound(new { Message = "One of those postings no longer exists." });
+
+        var target = found[0];
+        var outcome = await _agentClient.MergeRecruiterPostingsAsync(target, found.Skip(1).ToList(), ct);
+        _logger.LogInformation("Recruiter postings merge of {Count}: {Outcome}", ids.Count, outcome);
+        return outcome switch
+        {
+            MergeOutcome.Merged => Ok(new { recruiterPostingId = target }),
+            MergeOutcome.Busy => Conflict(new { Message = "Triage is running right now. Try again in a minute." }),
+            MergeOutcome.NotFound => NotFound(new { Message = "One of those postings no longer exists." }),
+            _ => StatusCode(502, new { Message = "The agent service couldn't merge them." }),
+        };
     }
 
     [HttpGet("settings")]
