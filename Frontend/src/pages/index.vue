@@ -13,7 +13,7 @@
 
         <v-col cols="12" md="auto" class="hero-text-col">
           <p class="hero-greeting" :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': greetingVisible }">
-            Nice to Meet You! WIENER WIENER WIENER WIENER WIENER
+            Nice to Meet You!
           </p>
           <h1 class="hero-name" :class="{ 'hero-animate': shouldAnimate, 'hero-animate--visible': nameVisible }">
             I'm Samuel Ohrenberg
