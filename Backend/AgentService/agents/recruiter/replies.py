@@ -68,8 +68,8 @@ def compose(kind: ReplyKind, role: RoleDetails, decision: Decision, recruiter_na
                 "so I'll have to pass on this one. I'd be glad to hear about other roles that fit.")
     else:  # interested: a starting point for Samuel to edit, never sent automatically
         ask = f" Could you share {_join(decision.missing)}, and" if decision.missing else " Could you share"
-        body = (f"Thanks for reaching out about {job}. I'm interested and would like to learn more."
-                f"{ask} a few times that work for a quick call?")
+        body = (f"Thanks for reaching out about {job}. I'm interested and would like to learn more. "
+                f"I've attached my resume.{ask} a few times that work for a quick call?")
 
     return f"{greeting}\n\n{body}\n\n{SIGN_OFF}\n"
 

@@ -37,6 +37,8 @@
       <v-tab value="chats"><v-icon start>mdi-chat</v-icon>Chat Logs</v-tab>
       <v-tab value="adversarial"><v-icon start>mdi-shield-bug</v-icon>Adversarial Tests</v-tab>
       <v-tab value="recruiters"><v-icon start>mdi-account-tie</v-icon>Recruiters</v-tab>
+      <v-tab value="resume"><v-icon start>mdi-file-account</v-icon>Resume</v-tab>
+      <v-tab value="data"><v-icon start>mdi-database-sync</v-icon>Data Transfer</v-tab>
     </v-tabs>
 
     <v-divider />
@@ -49,6 +51,8 @@
       <AdminChatLogs       v-if="tab === 'chats'"           ref="chatRef" />
       <AdminAdversarial    v-if="tab === 'adversarial'" />
       <AdminRecruiters     v-if="tab === 'recruiters'" />
+      <AdminResume         v-if="tab === 'resume'" />
+      <AdminDataTransfer   v-if="tab === 'data'" @changed="loadStats" />
     </div>
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000" location="bottom right">
@@ -67,6 +71,8 @@ import AdminInformation from './AdminInformation.vue'
 import AdminChatLogs from './AdminChatLog.vue'
 import AdminAdversarial from './AdminAdversarial.vue'
 import AdminRecruiters from './AdminRecruiters.vue'
+import AdminResume from './AdminResume.vue'
+import AdminDataTransfer from './AdminDataTransfer.vue'
 
 const router = useRouter()
 const adminStore = useAdminStore()

@@ -33,7 +33,8 @@ public class AgentServiceClient
     public record StreamMeta(
         string? RedirectToPage = null,
         bool Error = false,
-        string? FullResponse = null);
+        string? FullResponse = null,
+        string? Attachment = null);
 
     private record AgentChatRequest(
         string Message,
@@ -134,10 +135,12 @@ public class AgentServiceClient
                     _logger.LogDebug("Meta JSON received: {Json}", metaEl.GetRawText());
                     var fullResponse = metaEl.TryGetProperty("full_response", out var fr)
                         ? fr.GetString() : null;
+                    var attachment = metaEl.TryGetProperty("attachment", out var att)
+                        && att.ValueKind == JsonValueKind.String ? att.GetString() : null;
 
                     chunk = new StreamChunk
                     {
-                        Meta = new StreamMeta(redirect, error, fullResponse)
+                        Meta = new StreamMeta(redirect, error, fullResponse, attachment)
                     };
                 }
             }
@@ -219,29 +222,40 @@ public class AgentServiceClient
     /// JSON, since the agent already sends events in the shape the frontend wants.
     /// Connection failures come back as an error event followed by done.
     /// </summary>
-    public async IAsyncEnumerable<string> StreamJobFitAsync(
-        string jobDescription,
+    public IAsyncEnumerable<string> StreamJobFitAsync(string jobDescription, CancellationToken ct = default) =>
+        StreamEventsAsync("/job-fit/stream", new JobFitAgentRequest(jobDescription),
+            "I'm having trouble connecting right now. Please try again.", ct);
+
+    private record ResumeAnalysisAgentRequest(Guid? ResumeFileId);
+
+    /// <summary>
+    /// Streams a resume analysis from the agent service: step events, then a result. The
+    /// suggestions themselves are saved by the agent and read from the database.
+    /// </summary>
+    public IAsyncEnumerable<string> StreamResumeAnalysisAsync(Guid? resumeFileId, CancellationToken ct = default) =>
+        StreamEventsAsync("/resume-analysis/stream", new ResumeAnalysisAgentRequest(resumeFileId),
+            "Couldn't reach the agent service.", ct);
+
+    private async IAsyncEnumerable<string> StreamEventsAsync(
+        string path, object body, string connectionError,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         HttpResponseMessage? response = null;
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, "/job-fit/stream")
-            {
-                Content = JsonContent.Create(new JobFitAgentRequest(jobDescription))
-            };
+            var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body) };
             response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogError(ex, "Failed to connect to agent service for job fit");
+            _logger.LogError(ex, "Failed to connect to agent service at {Path}", path);
             response = null;
         }
 
         if (response == null)
         {
-            yield return """{"error":"I'm having trouble connecting right now. Please try again."}""";
+            yield return JsonSerializer.Serialize(new { error = connectionError });
             yield return """{"done":true}""";
             yield break;
         }

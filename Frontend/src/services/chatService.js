@@ -31,7 +31,7 @@ export async function getResponse(message, messageHistory, userTrackingId) {
  * @param {string} userTrackingId
  * @param {(token: string) => void} onToken - called for each token as it arrives
  * @param {AbortSignal} signal - for cancellation
- * @returns {Promise<{ redirectToPage?: string, tokenLimitReached?: boolean }>}
+ * @returns {Promise<{ redirectToPage?: string, attachment?: 'resume', tokenLimitReached?: boolean }>}
  */
 export async function getStreamingResponse(
   message, messageHistory, userTrackingId, onToken, signal, onShortCircuit
@@ -60,6 +60,7 @@ export async function getStreamingResponse(
   const decoder = new TextDecoder()
   let buffer = ''
   let redirectToPage = null
+  let attachment = null
   let tokenLimitReached = false
   const allTokens = []
 
@@ -83,6 +84,7 @@ export async function getStreamingResponse(
           onToken(parsed.token)
         }
         if (parsed.redirectToPage) redirectToPage = parsed.redirectToPage
+        if (parsed.attachment) attachment = parsed.attachment
         if (parsed.tokenLimitReached) tokenLimitReached = parsed.tokenLimitReached
       } catch { /* skip malformed */ }
     }
@@ -94,7 +96,7 @@ export async function getStreamingResponse(
     onShortCircuit(allTokens[0])
   }
 
-  return { redirectToPage, tokenLimitReached }
+  return { redirectToPage, attachment, tokenLimitReached }
 }
 
 export async function getResume() {

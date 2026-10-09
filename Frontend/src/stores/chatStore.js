@@ -114,6 +114,8 @@ export const useChatStore = defineStore('chat', {
           if (aiMessage) aiMessage.isStreaming = false
         }
 
+        if (result.attachment && aiMessage) aiMessage.attachment = result.attachment
+
         if (result.tokenLimitReached) {
           this.archivedMessageHistory = [...this.archivedMessageHistory, ...this.messageHistory]
           this.messageHistory = []

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using PortfolioWebsite.Api.Data;
 namespace PortfolioWebsite.Api.Migrations
 {
     [DbContext(typeof(SqlDbContext))]
-    partial class SqlDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261009155837_AddResumeFiles")]
+    partial class AddResumeFiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -746,48 +749,6 @@ namespace PortfolioWebsite.Api.Migrations
                         });
                 });
 
-            modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.ResumeAnalysis", b =>
-                {
-                    b.Property<Guid>("ResumeAnalysisId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Error")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Model")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ResumeFileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("StartedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("now()");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("running");
-
-                    b.Property<string>("Summary")
-                        .HasColumnType("text");
-
-                    b.HasKey("ResumeAnalysisId");
-
-                    b.HasIndex("ResumeFileId");
-
-                    b.HasIndex("StartedAt");
-
-                    b.ToTable("ResumeAnalyses");
-                });
-
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.ResumeFile", b =>
                 {
                     b.Property<Guid>("ResumeFileId")
@@ -829,65 +790,6 @@ namespace PortfolioWebsite.Api.Migrations
                     b.HasIndex("Sha256");
 
                     b.ToTable("ResumeFiles");
-                });
-
-            modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.ResumeSuggestion", b =>
-                {
-                    b.Property<Guid>("ResumeSuggestionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Changes")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("{}");
-
-                    b.Property<DateTimeOffset?>("DecidedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Evidence")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Rationale")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ResumeAnalysisId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("pending");
-
-                    b.HasKey("ResumeSuggestionId");
-
-                    b.HasIndex("ResumeAnalysisId");
-
-                    b.HasIndex("Status", "ResumeAnalysisId");
-
-                    b.ToTable("ResumeSuggestions");
                 });
 
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.WorkExperience", b =>
@@ -1001,28 +903,6 @@ namespace PortfolioWebsite.Api.Migrations
                     b.Navigation("Posting");
                 });
 
-            modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.ResumeAnalysis", b =>
-                {
-                    b.HasOne("PortfolioWebsite.Api.Data.Models.ResumeFile", "ResumeFile")
-                        .WithMany()
-                        .HasForeignKey("ResumeFileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ResumeFile");
-                });
-
-            modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.ResumeSuggestion", b =>
-                {
-                    b.HasOne("PortfolioWebsite.Api.Data.Models.ResumeAnalysis", "Analysis")
-                        .WithMany("Suggestions")
-                        .HasForeignKey("ResumeAnalysisId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Analysis");
-                });
-
             modelBuilder.Entity("ProjectWorkExperience", b =>
                 {
                     b.HasOne("PortfolioWebsite.Api.Data.Models.Project", null)
@@ -1061,11 +941,6 @@ namespace PortfolioWebsite.Api.Migrations
             modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.RecruiterPosting", b =>
                 {
                     b.Navigation("Pitches");
-                });
-
-            modelBuilder.Entity("PortfolioWebsite.Api.Data.Models.ResumeAnalysis", b =>
-                {
-                    b.Navigation("Suggestions");
                 });
 #pragma warning restore 612, 618
         }

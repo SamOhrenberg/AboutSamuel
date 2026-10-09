@@ -22,7 +22,6 @@ These live in `.env`. That file **is** committed, which is fine because everythi
 | Variable | What it does |
 |---|---|
 | `VITE_API_URL` | The C# API. `https://localhost:7276` locally |
-| `VITE_RESUME_PDF_LINK` | Link to the downloadable resume PDF |
 | `VITE_HERO_ANIMATE` | Home page hero animation: `first-load` (default), `always`, or `never` |
 
 ## Layout

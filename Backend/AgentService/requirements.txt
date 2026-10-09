@@ -16,6 +16,9 @@ openai==1.58.1
 asyncpg==0.30.0
 pgvector==0.3.6
 
+# PDF text extraction (resume analysis)
+pypdf==5.1.0
+
 # HTTP client (calling back to C# API)
 httpx==0.27.2
 

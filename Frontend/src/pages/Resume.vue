@@ -364,7 +364,7 @@ const tailorTitle    = ref('')
 const jobDescription = ref('')
 const showJd         = ref(false)
 const showValidation = ref(false)
-const pdfLink        = import.meta.env.VITE_RESUME_PDF_LINK
+const pdfLink        = `${import.meta.env.VITE_API_URL}/resume/official`
 const resumeEl       = ref(null)
 
 const data = computed(() => resumeStore.resumeData)

@@ -155,6 +155,7 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();
                 builder.Services.AddScoped<AdminService>();
+                builder.Services.AddScoped<ResumeSuggestionApplier>();
                 builder.Services.AddSingleton<AzureEmailService>();
 
                 // Behind Nginx / Railway reverse proxy

@@ -24,6 +24,9 @@ public class SqlDbContext : DbContext
     public DbSet<RecruiterPosting> RecruiterPostings { get; set; } = null!;
     public DbSet<RecruiterEmail> RecruiterEmails { get; set; } = null!;
     public DbSet<RecruiterPitch> RecruiterPitches { get; set; } = null!;
+    public DbSet<ResumeFile> ResumeFiles { get; set; } = null!;
+    public DbSet<ResumeAnalysis> ResumeAnalyses { get; set; } = null!;
+    public DbSet<ResumeSuggestion> ResumeSuggestions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -224,6 +227,44 @@ public class SqlDbContext : DbContext
         {
             entity.HasKey(e => e.RecruiterPitchId);
             entity.Property(e => e.Role).HasDefaultValue("{}");
+        });
+
+        // Resume versions. The agent service inserts the seed row with raw SQL, so the
+        // database supplies the defaults.
+        modelBuilder.Entity<ResumeFile>(entity =>
+        {
+            entity.HasKey(e => e.ResumeFileId);
+            entity.Property(e => e.UploadedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.Sha256);
+            // At most one current resume
+            entity.HasIndex(e => e.IsCurrent).IsUnique().HasFilter("\"IsCurrent\"");
+        });
+
+        // Resume analysis. Written by the agent service with raw SQL, so defaults live here.
+        modelBuilder.Entity<ResumeAnalysis>(entity =>
+        {
+            entity.HasKey(e => e.ResumeAnalysisId);
+            entity.Property(e => e.Status).HasDefaultValue("running");
+            entity.Property(e => e.StartedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.StartedAt);
+
+            entity.HasOne(e => e.ResumeFile)
+                .WithMany()
+                .HasForeignKey(e => e.ResumeFileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Suggestions)
+                .WithOne(s => s.Analysis)
+                .HasForeignKey(s => s.ResumeAnalysisId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ResumeSuggestion>(entity =>
+        {
+            entity.HasKey(e => e.ResumeSuggestionId);
+            entity.Property(e => e.Changes).HasDefaultValue("{}");
+            entity.Property(e => e.Status).HasDefaultValue("pending");
+            entity.HasIndex(e => new { e.Status, e.ResumeAnalysisId });  // the review queue
         });
 
     }

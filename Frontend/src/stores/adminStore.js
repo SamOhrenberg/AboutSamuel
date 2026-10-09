@@ -89,13 +89,11 @@ export const useAdminStore = defineStore('admin', () => {
       throw new Error('Not authenticated')
     }
 
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: {
-        ...authHeaders.value,
-        ...(options.headers ?? {})
-      }
-    })
+    // A file upload sets its own multipart Content-Type (with the boundary), so don't force JSON
+    const headers = { ...authHeaders.value, ...(options.headers ?? {}) }
+    if (options.body instanceof FormData) delete headers['Content-Type']
+
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
 
     if (res.status === 401) {
       logout()
