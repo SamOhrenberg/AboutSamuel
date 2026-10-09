@@ -80,6 +80,7 @@ async def stream_chat(history: list[dict], message: str) -> AsyncIterator[dict]:
     graph_input = build_input(history, message)
 
     redirect = None
+    attachment = None
     full_response = []
 
     try:
@@ -102,6 +103,8 @@ async def stream_chat(history: list[dict], message: str) -> AsyncIterator[dict]:
                 logger.info("tool_completed", tool=event.get("name"), output=output)
                 if isinstance(output, str) and output.startswith("__REDIRECT__"):
                     redirect = output.replace("__REDIRECT__", "").replace("__", "")
+                elif isinstance(output, str) and output.startswith("__ATTACHMENT__"):
+                    attachment = output.replace("__ATTACHMENT__", "").replace("__", "")
 
     except Exception as e:
         logger.error("samuellm_stream_failed", error=str(e))
@@ -114,6 +117,7 @@ async def stream_chat(history: list[dict], message: str) -> AsyncIterator[dict]:
     yield {
         "meta": {
             "redirect_to_page": redirect,
+            "attachment": attachment,
             "full_response": "".join(full_response),
         }
     }

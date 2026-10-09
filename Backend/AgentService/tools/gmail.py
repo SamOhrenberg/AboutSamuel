@@ -11,6 +11,8 @@ import base64
 import re
 import time
 from dataclasses import dataclass, field
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parseaddr
 from html.parser import HTMLParser
@@ -246,9 +248,19 @@ async def samuel_replied_in_thread(client: httpx.AsyncClient, thread_id: str) ->
     return any("SENT" in m.get("labelIds", []) for m in thread.get("messages", []))
 
 
-def _reply_mime(original: EmailMessage, body: str) -> str:
-    """A plain-text reply in the same conversation, base64url-encoded for the Gmail API."""
-    msg = MIMEText(body, "plain", "utf-8")
+def _reply_mime(original: EmailMessage, body: str, attachment: tuple[str, bytes] | None = None) -> str:
+    """A plain-text reply in the same conversation, base64url-encoded for the Gmail API.
+    attachment is (filename, PDF bytes)."""
+    text = MIMEText(body, "plain", "utf-8")
+    if attachment:
+        filename, pdf = attachment
+        msg = MIMEMultipart()
+        msg.attach(text)
+        part = MIMEApplication(pdf, "pdf")
+        part.add_header("Content-Disposition", "attachment", filename=filename)
+        msg.attach(part)
+    else:
+        msg = text
     msg["To"] = original.reply_to or original.from_address
     subject = original.subject or ""
     msg["Subject"] = subject if subject.lower().startswith("re:") else f"Re: {subject}"
@@ -258,10 +270,11 @@ def _reply_mime(original: EmailMessage, body: str) -> str:
     return base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
 
-async def create_reply_draft(client: httpx.AsyncClient, original: EmailMessage, body: str) -> str:
+async def create_reply_draft(client: httpx.AsyncClient, original: EmailMessage, body: str,
+                             attachment: tuple[str, bytes] | None = None) -> str:
     """Creates a draft reply in the original's thread. Returns the draft id. Sends nothing."""
     draft = await _request(client, "POST", "/drafts", body={
-        "message": {"raw": _reply_mime(original, body), "threadId": original.thread_id}})
+        "message": {"raw": _reply_mime(original, body, attachment), "threadId": original.thread_id}})
     return draft["id"]
 
 

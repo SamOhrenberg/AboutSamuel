@@ -36,11 +36,11 @@ async def contact_samuel(email: str, message: str = "") -> str:
 @tool
 def get_resume() -> str:
     """
-    Display Samuel's resume to the user.
-    Use this when the user asks to see, view, or download the resume.
+    Give the user Samuel's official resume as a downloadable PDF card in the chat.
+    Use this when the user asks to see, view, get, or download the resume.
     """
-    # The frontend has no handler for display_resume; the resume is its own page
-    return "__REDIRECT__resume__"
+    # Sentinel for the stream handler, which turns it into meta.attachment for the frontend
+    return "__ATTACHMENT__resume__"
 
 
 # Must match the Vue file-based routes in Frontend/src/pages

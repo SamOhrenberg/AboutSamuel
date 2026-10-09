@@ -11,6 +11,7 @@ const showScrollBtn = ref(false)
 const copiedKey = ref(null)
 const apiStatus = ref('checking') // 'online' | 'offline' | 'checking'
 const API_BASE = import.meta.env.VITE_API_URL
+const RESUME_URL = `${API_BASE}/resume/official`
 
 // ── Starter prompts ───────────────────────────────────────
 const starterPrompts = [
@@ -195,7 +196,7 @@ async function checkApiStatus() {
                   {{ formatDateTime(messageItem.sentAt) }}
                 </span>
               </div>
-              <div class="message-bubble-wrapper">
+              <div v-if="messageItem.message || !messageItem.attachment" class="message-bubble-wrapper">
                 <div class="message-text">{{ messageItem.message }}</div>
                 <button v-if="messageItem.sentBy === 'SamuelLM'" class="copy-btn" @click="copyMessage(messageItem)"
                   :aria-label="'Copy message'">
@@ -203,6 +204,15 @@ async function checkApiStatus() {
                     'mdi-content-copy' }}</v-icon>
                 </button>
               </div>
+              <a v-if="messageItem.attachment === 'resume'" :href="RESUME_URL" target="_blank"
+                rel="noopener noreferrer" class="attachment-card" aria-label="Open Samuel's resume (PDF, new tab)">
+                <span class="attachment-icon"><v-icon size="22">mdi-file-pdf-box</v-icon></span>
+                <span class="attachment-meta">
+                  <span class="attachment-name">Samuel_Ohrenberg_Resume.pdf</span>
+                  <span class="attachment-sub">PDF · Official resume</span>
+                </span>
+                <v-icon size="18" class="attachment-action">mdi-download</v-icon>
+              </a>
             </div>
           </TransitionGroup>
 
@@ -234,7 +244,8 @@ async function checkApiStatus() {
                   {{ formatDateTime(messageItem.sentAt) }}
                 </span>
               </div>
-              <div class="message-bubble-wrapper">
+              <div v-if="messageItem.message || messageItem.isStreaming || !messageItem.attachment"
+                class="message-bubble-wrapper">
                 <div class="message-text">
                   {{ messageItem.message }}<span v-if="messageItem.isStreaming" class="streaming-cursor">▋</span>
                 </div>
@@ -244,6 +255,15 @@ async function checkApiStatus() {
                     'mdi-content-copy' }}</v-icon>
                 </button>
               </div>
+              <a v-if="messageItem.attachment === 'resume'" :href="RESUME_URL" target="_blank"
+                rel="noopener noreferrer" class="attachment-card" aria-label="Open Samuel's resume (PDF, new tab)">
+                <span class="attachment-icon"><v-icon size="22">mdi-file-pdf-box</v-icon></span>
+                <span class="attachment-meta">
+                  <span class="attachment-name">Samuel_Ohrenberg_Resume.pdf</span>
+                  <span class="attachment-sub">PDF · Official resume</span>
+                </span>
+                <v-icon size="18" class="attachment-action">mdi-download</v-icon>
+              </a>
             </div>
           </TransitionGroup>
         </div>
@@ -700,6 +720,67 @@ async function checkApiStatus() {
   background: rgba(139, 233, 253, 0.08);
   color: #8BE9FD;
   border-color: rgba(139, 233, 253, 0.3);
+}
+
+/* File attachment card, like a document sent in a messaging app */
+.attachment-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  min-width: 230px;
+  background: rgba(139, 233, 253, 0.06);
+  border: 1px solid rgba(139, 233, 253, 0.18);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.attachment-card:hover,
+.attachment-card:focus-visible {
+  background: rgba(139, 233, 253, 0.12);
+  border-color: rgba(139, 233, 253, 0.45);
+  outline: none;
+}
+
+.attachment-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: rgba(255, 85, 85, 0.14);
+  color: #FF5555;
+}
+
+.attachment-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.attachment-name {
+  color: #e0f2f2;
+  font-size: 0.78rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-sub {
+  color: rgba(139, 233, 253, 0.55);
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+}
+
+.attachment-action {
+  color: rgba(139, 233, 253, 0.7) !important;
+  flex-shrink: 0;
 }
 
 /* ── Message entrance ── */

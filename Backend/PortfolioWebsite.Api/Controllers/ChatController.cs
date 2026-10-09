@@ -81,9 +81,13 @@ public class ChatController(ILogger<ChatController> _logger, ChatService _chatSe
                 if (!string.IsNullOrEmpty(chunk.Meta.FullResponse))
                     fullResponse.Clear().Append(chunk.Meta.FullResponse);
 
+                // Only known attachment kinds reach the browser, whatever the agent sent
+                var attachment = chunk.Meta.Attachment == "resume" ? "resume" : null;
+
                 var metaPayload = System.Text.Json.JsonSerializer.Serialize(new
                 {
                     redirectToPage,
+                    attachment,
                     tokenLimitReached,
                     error
                 });

@@ -20,6 +20,7 @@ config.py               settings, read from .env
 api/
   chat.py               POST /chat/stream, POST /chat/query
   job_fit.py            POST /job-fit/stream
+  resume_analysis.py    POST /resume-analysis/stream (internal secret)
   adversarial.py        POST /adversarial/runs (needs X-Internal-Secret)
   health.py             GET /health
 agents/
@@ -37,7 +38,12 @@ agents/
     judge.py            grades answers against the portfolio
     store.py            writes runs to the database
     state.py, prompts.py
+  resume_analysis/
+    agent.py            load_resume -> load_site_data -> compare -> validate, and the CLI
+    store.py            site data in, analyses and suggestions out
+    state.py, prompts.py
 tools/
+  resume.py             the official resume PDF (ResumeFiles table, bundled file as fallback)
   retrieval.py          search_experience (pgvector search)
   contact.py            contact_samuel, get_resume, redirect_to_page, ask_clarification
 database/connection.py  asyncpg pool
@@ -104,13 +110,33 @@ The tools:
 
 - `search_experience` embeds the question and runs a cosine search across `Information`, `Projects`, and `WorkExperiences`, then merges the results.
 - `redirect_to_page` sends the user to a page on the site. The valid pages are in `VALID_PAGES` in `tools/contact.py` and **must match the Vue routes** in `Frontend/src/pages`. If you add a page, add it there too.
-- `get_resume` is a redirect to the resume page.
+- `get_resume` returns `__ATTACHMENT__resume__`, which becomes `meta.attachment = "resume"`. The frontend shows a PDF card linking to the C# API's `/resume/official`. The file itself lives in the `ResumeFiles` table (see `tools/resume.py`).
 - `contact_samuel` POSTs to the C# API's `/contact/internal` with the `X-Internal-Secret` header, and the C# API sends the email.
 - `ask_clarification` is for when the question is too vague.
 
 The redirect tools don't do anything themselves. They return a sentinel string like `__REDIRECT__projects__`, and `agent.py` catches it in the `on_tool_end` event and turns it into the meta. That output is a `ToolMessage`, so read `.content`, not `str(output)`.
 
 The LLM usually still writes a sentence after a redirect even though the prompt says not to. That's gpt-4.1-mini being gpt-4.1-mini. The redirect still works.
+
+## How resume analysis works
+
+An admin uploads a resume PDF (stored in the `ResumeFiles` table), then runs the analysis. It compares the PDF against the site's work experience, projects, and information and saves **pending suggestions**; nothing changes until Samuel approves one in the admin panel.
+
+`load_resume` extracts the PDF text, `load_site_data` gives every row a short alias (W1, P2, I3) so the model never handles GUIDs, `compare` runs three parallel structured calls (work, projects, information) on the judge deployment (`AZURE_OPENAI_JUDGE_DEPLOYMENT`, falling back to the chat model), and `validate` is plain code that decides what is kept:
+
+- a proposal's supporting quote must appear in the resume text (letters and digits only, so line wraps and bullets can't break the match)
+- the alias must exist, and only allowlisted fields are kept, as `{field: {"from", "to"}}` diffs with no-op fields dropped
+- list fields (achievements, tech stack, keywords) are edits, `{add, remove}`. Existing entries stay unless named in `remove`, and a removal must match an existing entry
+- adds must carry the required fields and not duplicate an existing row
+- there are no removals of whole rows, ever
+
+Output varies between runs (a reasoning model at its fixed temperature), which is why every suggestion is reviewed.
+
+```
+python -m agents.resume_analysis.agent
+```
+
+runs it against the current resume and your local database and prints the suggestions without saving them. `POST /resume-analysis/stream` takes `{"resumeFileId": null}` (null means the current resume) and streams `analysisId`, `step`, `result` (counts only), `error`, and always `done`. Only one analysis runs at a time. The suggestions are read from the database, not the stream.
 
 ## How Job Fit works
 

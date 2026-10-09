@@ -26,6 +26,7 @@ from agents.recruiter.decide import PLATFORM_DOMAINS
 from agents.recruiter.replies import compose
 from config import get_settings
 from tools import gmail
+from tools.resume import RESUME_FILENAME, get_resume_pdf
 
 logger = structlog.get_logger()
 
@@ -43,6 +44,8 @@ LABELS: dict[Kind, str] = {
 }
 REPLY_KIND = {"review": "interested", "ask_info": "ask_info", "represented": "represented", "decline": "decline"}
 AUTO_SEND: set[Kind] = {"ask_info", "represented", "decline"}
+# The resume goes only with replies that say Samuel is interested, which are never auto-sent
+ATTACH_RESUME: set[Kind] = {"review"}
 
 # Mailboxes nobody reads: replying is pointless and looks automated
 NO_REPLY = re.compile(r"^(no-?reply|do-?not-?reply|notifications?|mailer-daemon)\b", re.IGNORECASE)
@@ -121,6 +124,7 @@ async def apply_actions(plans: list[Plan], shadow_mode: bool) -> dict:
     """Labels, drafts, sends (live mode only), and records what was done. Returns counts."""
     counts = {"labeled": 0, "drafted": 0, "sent": 0, "skipped_samuel_replied": 0}
     sent_today = await store.sent_today()
+    resume = None  # fetched on the first reply that needs it
     async with httpx.AsyncClient(timeout=30) as client:
         for plan in plans:
             email = plan.email
@@ -131,7 +135,11 @@ async def apply_actions(plans: list[Plan], shadow_mode: bool) -> dict:
                 if plan.draft and await gmail.samuel_replied_in_thread(client, email.thread_id):
                     counts["skipped_samuel_replied"] += 1
                 elif plan.draft:
-                    draft_id = await gmail.create_reply_draft(client, email, plan.draft)
+                    attachment = None
+                    if plan.kind in ATTACH_RESUME:
+                        resume = resume or await get_resume_pdf()
+                        attachment = (RESUME_FILENAME, resume)
+                    draft_id = await gmail.create_reply_draft(client, email, plan.draft, attachment)
                     action = "drafted"
                     if not shadow_mode and plan.kind in AUTO_SEND and sent_today < DAILY_SEND_CAP:
                         await gmail.send_draft(client, draft_id)
