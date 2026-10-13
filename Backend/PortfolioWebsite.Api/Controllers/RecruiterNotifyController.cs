@@ -58,6 +58,8 @@ public class RecruiterNotifyController(
         try
         {
             var count = request.Postings.Count;
+            // The "Recruiter triage:" prefix is how the agent service recognizes this email in the
+            // inbox and skips it (NOTIFICATION_SUBJECT_PREFIX in actions.py). Change both together.
             await email.SendEmailAsync(to, $"Recruiter triage: {count} possible match{(count == 1 ? "" : "es")}",
                 html.ToString());
         }
