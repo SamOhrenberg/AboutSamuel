@@ -80,7 +80,7 @@ async def _run(lookback_days: int, limit: int, mode: Mode, skip_recent_days: int
                 return await get_message_summary(client, i)
 
         summaries = await asyncio.gather(*(summary(i) for i in new_ids))
-        candidates = [s for s in summaries if looks_job_related(s)]
+        candidates = [s for s in summaries if looks_job_related(s) and not actions.is_own_notification(s.subject)]
 
         llm_sem = asyncio.Semaphore(2)  # shares the gpt-4.1-mini quota with the live chat
 

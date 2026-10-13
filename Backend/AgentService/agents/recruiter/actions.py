@@ -53,6 +53,15 @@ NO_REPLY = re.compile(r"^(no-?reply|do-?not-?reply|notifications?|mailer-daemon)
 RECENT_HOURS = 48
 DAILY_SEND_CAP = 20
 
+# The notification email lands in the same inbox triage reads, and its text is all job
+# details, so without this it would be triaged as a new pitch and notify again, forever.
+# Must match the subject built in RecruiterNotifyController.cs.
+NOTIFICATION_SUBJECT_PREFIX = "Recruiter triage:"
+
+
+def is_own_notification(subject: str) -> bool:
+    return subject.strip().lower().startswith(NOTIFICATION_SUBJECT_PREFIX.lower())
+
 
 @dataclass
 class Plan:
