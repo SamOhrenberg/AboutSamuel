@@ -35,27 +35,27 @@ REASONING_MODEL_PREFIXES = ("gpt-5", "o1", "o3", "o4")
 @lru_cache()
 def _judge_llm() -> AzureChatOpenAI:
     settings = get_settings()
-    deployment = settings.azure_openai_judge_deployment or settings.azure_openai_chat_deployment
     # langchain-openai 0.2.14 always sends temperature (it defaults to 0.7), so it can't
     # be left out. gpt-5 and o-series models only accept their default of 1 (gpt-5.2 takes
     # anything), so reasoning models get 1. They also want max_completion_tokens, which
-    # this version doesn't send, so max_tokens stays unset for them.
-    if deployment.lower().startswith(REASONING_MODEL_PREFIXES):
+    # this version doesn't send, so max_tokens stays unset for them. This checks the
+    # model, not the deployment, since deployments are named by role ("judge").
+    if settings.judge_model.lower().startswith(REASONING_MODEL_PREFIXES):
         kwargs = {"temperature": 1}
     else:
         kwargs = {"temperature": 0, "max_tokens": 3000}
     return AzureChatOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
-        azure_deployment=deployment,
+        azure_deployment=settings.judge_deployment,
         api_version=settings.azure_openai_judge_api_version or settings.azure_openai_api_version,
         **kwargs,
     )
 
 
 def judge_model_name() -> str:
-    settings = get_settings()
-    return settings.azure_openai_judge_deployment or settings.azure_openai_chat_deployment
+    """Recorded on each run, so it's the model rather than the role-named deployment."""
+    return get_settings().judge_model
 
 
 async def _judge_evidence(question: str) -> list[str]:

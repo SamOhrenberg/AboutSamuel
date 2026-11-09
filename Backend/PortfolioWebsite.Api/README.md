@@ -12,10 +12,12 @@ The ASP.NET Core API behind aboutsamuel.com. It owns the database and everything
 |---|---|
 | `ConnectionStrings:DefaultConnection` | Postgres. On Railway it's `${{Postgres.DATABASE_URL}}` |
 | `AllowedOrigins` | CORS. Needs `http://localhost:3000` locally |
-| `AzureOpenAI:Endpoint` | The resource URL, like `https://<resource>.openai.azure.com/`. **Not** the `/openai/v1` one Foundry shows you, the client adds its own path |
-| `AzureOpenAI:ApiKey` | Key from the Foundry portal |
-| `AzureOpenAI:EmbeddingDeployment` | `text-embedding-3-small`. Has to match what the agent service uses or the vectors won't line up |
-| `ChatSettings:ToolUse:Model` / `ChatSettings:Question:Model` | Azure **deployment** names (`gpt-4.1-mini`). Only used by the legacy `ChatService` now |
+| `AzureOpenAI:Endpoint` | `https://aboutsamuel-ai.openai.azure.com/`, from the `openAiEndpoint` output of `infra/main.bicep`. **Not** the `/openai/v1` one Foundry shows you, the client adds its own path |
+| `AzureOpenAI:ApiKey` | `az cognitiveservices account keys list -n aboutsamuel-ai -g rg-aboutsamuel-ai` |
+| `AzureOpenAI:EmbeddingDeployment` | `embedding`. Has to match what the agent service uses or the vectors won't line up |
+| `ChatSettings:ToolUse:Model` / `ChatSettings:Question:Model` | Azure **deployment** names (`chat`). Only used by the legacy `ChatService` now |
+
+The Azure deployments are defined in `infra/main.bicepparam` and named by role (`chat`, `embedding`, `judge`), so swapping a model never changes these values. On Railway the `AzureOpenAI__*` vars are set by `infra/scripts/sync-railway-vars.sh`; don't edit them in the dashboard.
 | `AdminSettings:JwtSecret` | `openssl rand -base64 32` |
 | `AdminSettings:AdminEmail` | Where the admin magic link goes |
 | `AdminSettings:BaseUrl` | Frontend URL the magic link points to |

@@ -6,14 +6,20 @@ class Settings(BaseSettings):
     # Azure OpenAI
     azure_openai_endpoint: str
     azure_openai_api_key: str
-    azure_openai_chat_deployment: str = "gpt-4.1-mini"
-    azure_openai_embedding_deployment: str = "text-embedding-3-small"
+    # Deployments are named by role in infra/main.bicepparam. The *_MODEL settings say
+    # which model is behind each one, for picking call parameters and labeling results.
+    # On Railway all of these are set by infra/scripts/sync-railway-vars.sh from the
+    # Bicep deployment outputs, so don't edit them in the dashboard.
+    azure_openai_chat_deployment: str = "chat"
+    azure_openai_chat_model: str = "gpt-4.1-mini"
+    azure_openai_embedding_deployment: str = "embedding"
     azure_openai_api_version: str = "2024-08-01-preview"
 
-    # Adversarial test judge. Ideally a different, stronger model than the one it
-    # grades. Unset falls back to the chat deployment. Newer reasoning models
+    # Adversarial test judge and resume analysis. Ideally a different, stronger model
+    # than the one it grades. Unset falls back to chat. Newer reasoning models
     # (gpt-5, o-series) may need a newer API version.
     azure_openai_judge_deployment: str | None = None
+    azure_openai_judge_model: str | None = None
     azure_openai_judge_api_version: str | None = None
 
     # PostgreSQL
@@ -36,6 +42,18 @@ class Settings(BaseSettings):
     # Agent service settings
     max_rag_results: int = 8
     max_response_tokens: int = 600
+
+    @property
+    def judge_deployment(self) -> str:
+        return self.azure_openai_judge_deployment or self.azure_openai_chat_deployment
+
+    @property
+    def judge_model(self) -> str:
+        """The model behind judge_deployment. Falls back to the deployment name, which
+        was the model name back when deployments were named after their model."""
+        if self.azure_openai_judge_deployment:
+            return self.azure_openai_judge_model or self.azure_openai_judge_deployment
+        return self.azure_openai_chat_model
 
     class Config:
         env_file = ".env"
