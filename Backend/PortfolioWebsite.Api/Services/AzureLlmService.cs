@@ -21,8 +21,9 @@ public class AzureLlmService : ILlmService
         var apiKey = configuration["AzureOpenAI:ApiKey"]
             ?? throw new InvalidOperationException("AzureOpenAI:ApiKey must be configured.");
 
-        var toolModel = configuration["ChatSettings:ToolUse:Model"] ?? "gpt-4o-mini";
-        var questionModel = configuration["ChatSettings:Question:Model"] ?? "gpt-4o-mini";
+        // Azure deployment names, which are named by role in infra/main.bicepparam
+        var toolModel = configuration["ChatSettings:ToolUse:Model"] ?? "chat";
+        var questionModel = configuration["ChatSettings:Question:Model"] ?? "chat";
 
         var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
         _toolUseClient = azureClient.GetChatClient(toolModel);

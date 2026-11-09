@@ -10,3 +10,6 @@ Logs
 # Google OAuth client secrets and tokens (recruiter triage)
 client_secret*.json
 gmail_token*.json
+
+# AI-103 study notes and project tracker (personal, not committed)
+ai-103/

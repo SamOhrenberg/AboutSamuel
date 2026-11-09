@@ -21,7 +21,7 @@ public class EmbeddingService : IEmbeddingService
         var apiKey = configuration["AzureOpenAI:ApiKey"]
             ?? throw new InvalidOperationException("AzureOpenAI:ApiKey must be configured.");
         var deployment = configuration["AzureOpenAI:EmbeddingDeployment"]
-            ?? "text-embedding-3-small";
+            ?? "embedding";
 
         var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
         _client = azureClient.GetEmbeddingClient(deployment);

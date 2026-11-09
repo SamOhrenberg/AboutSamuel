@@ -59,23 +59,21 @@ def _llm() -> AzureChatOpenAI:
     """The stronger judge deployment when configured. This runs rarely and a wrong proposal
     costs more than a slow run, so it isn't the cheap chat model."""
     settings = get_settings()
-    deployment = settings.azure_openai_judge_deployment or settings.azure_openai_chat_deployment
-    if deployment.lower().startswith(REASONING_MODEL_PREFIXES):
+    if settings.judge_model.lower().startswith(REASONING_MODEL_PREFIXES):
         kwargs = {"temperature": 1}  # reasoning models want max_completion_tokens, which 0.2.14 doesn't send
     else:
         kwargs = {"temperature": 0, "max_tokens": 8000}
     return AzureChatOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
-        azure_deployment=deployment,
+        azure_deployment=settings.judge_deployment,
         api_version=settings.azure_openai_judge_api_version or settings.azure_openai_api_version,
         **kwargs,
     )
 
 
 def analysis_model_name() -> str:
-    settings = get_settings()
-    return settings.azure_openai_judge_deployment or settings.azure_openai_chat_deployment
+    return get_settings().judge_model
 
 
 # ---- load_resume ----------------------------------------------------------

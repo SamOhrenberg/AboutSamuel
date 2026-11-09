@@ -34,7 +34,7 @@ async def start_run():
     if _current_run and not _current_run.done():
         raise HTTPException(status_code=409, detail="A run is already in progress.")
 
-    run_id = await create_run(target_model=get_settings().azure_openai_chat_deployment,
+    run_id = await create_run(target_model=get_settings().azure_openai_chat_model,
                               judge_model=judge_model_name())
     _current_run = asyncio.create_task(execute_stored_run(run_id))
     logger.info("adversarial_run_started", run_id=str(run_id))

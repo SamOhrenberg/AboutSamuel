@@ -62,16 +62,20 @@ pip install -r requirements.txt
 Then make a `.env` in this folder. It's gitignored, keep it that way, it has the Azure key in it.
 
 ```
-AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com/
+AZURE_OPENAI_ENDPOINT=https://aboutsamuel-ai.openai.azure.com/
 AZURE_OPENAI_API_KEY=
-AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4.1-mini
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small
+AZURE_OPENAI_CHAT_DEPLOYMENT=chat
+AZURE_OPENAI_CHAT_MODEL=gpt-4.1-mini
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT=embedding
+AZURE_OPENAI_JUDGE_DEPLOYMENT=judge
+AZURE_OPENAI_JUDGE_MODEL=gpt-5.2
 DATABASE_URL=postgresql://<user>:<password>@localhost:5432/portfoliodb
 CSHARP_API_URL=https://localhost:7276
 CSHARP_API_INTERNAL_SECRET=
 ```
 
 - `AZURE_OPENAI_ENDPOINT` is the resource URL, not the `/openai/v1` one the Foundry portal shows. LangChain adds its own path.
+- Deployments are defined in `infra/main.bicepparam` and named by role, so the `*_DEPLOYMENT` values never change when a model does. The `*_MODEL` values do, and the code uses them to pick call parameters (reasoning models reject `max_tokens`) and to label adversarial runs. On Railway, all `AZURE_OPENAI_*` vars come from `infra/scripts/sync-railway-vars.sh`, so don't edit them in the dashboard.
 - `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` has to be the same model the C# API used to build the embeddings, or search quietly returns garbage.
 - `CSHARP_API_INTERNAL_SECRET` has to match `AgentService:InternalSecret` in the C# API.
 - `AXIOM_TOKEN` and `AXIOM_DATASET` are optional. Leave them out locally and logs only go to the console. On Railway they ship every structlog event to Axiom with `service: agent-service` on it.
