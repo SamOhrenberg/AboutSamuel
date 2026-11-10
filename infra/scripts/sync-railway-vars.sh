@@ -14,7 +14,8 @@
 # Needs: az (logged in), railway (logged in, or RAILWAY_API_TOKEN / RAILWAY_TOKEN in CI).
 #
 # No secrets: auth is Entra ID. The prod identity's variables (AZURE_CLIENT_ID etc.) are
-# owned by set-railway-sp-credential.sh, run by hand. Keys are disabled on the account.
+# owned by set-railway-sp-credential.sh, run by hand. Keys are disabled on the account, and
+# App Insights has local auth off, so its connection string is only an address.
 set -euo pipefail
 
 RESOURCE_GROUP="${RESOURCE_GROUP:-rg-aboutsamuel-ai}"
@@ -47,6 +48,7 @@ echo "Reading outputs of deployment '$DEPLOYMENT_NAME' in $RESOURCE_GROUP..."
 ENDPOINT="$(output openAiEndpoint)"
 CHAT_MODEL="$(output models chat)"
 JUDGE_MODEL="$(output models judge)"
+APPINSIGHTS="$(output appInsightsConnectionString)"
 
 # Deployment names are fixed by role. Fail loudly if Bicep and this script disagree.
 DEPLOYED="$(output deploymentNames | tr '\n\r' '  ')"
@@ -59,6 +61,7 @@ CSHARP_VARS=(
   "AzureOpenAI__EmbeddingDeployment=embedding"
   "ChatSettings__ToolUse__Model=chat"
   "ChatSettings__Question__Model=chat"
+  "APPLICATIONINSIGHTS_CONNECTION_STRING=$APPINSIGHTS"
 )
 
 PYTHON_VARS=(
@@ -68,6 +71,7 @@ PYTHON_VARS=(
   "AZURE_OPENAI_EMBEDDING_DEPLOYMENT=embedding"
   "AZURE_OPENAI_JUDGE_DEPLOYMENT=judge"
   "AZURE_OPENAI_JUDGE_MODEL=$JUDGE_MODEL"
+  "APPLICATIONINSIGHTS_CONNECTION_STRING=$APPINSIGHTS"
 )
 
 sync_service() {

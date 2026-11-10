@@ -8,6 +8,9 @@ param appInsightsName string
 @description('Daily ingestion cap in GB, as a string because Bicep has no decimal literals. 5 GB/month is free, about 0.16/day.')
 param dailyQuotaGb string = '0.15'
 
+@description('Entra ID only ingestion: senders need Monitoring Metrics Publisher, so the connection string alone cannot send telemetry.')
+param disableLocalAuth bool = true
+
 param tags object = {}
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -33,7 +36,9 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   kind: 'web'
   properties: {
     Application_Type: 'web'
-    WorkspaceResourceId: workspace.id  }
+    WorkspaceResourceId: workspace.id
+    DisableLocalAuth: disableLocalAuth
+  }
 }
 
 output workspaceId string = workspace.id

@@ -10,7 +10,7 @@ param accountName string
 @description('Name of the Foundry project inside the resource.')
 param projectName string
 
-@description('Entra ID only: API keys are rejected (403) and can\'t be used even if leaked. Both apps authenticate with tokens since Phase 3.')
+@description('Entra ID only: API keys are rejected (401) and can\'t be used even if leaked. Both apps authenticate with tokens since Phase 3.')
 param disableLocalAuth bool = true
 
 param tags object = {}

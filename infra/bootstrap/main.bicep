@@ -1,5 +1,5 @@
 // Identities and role assignments the pipeline can't (or shouldn't) manage itself:
-// the GitHub Actions CI identity and who may call the Foundry models. Deployed by hand:
+// the GitHub Actions CI identity, who may call the Foundry models, and who may send telemetry. Deployed by hand:
 //   az deployment group create -g AboutSamuel.com -n bootstrap -p infra/bootstrap/main.bicepparam
 // Lives outside rg-aboutsamuel-ai so nothing deployed there can delete it.
 targetScope = 'resourceGroup'
@@ -17,9 +17,10 @@ param repo string = 'SamOhrenberg/AboutSamuel'
 param targetResourceGroup string = 'rg-aboutsamuel-ai'
 
 param foundryAccountName string = 'aboutsamuel-ai'
+param appInsightsName string = 'appi-aboutsamuel'
 
-@description('Who may call the Foundry models with Entra ID tokens (keyless).')
-param inferencePrincipals principal[]
+@description('Identities the apps run as. They call the Foundry models and send telemetry, both with Entra ID tokens.')
+param appPrincipals principal[]
 
 param tags object = {
   app: 'aboutsamuel'
@@ -77,7 +78,18 @@ module inference 'modules/foundry-role.bicep' = {
     accountName: foundryAccountName
     // Cognitive Services OpenAI User: inference only. Can't list keys or change deployments.
     roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-    principals: inferencePrincipals
+    principals: appPrincipals
+  }
+}
+
+module telemetry 'modules/appinsights-role.bicep' = {
+  name: 'appinsights-publisher'
+  scope: resourceGroup(targetResourceGroup)
+  params: {
+    appInsightsName: appInsightsName
+    // Monitoring Metrics Publisher: required to ingest once App Insights has local auth off.
+    roleDefinitionId: '3913510d-42f4-4e42-8a64-420c390055eb'
+    principals: appPrincipals
   }
 }
 

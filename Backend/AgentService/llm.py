@@ -9,7 +9,7 @@ answers is pinned by the AZURE_TOKEN_CREDENTIALS env var:
 These are real environment variables, not .env entries: pydantic-settings reads .env into
 Settings but never exports it to os.environ, which is all azure-identity looks at.
 
-There's no key fallback: the Foundry account has disableLocalAuth on, so keys get a 403.
+There's no key fallback: the Foundry account has disableLocalAuth on, so keys get a 401.
 """
 from functools import lru_cache
 from typing import Literal
