@@ -8,6 +8,8 @@ What gets traced:
   - Outgoing httpx calls (distro), i.e. callbacks to the C# API.
   - Every chat and embedding call (openai-v2): GenAI semantic conventions with model,
     token counts, latency and, because content capture is on, the prompt and response.
+  - SamuelLM's tool calls (agents/tool_node.py): an execute_tool span per call, with the
+    tool's own embedding, SQL and HTTP calls nested under it.
   - asyncpg queries, so pgvector retrieval shows up in the latency breakdown.
 
 App Insights has local auth off, so the exporter signs in with an Entra token
@@ -37,6 +39,9 @@ _ENV_DEFAULTS = {
     # The distro also probes the Azure VM metadata endpoint at startup. Off Azure that
     # fails and is logged as 3 exceptions per start. "otel" only reads OTEL_RESOURCE_ATTRIBUTES.
     "OTEL_EXPERIMENTAL_RESOURCE_DETECTORS": "otel",
+    # Statsbeat (the exporter reporting its own usage to Microsoft, not to our workspace)
+    # makes the same metadata probe about 10 s after startup, logged as an exception off Azure.
+    "APPLICATIONINSIGHTS_STATSBEAT_DISABLED_ALL": "true",
 }
 
 # Span attributes that carry prompt, response or tool content.
