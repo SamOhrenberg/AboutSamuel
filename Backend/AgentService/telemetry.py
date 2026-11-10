@@ -3,7 +3,7 @@
 Call configure_telemetry() before anything creates the FastAPI app or an OpenAI client.
 
 What gets traced:
-  - Incoming requests (FastAPI, via the Azure Monitor distro). A request from the C# API
+  - Incoming requests (FastAPI). A request from the C# API
     carries a W3C traceparent header, so these spans join the C# trace.
   - Outgoing httpx calls (distro), i.e. callbacks to the C# API.
   - Every chat and embedding call (openai-v2): GenAI semantic conventions with model,
@@ -103,6 +103,7 @@ def configure_telemetry() -> bool:
     from azure.identity import DefaultAzureCredential
     from azure.monitor.opentelemetry import configure_azure_monitor
     from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
     from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
     from opentelemetry.sdk.resources import Resource
 
@@ -115,8 +116,13 @@ def configure_telemetry() -> bool:
         # or the Azure SDK's. Keeps volume well under the daily cap.
         logger_name=SERVICE_NAME,
         span_processors=[_redaction_processor()],
+        # FastAPI is instrumented below instead, because the distro can't pass options.
+        instrumentation_options={"fastapi": {"enabled": False}},
         # Default sampler is rate-limited to 5 traces/s, which is effectively 100% here.
     )
+    # Without exclude_spans, every streamed SSE chunk becomes its own "http send" span
+    # (about 70 per chat), which is noise and most of the volume.
+    FastAPIInstrumentor().instrument(exclude_spans=["receive", "send"])
     OpenAIInstrumentor().instrument()
     AsyncPGInstrumentor().instrument()
 
