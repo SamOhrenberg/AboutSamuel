@@ -55,6 +55,8 @@ done
 # Until Phase 3 (keyless auth) removes it, the key is the only secret.
 API_KEY="$(az cognitiveservices account keys list -g "$RESOURCE_GROUP" -n "$ACCOUNT_NAME" --query key1 -o tsv)"
 [[ -n "$API_KEY" ]] || { echo "Could not read API key for $ACCOUNT_NAME" >&2; exit 1; }
+# In GitHub Actions, redact the key from logs in case anything ever prints it.
+[[ "${GITHUB_ACTIONS:-}" == "true" ]] && echo "::add-mask::$API_KEY"
 
 CSHARP_VARS=(
   "AzureOpenAI__Endpoint=$ENDPOINT"
