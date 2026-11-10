@@ -2,8 +2,9 @@ from typing import AsyncIterator
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.graph import StateGraph, MessagesState, END
-from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.prebuilt import tools_condition
 from agents.samuellm.prompts import SYSTEM_PROMPT
+from agents.tool_node import TracedToolNode
 from tools.retrieval import get_portfolio_overview_cached, search_experience
 from tools.contact import contact_samuel, get_resume, redirect_to_page, ask_clarification
 from config import get_settings
@@ -34,7 +35,7 @@ def build_graph(tools: list = TOOLS):
         response = await llm_with_tools.ainvoke([SystemMessage(content=system)] + state["messages"])
         return {"messages": [response]}
 
-    tool_node = ToolNode(tools)
+    tool_node = TracedToolNode(tools)
 
     workflow = StateGraph(MessagesState)
     workflow.add_node("agent", agent_node)

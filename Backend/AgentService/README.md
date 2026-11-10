@@ -16,7 +16,7 @@ It only talks to the C# API, never to the browser directly.
 main.py                 FastAPI app. On startup, marks interrupted test runs as failed
 run.py                  production entrypoint (dual-stack socket, see Gotchas)
 log_config.py           structlog setup, forwards events to App Insights when tracing is on
-telemetry.py            OpenTelemetry tracing to App Insights (requests, LLM calls, SQL)
+telemetry.py            OpenTelemetry tracing to App Insights (requests, LLM calls, tool calls, SQL)
 config.py               settings, read from .env
 api/
   chat.py               POST /chat/stream, POST /chat/query
@@ -25,6 +25,7 @@ api/
   adversarial.py        POST /adversarial/runs (needs X-Internal-Secret)
   health.py             GET /health
 agents/
+  tool_node.py          ToolNode that traces each tool call as an execute_tool span
   samuellm/
     agent.py            the LangGraph ReAct agent, stream_chat and query_chat
     prompts.py          SamuelLM's system prompt
@@ -81,7 +82,7 @@ CSHARP_API_INTERNAL_SECRET=
 - `CSHARP_API_INTERNAL_SECRET` has to match `AgentService:InternalSecret` in the C# API.
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` turns on tracing (see `telemetry.py`). Leave it out locally and logs only go to the console. On Railway it comes from `infra/scripts/sync-railway-vars.sh`. It isn't a secret: App Insights accepts Entra tokens only, so sending locally also needs *Monitoring Metrics Publisher* on `appi-aboutsamuel` (granted in `infra/bootstrap`).
 
-With tracing on, every request, LLM call (model, tokens, prompt and response) and SQL query is a span, and structlog events land on the trace they came from. A request from the C# API carries a `traceparent` header, so both services show up as one trace. Recruiter triage runs under `@redact_content`, so its spans keep tokens and timing but not email text. uvicorn's own access log lines (`POST /chat/stream ...`) aren't structlog, so they only show up in Railway.
+With tracing on, every request, LLM call (model, tokens, prompt and response), SamuelLM tool call (arguments and result) and SQL query is a span, and structlog events land on the trace they came from. A request from the C# API carries a `traceparent` header, so both services show up as one trace. Recruiter triage runs under `@redact_content`, so its spans keep tokens and timing but not email text. uvicorn's own access log lines (`POST /chat/stream ...`) aren't structlog, so they only show up in Railway.
 
 Settings are cached, and `--reload` only watches `.py` files, so restart the server after changing `.env`. Keys the settings don't know about are ignored, so a leftover line in `.env` (like an old `RABBITMQ_URL`) won't break startup.
 
