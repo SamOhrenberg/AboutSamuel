@@ -46,8 +46,8 @@
       <h2>Logs</h2>
       <p>
         Like most websites, the servers keep technical logs (requests, errors, timings) for troubleshooting. These
-        are stored with my hosting provider (Railway) and with Azure Monitor (Microsoft) and Axiom, and may include
-        technical details such as your IP address.
+        are stored with my hosting provider (Railway) and with Azure Monitor (Microsoft), and may include technical
+        details such as your IP address.
       </p>
 
       <h2>Recruiter Triage (Gmail access)</h2>

@@ -27,7 +27,6 @@ httpx==0.27.2
 # Utilities
 python-dotenv==1.0.1
 structlog==24.4.0
-axiom-py==0.15.0
 
 # Tracing to App Insights, see telemetry.py. The distro covers FastAPI; the others add
 # GenAI spans (model, tokens, content), calls back to the C# API, and pgvector queries.

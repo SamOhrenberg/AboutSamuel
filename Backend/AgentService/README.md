@@ -15,7 +15,8 @@ It only talks to the C# API, never to the browser directly.
 ```
 main.py                 FastAPI app. On startup, marks interrupted test runs as failed
 run.py                  production entrypoint (dual-stack socket, see Gotchas)
-log_config.py           structlog setup, ships logs to Axiom when configured
+log_config.py           structlog setup, forwards events to App Insights when tracing is on
+telemetry.py            OpenTelemetry tracing to App Insights (requests, LLM calls, SQL)
 config.py               settings, read from .env
 api/
   chat.py               POST /chat/stream, POST /chat/query
@@ -78,9 +79,9 @@ CSHARP_API_INTERNAL_SECRET=
 - Deployments are defined in `infra/main.bicepparam` and named by role, so the `*_DEPLOYMENT` values never change when a model does. The `*_MODEL` values do, and the code uses them to pick call parameters (reasoning models reject `max_tokens`) and to label adversarial runs. On Railway, all `AZURE_OPENAI_*` vars come from `infra/scripts/sync-railway-vars.sh`, so don't edit them in the dashboard.
 - `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` has to be the same model the C# API used to build the embeddings, or search quietly returns garbage.
 - `CSHARP_API_INTERNAL_SECRET` has to match `AgentService:InternalSecret` in the C# API.
-- `AXIOM_TOKEN` and `AXIOM_DATASET` are optional. Leave them out locally and logs only go to the console. On Railway they ship every structlog event to Axiom with `service: agent-service` on it.
+- `APPLICATIONINSIGHTS_CONNECTION_STRING` turns on tracing (see `telemetry.py`). Leave it out locally and logs only go to the console. On Railway it comes from `infra/scripts/sync-railway-vars.sh`. It isn't a secret: App Insights accepts Entra tokens only, so sending locally also needs *Monitoring Metrics Publisher* on `appi-aboutsamuel` (granted in `infra/bootstrap`).
 
-Axiom shipping runs on a background thread so logging never blocks the event loop (which would stall token streaming). If Axiom is down, that batch gets dropped and you'll see `axiom_ingest_failed` on stderr. uvicorn's own access log lines (`POST /chat/stream ...`) aren't structlog, so they only show up in Railway.
+With tracing on, every request, LLM call (model, tokens, prompt and response) and SQL query is a span, and structlog events land on the trace they came from. A request from the C# API carries a `traceparent` header, so both services show up as one trace. Recruiter triage runs under `@redact_content`, so its spans keep tokens and timing but not email text. uvicorn's own access log lines (`POST /chat/stream ...`) aren't structlog, so they only show up in Railway.
 
 Settings are cached, and `--reload` only watches `.py` files, so restart the server after changing `.env`. Keys the settings don't know about are ignored, so a leftover line in `.env` (like an old `RABBITMQ_URL`) won't break startup.
 
