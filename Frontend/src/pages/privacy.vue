@@ -2,7 +2,7 @@
   <div class="legal-page">
     <article class="legal-inner">
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated October 6, 2026</p>
+      <p class="updated">Last updated November 10, 2026</p>
 
       <p>
         This is my personal portfolio site. I don't sell anything, run ads, or use analytics or tracking
@@ -20,6 +20,10 @@
           I keep a log of chat messages and replies, and of Job Fit submissions and results, in my database. I use
           it to see what people ask and to improve the answers. It's tied to a random ID created for your browser
           tab, not to your name, email, or account. There are no accounts.
+        </li>
+        <li>
+          The same text and replies are also recorded in diagnostic traces in Azure Monitor (Microsoft), which I
+          use to debug and evaluate the AI features. Traces are deleted automatically after 30 days.
         </li>
         <li>
           Don't put anything sensitive in the chat or a job description you wouldn't want me to read.
@@ -42,8 +46,8 @@
       <h2>Logs</h2>
       <p>
         Like most websites, the servers keep technical logs (requests, errors, timings) for troubleshooting. These
-        are stored with my hosting provider (Railway) and logging service (Axiom) and may include technical details
-        such as your IP address.
+        are stored with my hosting provider (Railway) and with Azure Monitor (Microsoft) and Axiom, and may include
+        technical details such as your IP address.
       </p>
 
       <h2>Recruiter Triage (Gmail access)</h2>
@@ -62,6 +66,7 @@
         <li>
           Email content is processed by Azure OpenAI to classify the message and extract the role details. I store
           the extracted details and a short excerpt in my database. Full email bodies aren't stored outside Gmail.
+          Diagnostic traces of this processing record timing and usage, not email content.
         </li>
         <li>
           Data from Gmail is used only to provide this triage feature for me. It isn't sold, shared, used for
@@ -77,7 +82,7 @@
       <h2>Deleting your data</h2>
       <p>
         If you'd like your chat or Job Fit history removed, <router-link to="/contact">send me a message</router-link>
-        and tell me roughly when you used it. I'll delete it.
+        and tell me roughly when you used it. I'll delete it. Diagnostic traces expire on their own after 30 days.
       </p>
 
       <h2>Changes</h2>

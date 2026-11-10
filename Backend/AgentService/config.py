@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     azure_openai_chat_deployment: str = "chat"
     azure_openai_chat_model: str = "gpt-4.1-mini"
     azure_openai_embedding_deployment: str = "embedding"
+    azure_openai_embedding_model: str = "text-embedding-3-small"
     azure_openai_api_version: str = "2024-08-01-preview"
 
     # Adversarial test judge and resume analysis. Ideally a different, stronger model
@@ -32,6 +33,10 @@ class Settings(BaseSettings):
     # Axiom log shipping. Leave unset locally for console-only logs
     axiom_token: str | None = None
     axiom_dataset: str | None = None
+
+    # Traces and logs to App Insights (telemetry.py). Unset means no telemetry. Set on
+    # Railway by infra/scripts/sync-railway-vars.sh. Not a secret: ingestion is Entra-only.
+    applicationinsights_connection_string: str | None = None
 
     # Gmail API for recruiter triage, from scripts/gmail_auth.py. Unset means the
     # triage loop stays off.

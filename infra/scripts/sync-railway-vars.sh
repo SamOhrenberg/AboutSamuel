@@ -48,6 +48,7 @@ echo "Reading outputs of deployment '$DEPLOYMENT_NAME' in $RESOURCE_GROUP..."
 ENDPOINT="$(output openAiEndpoint)"
 CHAT_MODEL="$(output models chat)"
 JUDGE_MODEL="$(output models judge)"
+EMBEDDING_MODEL="$(output models embedding)"
 APPINSIGHTS="$(output appInsightsConnectionString)"
 
 # Deployment names are fixed by role. Fail loudly if Bicep and this script disagree.
@@ -69,6 +70,7 @@ PYTHON_VARS=(
   "AZURE_OPENAI_CHAT_DEPLOYMENT=chat"
   "AZURE_OPENAI_CHAT_MODEL=$CHAT_MODEL"
   "AZURE_OPENAI_EMBEDDING_DEPLOYMENT=embedding"
+  "AZURE_OPENAI_EMBEDDING_MODEL=$EMBEDDING_MODEL"
   "AZURE_OPENAI_JUDGE_DEPLOYMENT=judge"
   "AZURE_OPENAI_JUDGE_MODEL=$JUDGE_MODEL"
   "APPLICATIONINSIGHTS_CONNECTION_STRING=$APPINSIGHTS"
