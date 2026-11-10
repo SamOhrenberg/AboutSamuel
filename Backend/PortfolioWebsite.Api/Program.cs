@@ -8,7 +8,6 @@ using PortfolioWebsite.Api.Middlewares;
 using PortfolioWebsite.Api.Services;
 using Serilog;
 using Serilog.Events;
-using Serilog.Formatting.Elasticsearch;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -21,7 +20,7 @@ namespace PortfolioWebsite.Api
 
         public static void Main(string[] args)
         {
-            // Surface sink failures (e.g. Axiom ingest throwing) instead of dropping them silently
+            // Surface sink and configuration failures instead of dropping them silently
             Serilog.Debugging.SelfLog.Enable(Console.Error);
 
             Log.Logger = new LoggerConfiguration()
@@ -49,21 +48,15 @@ namespace PortfolioWebsite.Api
                 // tagged with the current trace.
                 builder.Host.UseSerilog((context, services, configuration) =>
                 {
-                    var axiomToken = context.Configuration["Axiom:Token"];
-                    var axiomDataset = context.Configuration["Axiom:Dataset"];
-
                     // Console is set here, not in appsettings, because appsettings.json
-                    // is gitignored and never reaches Railway
+                    // is gitignored and never reaches Railway. App Insights gets everything
+                    // through writeToProviders, so there's no other sink.
                     configuration
                         .ReadFrom.Configuration(context.Configuration)
+                        // Azure SDK logs (forwarded by the Azure Monitor distro) include several
+                        // MSAL lines per token fetch at Information. Warnings still come through.
+                        .MinimumLevel.Override("Azure", LogEventLevel.Warning)
                         .WriteTo.Console()
-                        .WriteTo.Http(
-                            requestUri: $"https://api.axiom.co/v1/datasets/{axiomDataset}/ingest",
-                            queueLimitBytes: null,
-                            httpClient: new AxiomHttpService(axiomToken!),
-                            textFormatter: new ElasticsearchJsonFormatter(
-                                renderMessageTemplate: false, inlineFields: true)
-                        )
                         .Enrich.FromLogContext();
                 }, writeToProviders: true);
 

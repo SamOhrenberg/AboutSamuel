@@ -1,4 +1,4 @@
-from log_config import configure_logging, flush_logs
+from log_config import configure_logging
 from telemetry import configure_telemetry
 
 # First, before FastAPI is even imported: the distro instruments FastAPI by swapping
@@ -48,7 +48,6 @@ async def lifespan(app: FastAPI):
     logger.info("agent_service_shutting_down")
     triage_task.cancel()
     await close_pool()
-    flush_logs()
 
 
 app = FastAPI(

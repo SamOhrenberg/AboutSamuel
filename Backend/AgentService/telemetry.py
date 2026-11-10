@@ -30,10 +30,13 @@ _ENV_DEFAULTS = {
     # Latest GenAI semantic conventions: gen_ai.input.messages / gen_ai.output.messages.
     "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
     # Prompts and responses go on the span itself, not as separate log events, so each
-    # LLM call is one row. App Insights truncates any single attribute at 8 KB.
+    # LLM call is one row. App Insights also copies them into the AppGenAIContent table.
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "span_only",
     # Railway health checks aren't worth a trace each.
     "OTEL_PYTHON_FASTAPI_EXCLUDED_URLS": "health",
+    # The distro also probes the Azure VM metadata endpoint at startup. Off Azure that
+    # fails and is logged as 3 exceptions per start. "otel" only reads OTEL_RESOURCE_ATTRIBUTES.
+    "OTEL_EXPERIMENTAL_RESOURCE_DETECTORS": "otel",
 }
 
 # Span attributes that carry prompt, response or tool content.

@@ -85,7 +85,7 @@ If everything is happy, http://localhost:8000/health shows the database as healt
 - The C# API, Postgres, and the agent service all run on [Railway](https://railway.com). The API builds from the `Dockerfile` in the repo root. The agent service builds from `Backend/AgentService/Dockerfile` with the Railway root directory set to `Backend/AgentService`.
 - The two backend services talk over Railway's private network, so the agent service URL is a `*.railway.internal` address, not a public one.
 - The frontend is a static Vite build and is hosted separately.
-- Logs go to Axiom.
+- Traces, logs and metrics from both backend services go to Azure Monitor (App Insights) through OpenTelemetry. A chat shows up as one trace across the C# API, the agent service and Azure OpenAI.
 
 ## Where it's at
 
