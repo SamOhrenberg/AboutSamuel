@@ -47,6 +47,15 @@ module monitoring 'modules/monitoring.bicep' = {
   }
 }
 
+module appInsightsConnection 'modules/appinsights-connection.bicep' = {
+  name: 'appinsights-connection'
+  params: {
+    accountName: foundry.outputs.accountName
+    projectName: foundry.outputs.projectName
+    appInsightsName: monitoring.outputs.appInsightsName
+  }
+}
+
 output accountName string = foundry.outputs.accountName
 output openAiEndpoint string = foundry.outputs.openAiEndpoint
 output projectEndpoint string = foundry.outputs.projectEndpoint

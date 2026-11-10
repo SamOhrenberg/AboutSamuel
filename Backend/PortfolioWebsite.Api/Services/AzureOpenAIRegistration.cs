@@ -12,7 +12,7 @@ namespace PortfolioWebsite.Api.Services;
 /// locally. Locally the chain tries Visual Studio before the Azure CLI, so if VS is signed in
 /// as someone else, set AZURE_TOKEN_CREDENTIALS=AzureCliCredential.
 ///
-/// There's no key fallback: the Foundry account has disableLocalAuth on, so keys get a 403.
+/// There's no key fallback: the Foundry account has disableLocalAuth on, so keys get a 401.
 /// </summary>
 public static class AzureOpenAIRegistration
 {
