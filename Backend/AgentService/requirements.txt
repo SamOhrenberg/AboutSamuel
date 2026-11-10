@@ -29,6 +29,18 @@ python-dotenv==1.0.1
 structlog==24.4.0
 axiom-py==0.15.0
 
+# Tracing to App Insights, see telemetry.py. The distro covers FastAPI; the others add
+# GenAI spans (model, tokens, content), calls back to the C# API, and pgvector queries.
+azure-monitor-opentelemetry==1.8.12
+# Pinned because telemetry.py's redaction touches a private span attribute.
+opentelemetry-sdk==1.45.2
+opentelemetry-instrumentation-openai-v2==2.4b0
+# openai-v2 2.4b0 imports util.genai.instruments, which 1.2b0+ made private. Its declared
+# range (>=0.4b0.dev) doesn't stop pip from picking the broken one. Recheck on upgrade.
+opentelemetry-util-genai==1.1b0
+opentelemetry-instrumentation-httpx==0.66b2
+opentelemetry-instrumentation-asyncpg==0.66b2
+
 # Gmail API (recruiter triage). google-auth refreshes tokens at runtime;
 # google-auth-oauthlib is only used by scripts/gmail_auth.py for the one-time login.
 google-auth==2.60.0

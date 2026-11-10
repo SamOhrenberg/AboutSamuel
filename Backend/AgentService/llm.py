@@ -73,6 +73,11 @@ def chat_model(
     if is_reasoning_model(model_name(role)):
         temperature, max_tokens = 1, None
 
+    # A stream only reports token usage (in a final chunk) when asked. Without it, traces
+    # of streamed calls have no token counts. AzureChatOpenAI 0.2.14 has no stream_usage
+    # field, and the API rejects stream_options on non-streamed calls.
+    model_kwargs = {"stream_options": {"include_usage": True}} if streaming else {}
+
     return AzureChatOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
         azure_deployment=deployment,
@@ -80,6 +85,10 @@ def chat_model(
         max_tokens=max_tokens,
         temperature=temperature,
         streaming=streaming,
+        model_kwargs=model_kwargs,
+        # Azure routes by deployment and ignores this. It labels the trace span
+        # (gen_ai.request.model), which would otherwise be blank.
+        model=model_name(role),
         **_auth(),
     )
 
@@ -89,6 +98,8 @@ def embeddings() -> AzureOpenAIEmbeddings:
     return AzureOpenAIEmbeddings(
         azure_endpoint=settings.azure_openai_endpoint,
         azure_deployment=settings.azure_openai_embedding_deployment,
+        # Labels the trace span. Without it langchain sends its text-embedding-ada-002 default.
+        model=settings.azure_openai_embedding_model,
         api_version=settings.azure_openai_api_version,
         **_auth(),
     )

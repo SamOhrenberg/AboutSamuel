@@ -12,6 +12,7 @@ from agents.recruiter import store
 from agents.recruiter.agent import Posting, _merge, decide_posting, role_fingerprint_text, stored_pitch
 from agents.recruiter.pipeline import TRIAGE_LOCK_KEY
 from database.connection import get_pool
+from telemetry import redact_content
 from tools.llm_retry import with_rate_limit_retry
 from tools.retrieval import embed_queries
 
@@ -30,6 +31,7 @@ def _combined_status(statuses: list[str]) -> str | None:
     return None  # let the new decision set pending or auto
 
 
+@redact_content  # email text stays out of traces (privacy page, Gmail Limited Use)
 async def merge_postings(target_id: uuid.UUID, source_ids: list[uuid.UUID]) -> None:
     source_ids = [s for s in dict.fromkeys(source_ids) if s != target_id]
     if not source_ids:

@@ -6,8 +6,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from log_config import configure_logging, flush_logs
+from telemetry import configure_telemetry
 
-configure_logging()
+# Before the app or any OpenAI client exists, so instrumentation sees them.
+configure_logging(telemetry=configure_telemetry())
 
 from agents.adversarial.store import mark_interrupted_runs
 from agents.recruiter.loop import run_forever as run_recruiter_triage

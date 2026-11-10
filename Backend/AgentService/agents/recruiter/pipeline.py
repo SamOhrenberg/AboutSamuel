@@ -21,6 +21,7 @@ from agents.recruiter.agent import (
     PITCH_CATEGORIES, Pitch, decide_posting, group_into_postings, looks_job_related, role_fingerprint_text, triage_email,
 )
 from database.connection import get_pool
+from telemetry import redact_content
 from tools.gmail import get_message, get_message_summary, list_message_ids
 from tools.llm_retry import with_rate_limit_retry
 from tools.retrieval import embed_queries
@@ -46,6 +47,7 @@ def _received_at(date_header: str) -> datetime:
         return datetime.now(timezone.utc)
 
 
+@redact_content  # email text stays out of traces (privacy page, Gmail Limited Use)
 async def process_new_mail(lookback_days: int, limit: int = 500, mode: Mode = "off", skip_recent_days: int = 0) -> dict:
     """Returns counts for logging. Safe to run repeatedly: processed messages are skipped.
     skip_recent_days leaves the newest mail for a later run (the first backfill uses it)."""
