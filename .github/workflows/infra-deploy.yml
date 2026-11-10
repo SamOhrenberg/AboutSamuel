@@ -1,0 +1,70 @@
+# Deploy the Bicep in infra/ to Azure, then push the resulting settings to Railway.
+# Signs in with OIDC as id-aboutsamuel-github. Its federated credential only trusts
+# refs/heads/main, so a manual run from any other branch fails at login.
+name: infra deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# Queue, never cancel: stopping an ARM deployment midway is worse than waiting.
+concurrency:
+  group: infra-deploy
+  cancel-in-progress: false
+
+env:
+  BICEP_VERSION: v0.48.1
+  RAILWAY_CLI_VERSION: 5.71.0
+  RESOURCE_GROUP: rg-aboutsamuel-ai
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Pin Bicep
+        run: |
+          az config set bicep.check_version=false --only-show-errors
+          az bicep install --version "$BICEP_VERSION"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Records in the run summary what this deploy is about to change.
+      - name: What-if
+        run: |
+          az deployment group what-if \
+            -g "$RESOURCE_GROUP" -n main \
+            -f infra/main.bicep -p infra/main.bicepparam \
+            --no-pretty-print --only-show-errors > whatif.json
+          infra/scripts/whatif-summary.sh whatif.json >> "$GITHUB_STEP_SUMMARY"
+
+      # Deployment name stays "main": sync-railway-vars.sh reads its outputs.
+      - name: Deploy
+        run: |
+          az deployment group create \
+            -g "$RESOURCE_GROUP" -n main \
+            -f infra/main.bicep -p infra/main.bicepparam \
+            --only-show-errors --query properties.provisioningState -o tsv
+
+      # Pinned: a CLI regression once broke project-token auth.
+      - name: Install Railway CLI
+        run: npm install -g "@railway/cli@$RAILWAY_CLI_VERSION"
+
+      - name: Sync Railway variables
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}   # project token, scoped to production
+        run: infra/scripts/sync-railway-vars.sh
