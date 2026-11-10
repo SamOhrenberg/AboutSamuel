@@ -1,15 +1,17 @@
+from log_config import configure_logging, flush_logs
+from telemetry import configure_telemetry
+
+# First, before FastAPI is even imported: the distro instruments FastAPI by swapping
+# fastapi.FastAPI for a traced subclass, which a `from fastapi import FastAPI` done
+# earlier would never see. No request span means no traceparent read from the C# call.
+configure_logging(telemetry=configure_telemetry())
+
 import asyncio
 
 import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from log_config import configure_logging, flush_logs
-from telemetry import configure_telemetry
-
-# Before the app or any OpenAI client exists, so instrumentation sees them.
-configure_logging(telemetry=configure_telemetry())
 
 from agents.adversarial.store import mark_interrupted_runs
 from agents.recruiter.loop import run_forever as run_recruiter_triage

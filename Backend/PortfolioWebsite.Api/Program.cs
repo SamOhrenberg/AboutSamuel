@@ -38,6 +38,15 @@ namespace PortfolioWebsite.Api
 
                 var builder = WebApplication.CreateBuilder(args);
 
+                // Serilog writes the console itself. Without this, writeToProviders below would
+                // also feed the default console provider and print every line again.
+                builder.Logging.ClearProviders();
+                var telemetryEnabled = builder.AddTelemetry();
+                Log.Information("OpenTelemetry to App Insights: {TelemetryEnabled}", telemetryEnabled);
+
+                // writeToProviders: Serilog replaces ILogger and would otherwise skip the
+                // OpenTelemetry log provider. With it, every event also goes to App Insights,
+                // tagged with the current trace.
                 builder.Host.UseSerilog((context, services, configuration) =>
                 {
                     var axiomToken = context.Configuration["Axiom:Token"];
@@ -56,7 +65,7 @@ namespace PortfolioWebsite.Api
                                 renderMessageTemplate: false, inlineFields: true)
                         )
                         .Enrich.FromLogContext();
-                });
+                }, writeToProviders: true);
 
                 builder.Services.AddControllers();
                 builder.Services.AddEndpointsApiExplorer();
