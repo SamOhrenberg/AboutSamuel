@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from agents.recruiter.preferences import Preferences
 from agents.recruiter.state import RoleDetails
-from config import get_settings
+from llm import chat_model
 from tools.llm_retry import with_rate_limit_retry
 
 Outcome = Literal["decline", "ask_info", "review"]
@@ -142,10 +142,7 @@ FIT_PROMPT = """You check whether a job meets a candidate's personal requirement
 
 @lru_cache()
 def _fit_llm() -> AzureChatOpenAI:
-    s = get_settings()
-    return AzureChatOpenAI(azure_endpoint=s.azure_openai_endpoint, api_key=s.azure_openai_api_key,
-                           azure_deployment=s.azure_openai_chat_deployment,
-                           api_version=s.azure_openai_api_version, max_tokens=300, temperature=0)
+    return chat_model(max_tokens=300)
 
 
 async def check_free_text(role: RoleDetails, prefs: Preferences) -> FitCheck:

@@ -1,4 +1,3 @@
-﻿using Azure;
 using Azure.AI.OpenAI;
 using OpenAI.Chat;
 using System.Runtime.CompilerServices;
@@ -12,20 +11,14 @@ public class AzureLlmService : ILlmService
     private readonly ChatClient _questionClient;
     private readonly ILogger<AzureLlmService> _logger;
 
-    public AzureLlmService(IConfiguration configuration, ILogger<AzureLlmService> logger)
+    public AzureLlmService(AzureOpenAIClient azureClient, IConfiguration configuration, ILogger<AzureLlmService> logger)
     {
         _logger = logger;
-
-        var endpoint = configuration["AzureOpenAI:Endpoint"]
-            ?? throw new InvalidOperationException("AzureOpenAI:Endpoint must be configured.");
-        var apiKey = configuration["AzureOpenAI:ApiKey"]
-            ?? throw new InvalidOperationException("AzureOpenAI:ApiKey must be configured.");
 
         // Azure deployment names, which are named by role in infra/main.bicepparam
         var toolModel = configuration["ChatSettings:ToolUse:Model"] ?? "chat";
         var questionModel = configuration["ChatSettings:Question:Model"] ?? "chat";
 
-        var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
         _toolUseClient = azureClient.GetChatClient(toolModel);
         _questionClient = azureClient.GetChatClient(questionModel);
     }

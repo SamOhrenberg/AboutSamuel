@@ -8,7 +8,7 @@ from langchain_openai import AzureChatOpenAI
 from agents.adversarial.prompts import GENERATOR_PROMPT
 from agents.adversarial.state import AdversarialCase, GeneratedCases
 from agents.adversarial.suite import SUITE
-from config import get_settings
+from llm import chat_model
 from tools.retrieval import format_portfolio_overview, get_career_timeline, get_project_catalog
 
 logger = structlog.get_logger()
@@ -24,15 +24,7 @@ GENERATED_PER_CATEGORY = {"twisted_fact": 3, "false_premise": 2, "fabricated_num
 @lru_cache()
 def _generator_llm() -> AzureChatOpenAI:
     """Creative on purpose: each run should probe something a little different."""
-    settings = get_settings()
-    return AzureChatOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        azure_deployment=settings.azure_openai_chat_deployment,
-        api_version=settings.azure_openai_api_version,
-        max_tokens=1500,
-        temperature=0.9,
-    )
+    return chat_model(max_tokens=1500, temperature=0.9)
 
 
 async def generate_cases(overview: str) -> list[AdversarialCase]:

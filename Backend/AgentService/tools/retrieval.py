@@ -2,33 +2,20 @@ import json
 import time
 
 from langchain_core.tools import tool
-from langchain_openai import AzureOpenAIEmbeddings
 from database.connection import get_pool
-from config import get_settings
+from llm import embeddings
 import structlog
 
 logger = structlog.get_logger()
 
 
-def _get_embeddings() -> AzureOpenAIEmbeddings:
-    settings = get_settings()
-    return AzureOpenAIEmbeddings(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        azure_deployment=settings.azure_openai_embedding_deployment,
-        api_version=settings.azure_openai_api_version,
-    )
-
-
 async def embed_query(text: str) -> list[float]:
-    embeddings = _get_embeddings()
-    return await embeddings.aembed_query(text)
+    return await embeddings().aembed_query(text)
 
 
 async def embed_queries(texts: list[str]) -> list[list[float]]:
     """Embed several texts in one API call instead of one call each."""
-    embeddings = _get_embeddings()
-    return await embeddings.aembed_documents(texts)
+    return await embeddings().aembed_documents(texts)
 
 
 async def search_pgvector(query_embedding: list[float], limit: int = 8) -> list[dict]:

@@ -7,6 +7,7 @@ from agents.samuellm.prompts import SYSTEM_PROMPT
 from tools.retrieval import get_portfolio_overview_cached, search_experience
 from tools.contact import contact_samuel, get_resume, redirect_to_page, ask_clarification
 from config import get_settings
+from llm import chat_model
 import structlog
 
 logger = structlog.get_logger()
@@ -15,16 +16,7 @@ TOOLS = [search_experience, contact_samuel, get_resume, redirect_to_page, ask_cl
 
 
 def _build_llm() -> AzureChatOpenAI:
-    settings = get_settings()
-    return AzureChatOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        azure_deployment=settings.azure_openai_chat_deployment,
-        api_version=settings.azure_openai_api_version,
-        max_tokens=settings.max_response_tokens,
-        streaming=True,
-        temperature=0.3,
-    )
+    return chat_model(max_tokens=get_settings().max_response_tokens, temperature=0.3, streaming=True)
 
 
 def build_graph(tools: list = TOOLS):

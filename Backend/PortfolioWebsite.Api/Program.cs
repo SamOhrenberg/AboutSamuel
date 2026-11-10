@@ -62,6 +62,7 @@ namespace PortfolioWebsite.Api
                 builder.Services.AddEndpointsApiExplorer();
                 builder.Services.AddSwaggerGen();
 
+                builder.Services.AddAzureOpenAI();
                 builder.Services.AddSingleton<IEmbeddingService, EmbeddingService>();
                 builder.Services.AddSingleton<ILlmService, AzureLlmService>();
                 builder.Services.AddScoped<EmbeddingService>(sp =>

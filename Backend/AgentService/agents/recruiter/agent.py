@@ -23,7 +23,7 @@ from agents.recruiter.preferences import DEFAULT_PREFERENCES, Preferences
 from agents.recruiter.prompts import TRIAGE_PROMPT
 from agents.recruiter.state import EmailTriage, RoleDetails
 from agents.recruiter.store import StoredPitch, StoredPosting
-from config import get_settings
+from llm import chat_model
 from tools.gmail import EmailMessage, MessageSummary, get_message, get_message_summary, list_message_ids
 from tools.llm_retry import with_rate_limit_retry
 from tools.retrieval import embed_queries
@@ -61,15 +61,7 @@ def looks_job_related(m: MessageSummary) -> bool:
 
 @lru_cache()
 def _llm() -> AzureChatOpenAI:
-    settings = get_settings()
-    return AzureChatOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        azure_deployment=settings.azure_openai_chat_deployment,
-        api_version=settings.azure_openai_api_version,
-        max_tokens=2000,  # some emails list several roles
-        temperature=0,
-    )
+    return chat_model(max_tokens=2000)  # some emails list several roles
 
 
 async def triage_email(m: EmailMessage) -> EmailTriage:
@@ -217,10 +209,7 @@ SAME_JOB_PROMPT = """Two recruiter emails each describe a job. Decide if they're
 
 @lru_cache()
 def _same_job_llm() -> AzureChatOpenAI:
-    s = get_settings()
-    return AzureChatOpenAI(azure_endpoint=s.azure_openai_endpoint, api_key=s.azure_openai_api_key,
-                           azure_deployment=s.azure_openai_chat_deployment,
-                           api_version=s.azure_openai_api_version, max_tokens=200, temperature=0)
+    return chat_model(max_tokens=200)
 
 
 def _describe(r: RoleDetails) -> str:

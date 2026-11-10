@@ -1,4 +1,3 @@
-﻿using Azure;
 using Azure.AI.OpenAI;
 using OpenAI.Embeddings;
 using System.Text.Json;
@@ -12,18 +11,13 @@ public class EmbeddingService : IEmbeddingService
 
     public int Dimensions => 1536;
 
-    public EmbeddingService(IConfiguration configuration, ILogger<EmbeddingService> logger)
+    public EmbeddingService(AzureOpenAIClient azureClient, IConfiguration configuration, ILogger<EmbeddingService> logger)
     {
         _logger = logger;
 
-        var endpoint = configuration["AzureOpenAI:Endpoint"]
-            ?? throw new InvalidOperationException("AzureOpenAI:Endpoint must be configured.");
-        var apiKey = configuration["AzureOpenAI:ApiKey"]
-            ?? throw new InvalidOperationException("AzureOpenAI:ApiKey must be configured.");
         var deployment = configuration["AzureOpenAI:EmbeddingDeployment"]
             ?? "embedding";
 
-        var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
         _client = azureClient.GetEmbeddingClient(deployment);
     }
 
