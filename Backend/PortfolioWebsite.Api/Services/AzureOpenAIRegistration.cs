@@ -1,4 +1,3 @@
-using Azure;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 
@@ -13,7 +12,7 @@ namespace PortfolioWebsite.Api.Services;
 /// locally. Locally the chain tries Visual Studio before the Azure CLI, so if VS is signed in
 /// as someone else, set AZURE_TOKEN_CREDENTIALS=AzureCliCredential.
 ///
-/// AzureOpenAI:ApiKey still wins when set, so the cutover is just deleting that variable.
+/// There's no key fallback: the Foundry account has disableLocalAuth on, so keys get a 403.
 /// </summary>
 public static class AzureOpenAIRegistration
 {
@@ -26,13 +25,6 @@ public static class AzureOpenAIRegistration
 
             var endpoint = new Uri(configuration["AzureOpenAI:Endpoint"]
                 ?? throw new InvalidOperationException("AzureOpenAI:Endpoint must be configured."));
-
-            var apiKey = configuration["AzureOpenAI:ApiKey"];
-            if (!string.IsNullOrEmpty(apiKey))
-            {
-                logger.LogWarning("Azure OpenAI auth: {AuthMode}", "api_key");
-                return new AzureOpenAIClient(endpoint, new AzureKeyCredential(apiKey));
-            }
 
             logger.LogInformation("Azure OpenAI auth: {AuthMode}", "entra_id");
             return new AzureOpenAIClient(endpoint, new DefaultAzureCredential());

@@ -4,9 +4,8 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Azure OpenAI
+    # No API key: auth is Entra ID (see llm.py)
     azure_openai_endpoint: str
-    # Unset means Entra ID auth (see llm.py). Only kept for the Phase 3 cutover.
-    azure_openai_api_key: str | None = None
     # Deployments are named by role in infra/main.bicepparam. The *_MODEL settings say
     # which model is behind each one, for picking call parameters and labeling results.
     # On Railway all of these are set by infra/scripts/sync-railway-vars.sh from the

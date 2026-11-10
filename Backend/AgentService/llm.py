@@ -9,7 +9,7 @@ answers is pinned by the AZURE_TOKEN_CREDENTIALS env var:
 These are real environment variables, not .env entries: pydantic-settings reads .env into
 Settings but never exports it to os.environ, which is all azure-identity looks at.
 
-AZURE_OPENAI_API_KEY still wins when set, so the cutover is just deleting that variable.
+There's no key fallback: the Foundry account has disableLocalAuth on, so keys get a 403.
 """
 from functools import lru_cache
 from typing import Literal
@@ -38,10 +38,6 @@ def _auth() -> dict:
     until near expiry, so most calls never reach Entra. It's the sync provider on purpose;
     langchain hands it to the async client too, and a refresh about once an hour briefly
     blocking the loop beats adding aiohttp for azure.identity.aio."""
-    settings = get_settings()
-    if settings.azure_openai_api_key:
-        logger.warning("azure_openai_auth", mode="api_key")
-        return {"api_key": settings.azure_openai_api_key}
     logger.info("azure_openai_auth", mode="entra_id")
     provider = get_bearer_token_provider(DefaultAzureCredential(), COGNITIVE_SERVICES_SCOPE)
     return {"azure_ad_token_provider": provider}
