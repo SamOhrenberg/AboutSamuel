@@ -11,6 +11,8 @@ langgraph==0.2.59
 
 # Azure OpenAI
 openai==1.58.1
+# Keyless auth (Entra ID tokens), see llm.py
+azure-identity==1.25.3
 
 # Database
 asyncpg==0.30.0

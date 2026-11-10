@@ -35,7 +35,7 @@ from agents.resume_analysis.state import (
     Suggestion,
     WorkComparison,
 )
-from config import get_settings
+from llm import chat_model, model_name
 from tools.llm_retry import with_rate_limit_retry
 
 logger = structlog.get_logger()
@@ -50,30 +50,16 @@ MAX_RESUME_CHARS = 40_000   # far beyond any resume; guards the prompt size
 MAX_SUGGESTIONS = 40
 MIN_EVIDENCE_CHARS = 20     # letters and digits in a quote, so "Python" alone can't count as evidence
 
-# Same list as agents/adversarial/judge.py: these only accept their default temperature
-REASONING_MODEL_PREFIXES = ("gpt-5", "o1", "o3", "o4")
-
 
 @lru_cache()
 def _llm() -> AzureChatOpenAI:
     """The stronger judge deployment when configured. This runs rarely and a wrong proposal
     costs more than a slow run, so it isn't the cheap chat model."""
-    settings = get_settings()
-    if settings.judge_model.lower().startswith(REASONING_MODEL_PREFIXES):
-        kwargs = {"temperature": 1}  # reasoning models want max_completion_tokens, which 0.2.14 doesn't send
-    else:
-        kwargs = {"temperature": 0, "max_tokens": 8000}
-    return AzureChatOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        azure_deployment=settings.judge_deployment,
-        api_version=settings.azure_openai_judge_api_version or settings.azure_openai_api_version,
-        **kwargs,
-    )
+    return chat_model("judge", max_tokens=8000)
 
 
 def analysis_model_name() -> str:
-    return get_settings().judge_model
+    return model_name("judge")
 
 
 # ---- load_resume ----------------------------------------------------------

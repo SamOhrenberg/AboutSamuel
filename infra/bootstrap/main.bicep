@@ -1,7 +1,10 @@
-// CI identity for GitHub Actions. Deployed once by hand (the pipeline can't create its own identity):
-//   az deployment group create -g AboutSamuel.com -n bootstrap -f infra/bootstrap/main.bicep
+// Identities and role assignments the pipeline can't (or shouldn't) manage itself:
+// the GitHub Actions CI identity and who may call the Foundry models. Deployed by hand:
+//   az deployment group create -g AboutSamuel.com -n bootstrap -p infra/bootstrap/main.bicepparam
 // Lives outside rg-aboutsamuel-ai so nothing deployed there can delete it.
 targetScope = 'resourceGroup'
+
+import { principal } from 'modules/foundry-role.bicep'
 
 param location string = resourceGroup().location
 
@@ -12,6 +15,11 @@ param repo string = 'SamOhrenberg/AboutSamuel'
 
 @description('Resource group the pipeline deploys to.')
 param targetResourceGroup string = 'rg-aboutsamuel-ai'
+
+param foundryAccountName string = 'aboutsamuel-ai'
+
+@description('Who may call the Foundry models with Entra ID tokens (keyless).')
+param inferencePrincipals principal[]
 
 param tags object = {
   app: 'aboutsamuel'
@@ -57,8 +65,19 @@ module contributor 'modules/role-assignment.bicep' = {
   scope: resourceGroup(targetResourceGroup)
   params: {
     principalId: identity.properties.principalId
-    // Contributor. Can't create role assignments; Phase 3 widens this deliberately.
+    // Contributor. Can't create role assignments, which is why they live in this file.
     roleDefinitionId: 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+  }
+}
+
+module inference 'modules/foundry-role.bicep' = {
+  name: 'foundry-inference'
+  scope: resourceGroup(targetResourceGroup)
+  params: {
+    accountName: foundryAccountName
+    // Cognitive Services OpenAI User: inference only. Can't list keys or change deployments.
+    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+    principals: inferencePrincipals
   }
 }
 

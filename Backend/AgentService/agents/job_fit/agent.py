@@ -19,7 +19,7 @@ from agents.job_fit.state import (
     Requirement,
     RequirementsExtraction,
 )
-from config import get_settings
+from llm import chat_model
 from tools.retrieval import embed_queries, get_career_timeline, search_pgvector, with_tech_stack
 
 logger = structlog.get_logger()
@@ -53,31 +53,14 @@ RATING_BANDS: list[tuple[float, FitRating]] = [
 
 @lru_cache()
 def _llm(max_tokens: int) -> AzureChatOpenAI:
-    settings = get_settings()
-    return AzureChatOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        azure_deployment=settings.azure_openai_chat_deployment,
-        api_version=settings.azure_openai_api_version,
-        max_tokens=max_tokens,
-        temperature=0,
-    )
+    return chat_model(max_tokens=max_tokens)
 
 
 @lru_cache()
 def _writer_llm() -> AzureChatOpenAI:
     """Plain-text model for the cover letter. A little temperature so it reads like a
     person wrote it, and streaming so the page can show it being written."""
-    settings = get_settings()
-    return AzureChatOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        azure_deployment=settings.azure_openai_chat_deployment,
-        api_version=settings.azure_openai_api_version,
-        max_tokens=800,
-        temperature=0.5,
-        streaming=True,
-    )
+    return chat_model(max_tokens=800, temperature=0.5, streaming=True)
 
 
 async def extract_requirements(state: JobFitState) -> JobFitState:

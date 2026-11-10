@@ -6,18 +6,15 @@ The ASP.NET Core API behind aboutsamuel.com. It owns the database and everything
 
 ## Setup
 
-`appsettings.json` is gitignored. Copy `appsettings.template.json` to `appsettings.json` and fill it in. On Railway the same settings come from environment variables, using `__` instead of `:` (so `AzureOpenAI:ApiKey` becomes `AzureOpenAI__ApiKey`, and `AllowedOrigins__0`, `AllowedOrigins__1`, etc. for the array).
+`appsettings.json` is gitignored. Copy `appsettings.template.json` to `appsettings.json` and fill it in. On Railway the same settings come from environment variables, using `__` instead of `:` (so `AzureOpenAI:Endpoint` becomes `AzureOpenAI__Endpoint`, and `AllowedOrigins__0`, `AllowedOrigins__1`, etc. for the array).
 
 | Setting | What it's for |
 |---|---|
 | `ConnectionStrings:DefaultConnection` | Postgres. On Railway it's `${{Postgres.DATABASE_URL}}` |
 | `AllowedOrigins` | CORS. Needs `http://localhost:3000` locally |
 | `AzureOpenAI:Endpoint` | `https://aboutsamuel-ai.openai.azure.com/`, from the `openAiEndpoint` output of `infra/main.bicep`. **Not** the `/openai/v1` one Foundry shows you, the client adds its own path |
-| `AzureOpenAI:ApiKey` | `az cognitiveservices account keys list -n aboutsamuel-ai -g rg-aboutsamuel-ai` |
 | `AzureOpenAI:EmbeddingDeployment` | `embedding`. Has to match what the agent service uses or the vectors won't line up |
 | `ChatSettings:ToolUse:Model` / `ChatSettings:Question:Model` | Azure **deployment** names (`chat`). Only used by the legacy `ChatService` now |
-
-The Azure deployments are defined in `infra/main.bicepparam` and named by role (`chat`, `embedding`, `judge`), so swapping a model never changes these values. On Railway the `AzureOpenAI__*` vars are set by `infra/scripts/sync-railway-vars.sh`; don't edit them in the dashboard.
 | `AdminSettings:JwtSecret` | `openssl rand -base64 32` |
 | `AdminSettings:AdminEmail` | Where the admin magic link goes |
 | `AdminSettings:BaseUrl` | Frontend URL the magic link points to |
@@ -27,6 +24,10 @@ The Azure deployments are defined in `infra/main.bicepparam` and named by role (
 | `Axiom:Token` / `Axiom:Dataset` | Log shipping. Optional locally, you'll just see Axiom 401s in the console |
 | `AgentService:Url` | `http://localhost:8000` locally, the `*.railway.internal` address on Railway |
 | `AgentService:InternalSecret` | Shared secret with the agent service. Must match its `CSHARP_API_INTERNAL_SECRET` |
+
+The Azure deployments are defined in `infra/main.bicepparam` and named by role (`chat`, `embedding`, `judge`), so swapping a model never changes these values. On Railway the `AzureOpenAI__*` vars are set by `infra/scripts/sync-railway-vars.sh`; don't edit them in the dashboard.
+
+There's no Azure OpenAI key. `Services/AzureOpenAIRegistration.cs` builds one `AzureOpenAIClient` with `DefaultAzureCredential`. Locally that's your `az login` (it needs *Cognitive Services OpenAI User* on `aboutsamuel-ai`, granted in `infra/bootstrap/main.bicepparam`). If Visual Studio is signed in as a different account it gets tried first, so set `AZURE_TOKEN_CREDENTIALS=AzureCliCredential`. On Railway it's the `sp-aboutsamuel-railway` service principal, set up by `infra/scripts/set-railway-sp-credential.sh`.
 
 ## Running
 

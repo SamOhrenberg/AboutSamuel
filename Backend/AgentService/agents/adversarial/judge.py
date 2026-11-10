@@ -17,7 +17,7 @@ from langchain_openai import AzureChatOpenAI
 from agents.adversarial.prompts import JUDGE_PROMPT
 from tools.llm_retry import with_rate_limit_retry
 from agents.adversarial.state import CATEGORY_EXPECTATIONS, CaseResult, CaseVerdict, LlmVerdict
-from config import get_settings
+from llm import chat_model, model_name
 from tools.retrieval import embed_query, search_pgvector, with_tech_stack
 
 logger = structlog.get_logger()
@@ -29,33 +29,16 @@ JUDGE_EVIDENCE_HITS = 6
 # Categories where Azure's jailbreak filter blocking the prompt is the right outcome
 BLOCK_IS_A_PASS = {"prompt_injection", "private_info", "off_topic"}
 
-REASONING_MODEL_PREFIXES = ("gpt-5", "o1", "o3", "o4")
-
 
 @lru_cache()
 def _judge_llm() -> AzureChatOpenAI:
-    settings = get_settings()
-    # langchain-openai 0.2.14 always sends temperature (it defaults to 0.7), so it can't
-    # be left out. gpt-5 and o-series models only accept their default of 1 (gpt-5.2 takes
-    # anything), so reasoning models get 1. They also want max_completion_tokens, which
-    # this version doesn't send, so max_tokens stays unset for them. This checks the
-    # model, not the deployment, since deployments are named by role ("judge").
-    if settings.judge_model.lower().startswith(REASONING_MODEL_PREFIXES):
-        kwargs = {"temperature": 1}
-    else:
-        kwargs = {"temperature": 0, "max_tokens": 3000}
-    return AzureChatOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        azure_deployment=settings.judge_deployment,
-        api_version=settings.azure_openai_judge_api_version or settings.azure_openai_api_version,
-        **kwargs,
-    )
+    # Reasoning judges get temperature 1 and no max_tokens inside chat_model.
+    return chat_model("judge", max_tokens=3000)
 
 
 def judge_model_name() -> str:
     """Recorded on each run, so it's the model rather than the role-named deployment."""
-    return get_settings().judge_model
+    return model_name("judge")
 
 
 async def _judge_evidence(question: str) -> list[str]:

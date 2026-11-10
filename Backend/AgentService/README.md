@@ -59,11 +59,10 @@ py -3.11 -m venv .venv
 pip install -r requirements.txt
 ```
 
-Then make a `.env` in this folder. It's gitignored, keep it that way, it has the Azure key in it.
+Then make a `.env` in this folder. It's gitignored, keep it that way, it has the database password in it.
 
 ```
 AZURE_OPENAI_ENDPOINT=https://aboutsamuel-ai.openai.azure.com/
-AZURE_OPENAI_API_KEY=
 AZURE_OPENAI_CHAT_DEPLOYMENT=chat
 AZURE_OPENAI_CHAT_MODEL=gpt-4.1-mini
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=embedding
@@ -74,6 +73,7 @@ CSHARP_API_URL=https://localhost:7276
 CSHARP_API_INTERNAL_SECRET=
 ```
 
+- There's no API key. Every client comes from `llm.py`, which authenticates with Entra ID through `DefaultAzureCredential`. Locally that's your `az login`, which needs the *Cognitive Services OpenAI User* role on `aboutsamuel-ai` (granted in `infra/bootstrap/main.bicepparam`). On Railway it's the `sp-aboutsamuel-railway` service principal, whose `AZURE_*` vars come from `infra/scripts/set-railway-sp-credential.sh`.
 - `AZURE_OPENAI_ENDPOINT` is the resource URL, not the `/openai/v1` one the Foundry portal shows. LangChain adds its own path.
 - Deployments are defined in `infra/main.bicepparam` and named by role, so the `*_DEPLOYMENT` values never change when a model does. The `*_MODEL` values do, and the code uses them to pick call parameters (reasoning models reject `max_tokens`) and to label adversarial runs. On Railway, all `AZURE_OPENAI_*` vars come from `infra/scripts/sync-railway-vars.sh`, so don't edit them in the dashboard.
 - `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` has to be the same model the C# API used to build the embeddings, or search quietly returns garbage.
