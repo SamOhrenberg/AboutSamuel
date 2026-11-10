@@ -10,8 +10,8 @@ param accountName string
 @description('Name of the Foundry project inside the resource.')
 param projectName string
 
-@description('Keep key auth on until the apps move to Entra ID (Phase 3).')
-param disableLocalAuth bool = false
+@description('Entra ID only: API keys are rejected (403) and can\'t be used even if leaked. Both apps authenticate with tokens since Phase 3.')
+param disableLocalAuth bool = true
 
 param tags object = {}
 

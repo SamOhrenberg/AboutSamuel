@@ -14,8 +14,7 @@
 # Needs: az (logged in), railway (logged in, or RAILWAY_API_TOKEN / RAILWAY_TOKEN in CI).
 #
 # No secrets: auth is Entra ID. The prod identity's variables (AZURE_CLIENT_ID etc.) are
-# owned by set-railway-sp-credential.sh, run by hand. The API key variables are no longer
-# set here; delete them in Railway once prod logs "entra_id".
+# owned by set-railway-sp-credential.sh, run by hand. Keys are disabled on the account.
 set -euo pipefail
 
 RESOURCE_GROUP="${RESOURCE_GROUP:-rg-aboutsamuel-ai}"
