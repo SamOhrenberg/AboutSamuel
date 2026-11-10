@@ -1,0 +1,61 @@
+# Lint the Bicep and preview its effect on Azure for PRs that touch infra/.
+# Signs in with OIDC as id-aboutsamuel-github (infra/bootstrap); no stored Azure secret.
+name: infra what-if
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra-whatif.yml'
+
+permissions:
+  id-token: write   # request the GitHub OIDC token that Azure exchanges for an access token
+  contents: read
+
+concurrency:
+  group: infra-whatif-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  BICEP_VERSION: v0.48.1
+  RESOURCE_GROUP: rg-aboutsamuel-ai
+
+jobs:
+  whatif:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pin Bicep
+        run: |
+          az config set bicep.check_version=false --only-show-errors
+          az bicep install --version "$BICEP_VERSION"
+          az bicep version
+
+      # Fail on warnings too: the baseline is clean, so any new one is worth a look.
+      - name: Lint
+        run: |
+          status=0
+          for f in infra/main.bicep infra/bootstrap/main.bicep; do
+            echo "::group::$f"
+            out="$(az bicep lint --file "$f" 2>&1)" || status=1
+            if [[ -n "$out" ]]; then echo "$out"; status=1; fi
+            echo "::endgroup::"
+          done
+          exit $status
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # The bootstrap template is lint-only: this identity has no rights on its resource group.
+      - name: What-if
+        run: |
+          az deployment group what-if \
+            -g "$RESOURCE_GROUP" -n main \
+            -f infra/main.bicep -p infra/main.bicepparam \
+            --no-pretty-print --only-show-errors > whatif.json
+          infra/scripts/whatif-summary.sh whatif.json >> "$GITHUB_STEP_SUMMARY"
