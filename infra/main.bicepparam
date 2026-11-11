@@ -15,6 +15,7 @@ param deployments = [
     version: '2025-04-14'
     sku: 'GlobalStandard'
     capacity: 100
+    raiPolicyName: 'chat-filter'
   }
   {
     // Changing this model means re-embedding everything in pgvector.
@@ -31,6 +32,7 @@ param deployments = [
     sku: 'GlobalStandard'
     // Subscription quota for gpt-5.2 GlobalStandard is 250, pooled across regions.
     capacity: 250
+    raiPolicyName: 'judge-filter'
   }
 ]
 

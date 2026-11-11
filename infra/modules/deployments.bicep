@@ -5,7 +5,7 @@
 @description('Name of the existing Foundry resource.')
 param accountName string
 
-@description('One entry per deployment: { name, model, version, sku, capacity }.')
+@description('One entry per deployment: { name, model, version, sku, capacity, raiPolicyName? }.')
 param deployments array
 
 resource account 'Microsoft.CognitiveServices/accounts@2026-09-01' existing = {
@@ -32,8 +32,8 @@ resource modelDeployments 'Microsoft.CognitiveServices/accounts/deployments@2026
       // Azure moves to the new default version on its own. When it does, update the
       // pinned version in main.bicepparam or the next deploy will try to roll it back.
       versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
-      // The default content filter, stated so what-if stays quiet. Phase 5 swaps in a custom one.
-      raiPolicyName: 'Microsoft.DefaultV2'
+      // Content filter policy: a custom one from content-filters.bicep, or the built-in default.
+      raiPolicyName: d.?raiPolicyName ?? 'Microsoft.DefaultV2'
     }
   }
 ]
