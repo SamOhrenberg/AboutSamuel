@@ -1,5 +1,5 @@
 // Identities and role assignments the pipeline can't (or shouldn't) manage itself:
-// the GitHub Actions CI identity, who may call the Foundry models, and who may send telemetry. Deployed by hand:
+// the GitHub Actions CI identity, who may call the Foundry models and Prompt Shields, and who may send telemetry. Deployed by hand:
 //   az deployment group create -g AboutSamuel.com -n bootstrap -p infra/bootstrap/main.bicepparam
 // Lives outside rg-aboutsamuel-ai so nothing deployed there can delete it.
 targetScope = 'resourceGroup'
@@ -19,7 +19,7 @@ param targetResourceGroup string = 'rg-aboutsamuel-ai'
 param foundryAccountName string = 'aboutsamuel-ai'
 param appInsightsName string = 'appi-aboutsamuel'
 
-@description('Identities the apps run as. They call the Foundry models and send telemetry, both with Entra ID tokens.')
+@description('Identities the apps run as. They call the Foundry models and Prompt Shields and send telemetry, all with Entra ID tokens.')
 param appPrincipals principal[]
 
 param tags object = {
@@ -78,6 +78,22 @@ module inference 'modules/foundry-role.bicep' = {
     accountName: foundryAccountName
     // Cognitive Services OpenAI User: inference only. Can't list keys or change deployments.
     roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+    principals: appPrincipals
+  }
+}
+
+module promptShieldsRole 'modules/prompt-shields-role.bicep' = {
+  name: 'prompt-shields-role'
+  scope: resourceGroup(targetResourceGroup)
+}
+
+module promptShields 'modules/foundry-role.bicep' = {
+  name: 'foundry-prompt-shields'
+  scope: resourceGroup(targetResourceGroup)
+  params: {
+    accountName: foundryAccountName
+    // Recruiter triage screens inbound email for indirect prompt injection before the LLM reads it.
+    roleDefinitionId: promptShieldsRole.outputs.roleDefinitionId
     principals: appPrincipals
   }
 }

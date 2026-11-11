@@ -11,6 +11,7 @@ Settings but never exports it to os.environ, which is all azure-identity looks a
 
 There's no key fallback: the Foundry account has disableLocalAuth on, so keys get a 401.
 """
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Literal
 
@@ -33,14 +34,18 @@ Role = Literal["chat", "judge"]
 
 
 @lru_cache()
-def _auth() -> dict:
-    """Client kwargs for auth. One credential per process: the provider caches the token
-    until near expiry, so most calls never reach Entra. It's the sync provider on purpose;
-    langchain hands it to the async client too, and a refresh about once an hour briefly
-    blocking the loop beats adding aiohttp for azure.identity.aio."""
+def token_provider() -> Callable[[], str]:
+    """One credential per process: the provider caches the token until near expiry, so
+    most calls never reach Entra. It's the sync provider on purpose; langchain hands it to
+    the async client too, and a refresh about once an hour briefly blocking the loop beats
+    adding aiohttp for azure.identity.aio. Also used for Prompt Shields (same audience)."""
     logger.info("azure_openai_auth", mode="entra_id")
-    provider = get_bearer_token_provider(DefaultAzureCredential(), COGNITIVE_SERVICES_SCOPE)
-    return {"azure_ad_token_provider": provider}
+    return get_bearer_token_provider(DefaultAzureCredential(), COGNITIVE_SERVICES_SCOPE)
+
+
+def _auth() -> dict:
+    """Client kwargs for auth."""
+    return {"azure_ad_token_provider": token_provider()}
 
 
 def is_reasoning_model(model: str) -> bool:

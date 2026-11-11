@@ -11,6 +11,8 @@ Safety rules, all enforced here:
   - Replies go only to the original sender, in the same thread, from templates.
   - Platform notifications (LinkedIn and the like) and emails pitching several roles at
     once only get a label.
+  - Emails flagged for prompt injection (Prompt Shields or the content filter) never reach
+    the classifier and only get the Recruiters/Flagged label, for Samuel to look at.
 """
 import re
 from dataclasses import dataclass
@@ -161,6 +163,24 @@ async def apply_actions(plans: list[Plan], shadow_mode: bool) -> dict:
                 logger.error("recruiter_action_failed", kind=plan.kind, error=str(e),
                              error_type=type(e).__name__)
     return counts
+
+
+FLAGGED_LABEL = "Recruiters/Flagged"
+
+
+async def label_flagged(emails: list) -> int:
+    """Label only: no draft, no reply. Returns how many were labeled."""
+    labeled = 0
+    async with httpx.AsyncClient(timeout=30) as client:
+        label_id = await gmail.ensure_label(client, FLAGGED_LABEL)
+        for email in emails:
+            try:
+                await gmail.add_label(client, email.id, label_id)
+                await store.set_action(email.id, "labeled", None)
+                labeled += 1
+            except Exception as e:
+                logger.error("recruiter_flag_label_failed", error=str(e), error_type=type(e).__name__)
+    return labeled
 
 
 async def notify_matches(plans: list[Plan]) -> None:
