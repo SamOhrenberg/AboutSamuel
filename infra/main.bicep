@@ -12,7 +12,7 @@ param workspaceName string
 param appInsightsName string
 param dailyQuotaGb string
 
-@description('Role-named model deployments: { name, model, version, sku, capacity }.')
+@description('Role-named model deployments: { name, model, version, sku, capacity, raiPolicyName? }.')
 param deployments array
 
 param tags object = {}
@@ -27,8 +27,17 @@ module foundry 'modules/foundry.bicep' = {
   }
 }
 
+module contentFilters 'modules/content-filters.bicep' = {
+  name: 'content-filters'
+  params: {
+    accountName: foundry.outputs.accountName
+  }
+}
+
 module modelDeployments 'modules/deployments.bicep' = {
   name: 'deployments'
+  // A deployment can't reference a content filter policy that doesn't exist yet.
+  dependsOn: [contentFilters]
   params: {
     // Using the module output (not the param) makes Bicep wait for the account to exist.
     accountName: foundry.outputs.accountName

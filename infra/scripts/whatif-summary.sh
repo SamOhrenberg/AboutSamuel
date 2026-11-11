@@ -24,6 +24,7 @@ def noise: [
   {type: "microsoft.cognitiveservices/accounts/projects", path: "properties.endpoints", change: "Delete", why: "read-only"},
   {type: "microsoft.cognitiveservices/accounts/projects", path: "properties.internalId", change: "Delete", why: "read-only"},
   {type: "microsoft.cognitiveservices/accounts/projects", path: "properties.isDefault", change: "Delete", why: "read-only"},
+  {type: "microsoft.cognitiveservices/accounts/raipolicies", path: "properties.format", change: "Delete", why: "read-only"},
   {type: "microsoft.insights/components", path: "properties.Flow_Type", change: "Create", why: "write-only, never read back"},
   {type: "microsoft.insights/components", path: "properties.Request_Source", change: "Create", why: "write-only, never read back"}
 ];
