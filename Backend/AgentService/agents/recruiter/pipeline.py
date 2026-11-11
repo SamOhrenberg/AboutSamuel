@@ -14,16 +14,19 @@ from typing import Literal
 from email.utils import parsedate_to_datetime
 
 import httpx
+import openai
 import structlog
 
 from agents.recruiter import actions, store
 from agents.recruiter.agent import (
-    PITCH_CATEGORIES, Pitch, decide_posting, group_into_postings, looks_job_related, role_fingerprint_text, triage_email,
+    PITCH_CATEGORIES, Pitch, decide_posting, group_into_postings, looks_job_related, role_fingerprint_text,
+    triage_email, triage_input,
 )
 from database.connection import get_pool
 from telemetry import redact_content
 from tools.gmail import get_message, get_message_summary, list_message_ids
 from tools.llm_retry import with_rate_limit_retry
+from tools.prompt_shields import shield_document
 from tools.retrieval import embed_queries
 
 logger = structlog.get_logger()
@@ -87,11 +90,26 @@ async def _run(lookback_days: int, limit: int, mode: Mode, skip_recent_days: int
         llm_sem = asyncio.Semaphore(2)  # shares the gpt-4.1-mini quota with the live chat
 
         async def classify(s):
+            """(message, triage) for a classified email, (message, None) for a flagged one."""
             async with llm_sem:
                 message = await get_message(client, s.id)
-                return message, await triage_email(message)
+                # Fails open: if the shield can't run, triage goes ahead as it did before it existed.
+                # Replies are templates to the original sender, so an injection can't steer their content.
+                shield = await shield_document(client, triage_input(message), f"triage:{message.id}")
+                if shield.attack_detected:
+                    return message, None
+                try:
+                    return message, await triage_email(message)
+                except openai.BadRequestError as e:
+                    if e.code != "content_filter":
+                        raise
+                    # Without this, one filtered email failed every run, since it was never saved.
+                    logger.warning("triage_blocked_by_content_filter", item=f"triage:{message.id}")
+                    return message, None
 
-        classified = await asyncio.gather(*(classify(s) for s in candidates))
+        results = await asyncio.gather(*(classify(s) for s in candidates))
+        classified = [(m, t) for m, t in results if t is not None]
+        flagged = [m for m, t in results if t is None]
 
     pitches = [Pitch(m, t, r) for m, t in classified if t.category in PITCH_CATEGORIES for r in t.roles]
     existing = await store.recent_postings(MATCH_AGAINST_DAYS)
@@ -118,19 +136,23 @@ async def _run(lookback_days: int, limit: int, mode: Mode, skip_recent_days: int
 
     pool = await get_pool()
     try:
-        await _persist(pool, classified, postings, posting_vectors, prefs, rollback=(mode == "preview"))
+        await _persist(pool, classified, flagged, postings, posting_vectors, prefs, rollback=(mode == "preview"))
     except _Rollback:
         print(actions.describe(plans))
-        return {"preview": True, "planned": len(plans)}
+        for m in flagged:
+            print(f"[flagged] {actions.FLAGGED_LABEL}  from {m.from_address}  \"{m.subject[:70]}\"")
+        return {"preview": True, "planned": len(plans), "flagged": len(flagged)}
 
     await store.mark_synced(started)
     action_counts = {}
     if mode == "apply" and plans:
         action_counts = await actions.apply_actions(plans, settings.shadow_mode)
         await actions.notify_matches(plans)
+    if mode == "apply" and flagged:
+        action_counts["flagged_labeled"] = await actions.label_flagged(flagged)
 
     counts = {
-        "inbox": len(ids), "new": len(new_ids), "classified": len(classified),
+        "inbox": len(ids), "new": len(new_ids), "classified": len(classified), "flagged": len(flagged),
         "recruiter_emails": sum(1 for _, t in classified if t.category == "recruiter_outreach"),
         "postings_touched": len(postings),
         "postings_new": sum(1 for p in postings if p.stored is None),
@@ -141,13 +163,15 @@ async def _run(lookback_days: int, limit: int, mode: Mode, skip_recent_days: int
     return counts
 
 
-async def _persist(pool, classified, postings, posting_vectors, prefs, rollback: bool) -> None:
+async def _persist(pool, classified, flagged, postings, posting_vectors, prefs, rollback: bool) -> None:
     """Everything in one transaction, so a failed run leaves nothing half saved."""
     async with pool.acquire() as conn:
         async with conn.transaction():
             email_ids = {}
             for m, t in classified:
                 email_ids[m.id] = await store.save_email(conn, m, t, _received_at(m.date))
+            for m in flagged:
+                await store.save_flagged_email(conn, m, _received_at(m.date))
 
             for posting, vector in zip(postings, posting_vectors):
                 saved_pitches = [p for p in posting.new_pitches if email_ids.get(p.email.id)]

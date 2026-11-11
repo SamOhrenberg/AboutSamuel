@@ -9,11 +9,18 @@ from tools.retrieval import get_portfolio_overview_cached, search_experience
 from tools.contact import contact_samuel, get_resume, redirect_to_page, ask_clarification
 from config import get_settings
 from llm import chat_model
+import openai
 import structlog
 
 logger = structlog.get_logger()
 
 TOOLS = [search_experience, contact_samuel, get_resume, redirect_to_page, ask_clarification]
+
+# Shown when Azure's content filter blocks the prompt. In Samuel's voice, like every other reply.
+FILTERED_REPLY = (
+    "I can't help with that one. I'm happy to answer questions about my experience, "
+    "projects, or skills, though."
+)
 
 
 def _build_llm() -> AzureChatOpenAI:
@@ -87,6 +94,9 @@ async def stream_chat(history: list[dict], message: str) -> AsyncIterator[dict]:
                 if token:
                     full_response.append(token)
                     yield {"token": token}
+                # The output filter doesn't raise; the stream just stops early with this reason.
+                if getattr(chunk, "response_metadata", {}).get("finish_reason") == "content_filter":
+                    logger.warning("samuellm_content_filtered", source="completion")
 
             # Intercept tool results for special sentinel values
             elif event_type == "on_tool_end":
@@ -99,6 +109,17 @@ async def stream_chat(history: list[dict], message: str) -> AsyncIterator[dict]:
                 elif isinstance(output, str) and output.startswith("__ATTACHMENT__"):
                     attachment = output.replace("__ATTACHMENT__", "").replace("__", "")
 
+    except openai.BadRequestError as e:
+        if e.code != "content_filter":
+            logger.error("samuellm_stream_failed", error=str(e))
+            yield {"token": "I encountered an error. Please try again."}
+            yield {"meta": {"error": True}}
+            return
+        # The prompt filter (usually Jailbreak) blocked the request. That's the guardrail
+        # working, not an outage: answer politely and log it as a normal exchange.
+        logger.warning("samuellm_content_filtered", source="prompt", error=str(e))
+        full_response = [FILTERED_REPLY]
+        yield {"token": FILTERED_REPLY}
     except Exception as e:
         logger.error("samuellm_stream_failed", error=str(e))
         yield {"token": "I encountered an error. Please try again."}

@@ -64,14 +64,20 @@ def _llm() -> AzureChatOpenAI:
     return chat_model(max_tokens=2000)  # some emails list several roles
 
 
+def triage_input(m: EmailMessage) -> str:
+    """Exactly what the triage LLM reads. Prompt Shields screens this same text, so the
+    check and the model can't see different things (the subject can carry an injection too)."""
+    return (
+        f"<email>\nFrom: {m.from_name} <{m.from_address}>\nSubject: {m.subject}\n\n"
+        f"{m.body[:MAX_BODY_CHARS]}\n</email>"
+    )
+
+
 async def triage_email(m: EmailMessage) -> EmailTriage:
     llm = _llm().with_structured_output(EmailTriage, method="json_schema", strict=True)
     return await with_rate_limit_retry(lambda: llm.ainvoke([
         SystemMessage(content=TRIAGE_PROMPT),
-        HumanMessage(content=(
-            f"<email>\nFrom: {m.from_name} <{m.from_address}>\nSubject: {m.subject}\n\n"
-            f"{m.body[:MAX_BODY_CHARS]}\n</email>"
-        )),
+        HumanMessage(content=triage_input(m)),
     ]), f"triage:{m.id}")
 
 

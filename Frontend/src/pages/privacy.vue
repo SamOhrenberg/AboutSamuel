@@ -64,7 +64,9 @@
           It can apply labels, create draft replies, and send replies on my behalf to recruiters who emailed me.
         </li>
         <li>
-          Email content is processed by Azure OpenAI to classify the message and extract the role details. I store
+          Email content is first checked by Azure AI Content Safety (Microsoft) for hidden instructions aimed at the
+          AI, then processed by Azure OpenAI to classify the message and extract the role details. An email flagged
+          by the check is never answered automatically; it only gets a label for me to review. I store
           the extracted details and a short excerpt in my database. Full email bodies aren't stored outside Gmail.
           Diagnostic traces of this processing record timing and usage, not email content.
         </li>

@@ -91,6 +91,29 @@ async def save_email(conn, m: EmailMessage, t: EmailTriage, received_at: datetim
     return inserted
 
 
+# Category for emails that never reached the classifier: Prompt Shields found an indirect
+# prompt injection, or the content filter blocked the triage call. Not an EmailTriage
+# category on purpose, since that type is the LLM's output schema.
+FLAGGED_CATEGORY = "flagged_injection"
+
+
+async def save_flagged_email(conn, m: EmailMessage, received_at: datetime) -> uuid.UUID | None:
+    """Marks a flagged email processed so it isn't retried. Keeps sender and subject so
+    Samuel can find it, but no snippet: that's where the injected text would be."""
+    return await conn.fetchval(
+        """
+        INSERT INTO "RecruiterEmails"
+            ("RecruiterEmailId", "GmailMessageId", "GmailThreadId", "ReceivedAt", "ProcessedAt",
+             "FromName", "FromAddress", "Subject", "Snippet", "Category", "Personalized", "Confidence", "Action")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '', $9, false, 'high', 'none')
+        ON CONFLICT ("GmailMessageId") DO NOTHING
+        RETURNING "RecruiterEmailId"
+        """,
+        uuid.uuid4(), m.id, m.thread_id, received_at, _now(), m.from_name, m.from_address, m.subject,
+        FLAGGED_CATEGORY,
+    )
+
+
 # ---- postings -----------------------------------------------------------------
 
 @dataclass
