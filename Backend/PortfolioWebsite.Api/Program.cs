@@ -159,6 +159,7 @@ namespace PortfolioWebsite.Api
                 if (!builder.AddPublicPortfolio())
                     Log.Warning("ConnectionStrings:{Name} is not set; the public MCP data layer is " +
                         "using DefaultConnection, which can write", McpRegistration.ReadOnlyConnectionName);
+                builder.AddPublicMcpServer();
 
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();
@@ -193,6 +194,7 @@ namespace PortfolioWebsite.Api
                 app.UseAuthentication();
                 app.UseAuthorization();
                 app.MapControllers();
+                app.MapPublicMcp();
 
                 // Auto-migrate on startup
                 using (var scope = app.Services.CreateScope())

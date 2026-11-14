@@ -1,0 +1,13 @@
+{
+  "McpProfile": {
+    "Name": "Samuel Ohrenberg",
+    "Headline": "Software Engineer, Oklahoma City",
+    "Summary": "A solution-oriented programmer who loves solving problems.",
+    "CurrentFocus": [],
+    "Availability": null,
+    "Links": [
+      { "Label": "Portfolio", "Url": "https://aboutsamuel.com" },
+      { "Label": "GitHub", "Url": "https://github.com/SamOhrenberg" }
+    ]
+  }
+}

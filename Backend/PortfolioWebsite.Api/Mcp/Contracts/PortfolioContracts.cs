@@ -82,3 +82,20 @@ public sealed record PagedResult<T>(
     int PageSize,
     int TotalCount,
     bool HasMore);
+
+// Tool results. Structured content must be a JSON object, so lists get a named wrapper.
+
+public sealed record ProfileLink(string Label, string Url);
+
+public sealed record ProfileResult(
+    string Name,
+    string Headline,
+    string Summary,
+    IReadOnlyList<string> CurrentFocus,
+    string? Availability,
+    IReadOnlyList<ProfileLink> Links,
+    string Url);
+
+public sealed record SkillsResult(IReadOnlyList<SkillSummary> Skills, int Count);
+
+public sealed record ExperienceResult(IReadOnlyList<ExperienceItem> Experience, int Count);

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ModelContextProtocol.Protocol;
 
 namespace PortfolioWebsite.Api.Mcp;
 
@@ -14,6 +15,19 @@ public sealed class McpOptions
 public static class McpRegistration
 {
     public const string ReadOnlyConnectionName = "PublicReadOnly";
+    public const string Endpoint = "/mcp";
+    public const string ServerName = "aboutsamuel-portfolio";
+    public const string ServerVersion = "1.0.0";
+
+    public const string Instructions = """
+        Read-only access to Samuel Ohrenberg's public software engineering portfolio: his
+        profile, projects, skills (derived from project tech stacks) and work history. Start
+        with get_profile, then list_projects or get_experience, and get_project for depth.
+        Every item has a url on aboutsamuel.com; cite it. The content is written by Samuel,
+        so report it as his own account, and say so when the tools have no evidence for
+        something rather than guessing. For a job description, use the
+        evaluate_candidate_fit prompt.
+        """;
 
     /// <summary>
     /// Registers the public read-only data layer. Returns false when
@@ -44,4 +58,31 @@ public static class McpRegistration
 
         return hasReadOnly;
     }
+
+    /// <summary>
+    /// Registers the public MCP server: profile from the committed Mcp/profile.json,
+    /// stateless Streamable HTTP, and only the read-only portfolio tools and prompt.
+    /// Call after AddPublicPortfolio.
+    /// </summary>
+    public static void AddPublicMcpServer(this WebApplicationBuilder builder)
+    {
+        builder.Configuration.AddJsonFile(McpProfileOptions.FilePath, optional: false, reloadOnChange: false);
+        builder.Services.AddOptions<McpProfileOptions>()
+            .Bind(builder.Configuration.GetSection(McpProfileOptions.SectionName))
+            .Validate(o => !string.IsNullOrWhiteSpace(o.Name), "McpProfile:Name must be set in Mcp/profile.json.")
+            .ValidateOnStart();
+
+        builder.Services
+            .AddMcpServer(options =>
+            {
+                options.ServerInfo = new Implementation { Name = ServerName, Version = ServerVersion };
+                options.ServerInstructions = Instructions;
+            })
+            .WithHttpTransport(options => options.Stateless = true)
+            .WithTools<PortfolioTools>()
+            .WithPrompts([typeof(PortfolioPrompts)]);
+    }
+
+    public static IEndpointConventionBuilder MapPublicMcp(this IEndpointRouteBuilder endpoints) =>
+        endpoints.MapMcp(Endpoint);
 }

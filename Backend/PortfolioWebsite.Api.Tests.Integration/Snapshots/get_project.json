@@ -1,0 +1,127 @@
+{
+  "name": "get_project",
+  "title": "Get a project",
+  "annotations": {
+    "title": "Get a project",
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "slugOrId": {
+        "description": "The project's slug or its GUID id.",
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "required": [
+      "slugOrId"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "slug": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "title": {
+        "type": "string"
+      },
+      "role": {
+        "type": "string"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "detail": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "impactStatement": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "techStack": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "startYear": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "endYear": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "isCurrent": {
+        "type": "boolean"
+      },
+      "featured": {
+        "type": "boolean"
+      },
+      "experiences": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "employer": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "employer",
+            "title",
+            "url"
+          ]
+        }
+      },
+      "url": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "slug",
+      "id",
+      "title",
+      "role",
+      "summary",
+      "detail",
+      "impactStatement",
+      "techStack",
+      "startYear",
+      "endYear",
+      "isCurrent",
+      "featured",
+      "experiences",
+      "url"
+    ]
+  }
+}

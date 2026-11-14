@@ -1,0 +1,71 @@
+{
+  "name": "get_profile",
+  "title": "Get Samuel's profile",
+  "annotations": {
+    "title": "Get Samuel's profile",
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "headline": {
+        "type": "string"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "currentFocus": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "availability": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "links": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "url"
+          ]
+        }
+      },
+      "url": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "headline",
+      "summary",
+      "currentFocus",
+      "availability",
+      "links",
+      "url"
+    ]
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "name": "get_skills",
+  "title": "Get skills",
+  "annotations": {
+    "title": "Get skills",
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "minProjects": {
+        "description": "Only skills used in at least this many projects, 1 to 100.",
+        "type": "integer",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 100
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "projectCount": {
+              "type": "integer"
+            },
+            "firstYear": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "lastYear": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "isCurrent": {
+              "type": "boolean"
+            },
+            "projects": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "slug": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "startYear": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "endYear": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "slug",
+                  "id",
+                  "title",
+                  "startYear",
+                  "endYear",
+                  "url"
+                ]
+              }
+            },
+            "employers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "employer": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "employer",
+                  "title",
+                  "url"
+                ]
+              }
+            }
+          },
+          "required": [
+            "name",
+            "projectCount",
+            "firstYear",
+            "lastYear",
+            "isCurrent",
+            "projects",
+            "employers"
+          ]
+        }
+      },
+      "count": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "skills",
+      "count"
+    ]
+  }
+}
