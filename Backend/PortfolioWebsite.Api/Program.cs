@@ -209,7 +209,9 @@ namespace PortfolioWebsite.Api
 
                 app.Run();
             }
-            catch (Exception ex)
+            // EF design-time tools (dotnet ef) build the host, then abort it on purpose with
+            // HostAbortedException. That's not a crash, so it shouldn't log as one.
+            catch (Exception ex) when (ex is not HostAbortedException)
             {
                 Log.Fatal(ex, "Host terminated unexpectedly during startup");
             }

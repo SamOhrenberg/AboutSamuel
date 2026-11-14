@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PortfolioWebsite.Api", "Por
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PortfolioWebsite.Common", "PortfolioWebsite.Common\PortfolioWebsite.Common.csproj", "{A2C0866D-342B-429F-AB02-5F5B37C09614}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PortfolioWebsite.Api.Tests.Unit", "PortfolioWebsite.Api.Tests.Unit\PortfolioWebsite.Api.Tests.Unit.csproj", "{F358533A-FD16-4729-9F69-A396FA4D6284}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PortfolioWebsite.Api.Tests.Integration", "PortfolioWebsite.Api.Tests.Integration\PortfolioWebsite.Api.Tests.Integration.csproj", "{D181167C-815B-43E8-BD0A-5586A1AD917F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{A2C0866D-342B-429F-AB02-5F5B37C09614}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2C0866D-342B-429F-AB02-5F5B37C09614}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2C0866D-342B-429F-AB02-5F5B37C09614}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F358533A-FD16-4729-9F69-A396FA4D6284}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F358533A-FD16-4729-9F69-A396FA4D6284}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F358533A-FD16-4729-9F69-A396FA4D6284}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F358533A-FD16-4729-9F69-A396FA4D6284}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D181167C-815B-43E8-BD0A-5586A1AD917F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D181167C-815B-43E8-BD0A-5586A1AD917F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D181167C-815B-43E8-BD0A-5586A1AD917F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D181167C-815B-43E8-BD0A-5586A1AD917F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
