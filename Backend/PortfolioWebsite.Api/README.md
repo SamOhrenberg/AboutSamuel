@@ -11,6 +11,10 @@ The ASP.NET Core API behind aboutsamuel.com. It owns the database and everything
 | Setting | What it's for |
 |---|---|
 | `ConnectionStrings:DefaultConnection` | Postgres. On Railway it's `${{Postgres.DATABASE_URL}}` |
+| `ConnectionStrings:PublicReadOnly` | Postgres as the `mcp_readonly` role, for the [MCP server](#mcp-server). Falls back to `DefaultConnection` with a startup warning if unset |
+| `Mcp:SiteBaseUrl` | Base of the links MCP results point at. Defaults to `https://aboutsamuel.com` |
+| `Mcp:RateLimit:*` | Per-IP limit on `/mcp`. Defaults are fine, see [Limits](#limits) |
+| `Mcp:SemanticSearch:*` | Query embedding budget for the MCP search tools. Defaults are fine, see [Search and what it costs](#search-and-what-it-costs) |
 | `AllowedOrigins` | CORS. Needs `http://localhost:3000` locally |
 | `AzureOpenAI:Endpoint` | `https://aboutsamuel-ai.openai.azure.com/`, from the `openAiEndpoint` output of `infra/main.bicep`. **Not** the `/openai/v1` one Foundry shows you, the client adds its own path |
 | `AzureOpenAI:EmbeddingDeployment` | `embedding`. Has to match what the agent service uses or the vectors won't line up |
@@ -93,6 +97,102 @@ The agent service sends its meta in snake_case nested under `meta`. `AgentServic
 `tokenLimitReached` is always `false` right now. The agent service doesn't track it yet.
 
 The old `ChatService` + `AzureLlmService` path is still here. `POST /Chat` (non-streaming) uses it, but nothing in the frontend calls it anymore, so it can probably go. Resume generation (`GET`/`POST /Chat/resume`) still uses `ChatService`.
+
+## MCP server
+
+A public, read-only [MCP](https://modelcontextprotocol.io) server at `/mcp`, so recruiters' AIs can query my portfolio directly. The tool list and how to connect are in the [root README](../../README.md#public-mcp-server). Everything lives in `Mcp/`.
+
+```
+ MCP client (Claude, ChatGPT, Inspector)
+        |  POST /mcp  (Streamable HTTP, stateless, no auth)
+        v
+ rate limiter "Mcp" (per IP) -> 64 KB body cap -> MapMcp
+        |
+        v
+ McpToolObserver (call-tool filter: one log line + mcp.tool.duration)
+        |
+        v
+ PortfolioTools / PortfolioSearchTools      validate input (McpInput), shape results
+        |                        |
+        v                        v
+ PortfolioReadService     PortfolioSearchService ---> QueryEmbeddingProvider ---> Azure OpenAI
+        |                        |                    (cache, per-IP, daily cap)   (query only)
+        v                        v
+ PublicPortfolioDbContext  (no tracking, SaveChanges throws)
+        |
+        v
+ Postgres as mcp_readonly  (SELECT on 4 tables, read-only sessions)
+```
+
+It's the official C# SDK (`ModelContextProtocol.AspNetCore`), registered in `McpRegistration` (`AddPublicPortfolio`, `AddPublicMcpServer`, `MapPublicMcp`). The SDK runs stateless, so there are no sessions to keep and any instance can answer any request.
+
+### Read-only, four ways
+
+Each layer would stop a write on its own:
+
+1. **Tool annotations.** Every tool is `ReadOnly = true, Destructive = false`, so clients know it's safe to call without asking.
+2. **No write code.** `IPortfolioReadService` and `IPortfolioSearchService` only have read methods, and the MCP layer has its own DTOs in `Mcp/Contracts`, so admin-only fields like `IsActive` and `DisplayOrder` never leak.
+3. **`PublicPortfolioDbContext`.** It maps only `Projects`, `WorkExperiences`, `ProjectWorkExperience` and `Information`. It's `NoTracking`, every `SaveChanges*` throws, and it's excluded from migrations.
+4. **The `mcp_readonly` role.** `infra/sql/mcp-readonly-role.sql` grants `SELECT` on those four tables and nothing else, and sets `default_transaction_read_only = on` as well. Even a raw SQL write from this connection fails in Postgres.
+
+Inactive projects and jobs are filtered out in the service, so hiding something in the admin panel hides it here too.
+
+Content is public, but the server still never touches the private tables (chats, admin tokens, Job Fit runs, the resume files, and so on). If a new table should be visible, it needs a mapping in the context **and** a grant in the role script. That's deliberate.
+
+### Search and what it costs
+
+`search_portfolio` and `find_evidence` use the same cosine search over the `Embedding` columns that the chat does, ported to C# so they don't need the agent service. The only paid call is embedding the query text, through `QueryEmbeddingProvider`:
+
+1. `Mcp:SemanticSearch:Enabled` off means full-text only, and Azure OpenAI is never called.
+2. **Cache.** Keyed by SHA-256 of the normalized query, `CacheMinutes` long (60), up to `CacheMaxEntries` (1000). Hits are free and don't count against the limits.
+3. **Per IP.** `PerIpPerHour` embedding calls (300). A `find_evidence` batch is one call.
+4. **Daily cap.** `DailyCap` texts per UTC day across everyone (2000). This is the real cost ceiling, and at text-embedding-3-small prices it's a fraction of a cent.
+5. **Fallback.** If any of those say no, or the embedding call fails, the search runs on Postgres full-text instead (`to_tsvector` / `websearch_to_tsquery`, terms ORed, ranked by `ts_rank`). Results say which one ran in `mode`.
+
+It's all or nothing per call, so `find_evidence` never mixes modes. The counters are in memory, which is exact as long as there's one instance.
+
+Limits are generous because Claude.ai and ChatGPT call from their own servers, so lots of people can share one IP.
+
+### Limits
+
+- **Rate limit:** `Mcp:RateLimit:PermitLimit` requests per `WindowSeconds` per IP (300 per minute), counted on every request (initialize, list, call). Over the limit is a plain 429. One conversation is roughly 20 requests.
+- **Body size:** 64 KB (`McpRegistration.MaxRequestBodyBytes`), sized for the biggest valid input, a 20,000 character job description. A Content-Length over it gets a 413 before the SDK reads anything. Kestrel enforces the same limit on chunked bodies.
+- **Inputs:** `McpInput` checks every argument (lengths, ranges, page size up to 25, up to 15 requirements) and returns a readable tool error. The limits are also in the input schemas, but the SDK doesn't enforce those, so `McpInput` does.
+
+### Logging and errors
+
+- **Analytics.** `McpToolObserver` logs one line per tool call (`MCP tool call {McpTool} success {McpSuccess} in {ElapsedMs} ms`) and records the `mcp.tool.duration` histogram (seconds, tagged `tool` and `success`) on the `PortfolioWebsite.Api.Mcp` meter, which goes to App Insights. No arguments, no results, no IPs. A tool name the server doesn't have is recorded as `unknown`, so clients can't write arbitrary text into the logs.
+- **Errors.** A tool's own errors (bad input, unknown slug) come back as readable tool errors. Anything unexpected comes back as the SDK's generic `An error occurred invoking '<tool>'.`, and the full exception is logged on our side.
+- **Log filtering.** The SDK logs every expected client error at Error with a stack trace, and those messages repeat the client's arguments. `McpRegistration.IsSdkClientError` drops them in Serilog, and the `ModelContextProtocol` category is clamped to Warning. Real faults aren't `McpException`s, so they still get logged.
+
+### Profile
+
+`get_profile` reads `Mcp/profile.json` (committed, copied to the build output). Edit it and redeploy; there's no admin UI for it. A null `Availability` tells the model I haven't said, not that I'm unavailable.
+
+### Trying it locally
+
+Run the API (`dotnet run --launch-profile https`), then:
+
+```
+npx @modelcontextprotocol/inspector
+```
+
+In the Inspector, pick **Streamable HTTP**, use `http://localhost:5133/mcp` (the plain HTTP port, because Node doesn't trust the dev cert), and connect. Tools, the prompt, and each tool's input and output schemas are all there to poke at.
+
+## Tests
+
+```
+dotnet test Backend/PortfolioWebsite.Api.sln
+```
+
+from the repo root. Docker has to be running: the integration tests start a `pgvector/pgvector:pg17` container with Testcontainers, boot the real API against it (startup migrations included), and apply the real `mcp-readonly-role.sql`, so the MCP tests read through the actual read-only role. Embeddings are faked, so no Azure access is needed.
+
+- `PortfolioWebsite.Api.Tests.Unit`: the pure helpers, tool logic over fakes, the embedding provider's limits.
+- `PortfolioWebsite.Api.Tests.Integration`: the MCP server end to end with a real `McpClient`, the read-only layers, rate and size limits, and a check that running every tool leaves every table's row count and row versions (`xmin`) unchanged.
+
+Each tool's advertised contract (annotations, input and output schemas) is snapshotted in `PortfolioWebsite.Api.Tests.Integration/Snapshots/`. If you change one on purpose, run with `MCP_UPDATE_SNAPSHOTS=1` once and commit the new files.
+
+CI (`.github/workflows/api-tests.yml`) runs the same thing on PRs and pushes to `main` that touch the API.
 
 ## Internal endpoints
 
