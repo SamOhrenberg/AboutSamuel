@@ -13,6 +13,7 @@
         <router-link to="/work-experience" class="footer-link">Experience</router-link>
         <router-link to="/projects" class="footer-link">Projects</router-link>
         <router-link to="/contact" class="footer-link">Contact</router-link>
+        <router-link to="/mcp" class="footer-link">MCP</router-link>
         <router-link to="/privacy" class="footer-link">Privacy</router-link>
         <router-link to="/terms" class="footer-link">Terms</router-link>
       </nav>

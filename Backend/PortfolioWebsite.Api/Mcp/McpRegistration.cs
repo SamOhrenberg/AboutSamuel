@@ -45,6 +45,10 @@ public static class McpRegistration
     public const long MaxRequestBodyBytes = 64 * 1024;
     public const string ServerName = "aboutsamuel-portfolio";
     public const string ServerVersion = "1.0.0";
+    public const string ServerTitle = "AboutSamuel Portfolio";
+    public const string ServerDescription = "Read-only access to Samuel Ohrenberg's software engineering portfolio.";
+    public const string ServerWebsiteUrl = "https://aboutsamuel.com/mcp";
+    public const string ServerIconUrl = "https://aboutsamuel.com/android-chrome-512x512.png";
 
     public const string Instructions = """
         Read-only access to Samuel Ohrenberg's public software engineering portfolio: his
@@ -120,7 +124,15 @@ public static class McpRegistration
         builder.Services
             .AddMcpServer(options =>
             {
-                options.ServerInfo = new Implementation { Name = ServerName, Version = ServerVersion };
+                options.ServerInfo = new Implementation
+                {
+                    Name = ServerName,
+                    Version = ServerVersion,
+                    Title = ServerTitle,
+                    Description = ServerDescription,
+                    WebsiteUrl = ServerWebsiteUrl,
+                    Icons = [new Icon { Source = ServerIconUrl, MimeType = "image/png", Sizes = ["512x512"] }],
+                };
                 options.ServerInstructions = Instructions;
             })
             .WithHttpTransport(options => options.Stateless = true)
