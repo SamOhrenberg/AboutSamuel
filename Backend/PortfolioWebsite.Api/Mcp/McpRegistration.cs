@@ -23,7 +23,8 @@ public static class McpRegistration
         Read-only access to Samuel Ohrenberg's public software engineering portfolio: his
         profile, projects, skills (derived from project tech stacks) and work history. Start
         with get_profile, then list_projects or get_experience, and get_project for depth.
-        Every item has a url on aboutsamuel.com; cite it. The content is written by Samuel,
+        To look for a topic use search_portfolio; to check a list of requirements use
+        find_evidence. Every item has a url on aboutsamuel.com; cite it. The content is written by Samuel,
         so report it as his own account, and say so when the tools have no evidence for
         something rather than guessing. For a job description, use the
         evaluate_candidate_fit prompt.
@@ -56,6 +57,15 @@ public static class McpRegistration
             new PortfolioUrls(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<McpOptions>>().Value.SiteBaseUrl));
         builder.Services.AddScoped<IPortfolioReadService, PortfolioReadService>();
 
+        builder.Services.AddOptions<SemanticSearchOptions>()
+            .Bind(builder.Configuration.GetSection(SemanticSearchOptions.SectionName))
+            .Validate(o => o.PerIpPerHour >= 1 && o.DailyCap >= 1 && o.CacheMinutes >= 0 && o.CacheMaxEntries >= 1,
+                "Mcp:SemanticSearch needs PerIpPerHour, DailyCap and CacheMaxEntries of at least 1 and CacheMinutes of at least 0.")
+            .ValidateOnStart();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddSingleton<IQueryEmbeddingProvider, QueryEmbeddingProvider>();
+        builder.Services.AddScoped<IPortfolioSearchService, PortfolioSearchService>();
+
         return hasReadOnly;
     }
 
@@ -80,6 +90,7 @@ public static class McpRegistration
             })
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<PortfolioTools>()
+            .WithTools<PortfolioSearchTools>()
             .WithPrompts([typeof(PortfolioPrompts)]);
     }
 

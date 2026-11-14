@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using PortfolioWebsite.Api.Mcp;
@@ -18,7 +17,8 @@ namespace PortfolioWebsite.Api.Tests.Integration.Mcp;
 [Collection(ApiCollection.Name)]
 public sealed class McpServerTests(ApiFactory factory) : IAsyncLifetime
 {
-    private static readonly string[] ToolNames = ["get_profile", "list_projects", "get_project", "get_skills", "get_experience"];
+    private static readonly string[] ToolNames = ["get_profile", "list_projects", "get_project", "get_skills", "get_experience",
+        "search_portfolio", "find_evidence"];
     private const string SiteBaseUrl = "https://aboutsamuel.com";
 
     private McpClient _client = null!;
@@ -27,15 +27,7 @@ public sealed class McpServerTests(ApiFactory factory) : IAsyncLifetime
     {
         await ResetAsync(factory);
 
-        var http = factory.CreateClient();
-        var transport = new HttpClientTransport(
-            new HttpClientTransportOptions
-            {
-                Endpoint = new Uri(http.BaseAddress!, McpRegistration.Endpoint),
-                TransportMode = HttpTransportMode.StreamableHttp,
-            },
-            http, NullLoggerFactory.Instance, ownsHttpClient: true);
-        _client = await McpClient.CreateAsync(transport);
+        _client = await McpTestClient.ConnectAsync(factory);
     }
 
     public async Task DisposeAsync() => await _client.DisposeAsync();
@@ -224,22 +216,11 @@ public sealed class McpServerTests(ApiFactory factory) : IAsyncLifetime
         Assert.Contains("Senior C# engineer with Postgres.", text);
     }
 
-    private async Task<T> CallAsync<T>(string tool, Dictionary<string, object?>? args = null)
-    {
-        var result = await _client.CallToolAsync(tool, args);
-        Assert.True(result.IsError is not true, $"{tool} failed: {TextOf(result)}");
-        return JsonSerializer.SerializeToElement(result.StructuredContent).Deserialize<T>(JsonSerializerOptions.Web)!;
-    }
+    private Task<T> CallAsync<T>(string tool, Dictionary<string, object?>? args = null) =>
+        _client.CallStructuredAsync<T>(tool, args);
 
-    private async Task<string> CallErrorAsync(string tool, Dictionary<string, object?> args)
-    {
-        var result = await _client.CallToolAsync(tool, args);
-        Assert.True(result.IsError, $"{tool} should have failed");
-        return TextOf(result);
-    }
-
-    private static string TextOf(CallToolResult result) =>
-        string.Concat(result.Content.OfType<TextContentBlock>().Select(c => c.Text));
+    private Task<string> CallErrorAsync(string tool, Dictionary<string, object?> args) =>
+        _client.CallExpectingErrorAsync(tool, args);
 
     private static string SnapshotDirectory([CallerFilePath] string thisFile = "") =>
         Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(thisFile)!)!, "Snapshots");

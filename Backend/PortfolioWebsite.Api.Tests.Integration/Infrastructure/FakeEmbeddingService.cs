@@ -12,15 +12,27 @@ namespace PortfolioWebsite.Api.Tests.Integration.Infrastructure;
 public sealed class FakeEmbeddingService : IEmbeddingService
 {
     private int _calls;
+    private int _batchCalls;
 
     public int Dimensions => 1536;
 
     public int Calls => Volatile.Read(ref _calls);
 
+    public int BatchCalls => Volatile.Read(ref _batchCalls);
+
+    /// <summary>When true, every call fails the way the real service does: it returns null.</summary>
+    public bool Fail { get; set; }
+
     public Task<float[]?> GetEmbeddingAsync(string text)
     {
         Interlocked.Increment(ref _calls);
-        return Task.FromResult<float[]?>(VectorFor(text));
+        return Task.FromResult(Fail ? null : (float[]?)VectorFor(text));
+    }
+
+    public Task<IReadOnlyList<float[]>?> GetEmbeddingsAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+    {
+        Interlocked.Increment(ref _batchCalls);
+        return Task.FromResult(Fail ? null : (IReadOnlyList<float[]>?)texts.Select(VectorFor).ToList());
     }
 
     public float[] VectorFor(string text)

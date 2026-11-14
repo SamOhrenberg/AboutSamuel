@@ -99,3 +99,37 @@ public sealed record ProfileResult(
 public sealed record SkillsResult(IReadOnlyList<SkillSummary> Skills, int Count);
 
 public sealed record ExperienceResult(IReadOnlyList<ExperienceItem> Experience, int Count);
+
+// Search. Scores rank results within one response only: cosine similarity in semantic mode,
+// ts_rank in fulltext mode, so they aren't comparable across modes or calls.
+
+public static class SearchModes
+{
+    public const string Semantic = "semantic";
+    public const string FullText = "fulltext";
+}
+
+public static class SearchTypes
+{
+    public const string Project = "project";
+    public const string Experience = "experience";
+    public const string Note = "note";
+
+    public static readonly IReadOnlyList<string> All = [Project, Experience, Note];
+}
+
+/// <summary>One match. Slug is set for projects, for get_project.</summary>
+public sealed record SearchHit(
+    string Type,
+    Guid Id,
+    string? Slug,
+    string Title,
+    string Snippet,
+    double Score,
+    string Url);
+
+public sealed record SearchResult(string Query, string Mode, IReadOnlyList<SearchHit> Results, int Count);
+
+public sealed record RequirementEvidence(string Requirement, IReadOnlyList<SearchHit> Matches);
+
+public sealed record EvidenceResult(string Mode, IReadOnlyList<RequirementEvidence> Requirements);

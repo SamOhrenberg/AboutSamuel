@@ -40,6 +40,36 @@ public class EmbeddingService : IEmbeddingService
         }
     }
 
+    public async Task<IReadOnlyList<float[]>?> GetEmbeddingsAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+    {
+        if (texts.Count == 0) return [];
+        if (texts.Any(string.IsNullOrWhiteSpace)) return null;
+
+        var truncated = texts.Select(t => t.Length > 8000 ? t[..8000] : t).ToList();
+
+        try
+        {
+            var result = await _client.GenerateEmbeddingsAsync(truncated, cancellationToken: cancellationToken);
+            var vectors = result.Value.OrderBy(e => e.Index).Select(e => e.ToFloats().ToArray()).ToList();
+            if (vectors.Count != texts.Count)
+            {
+                _logger.LogError("Embedding batch returned {Returned} vectors for {Requested} texts",
+                    vectors.Count, texts.Count);
+                return null;
+            }
+            return vectors;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate a batch of {Count} embeddings", texts.Count);
+            return null;
+        }
+    }
+
     public float CosineSimilarity(float[] a, float[] b)
     {
         if (a.Length != b.Length) return 0f;
