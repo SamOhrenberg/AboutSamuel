@@ -22,9 +22,8 @@ public sealed class PortfolioTools(
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("""
         Samuel Ohrenberg's short self-description: name, headline, summary, current focus,
-        availability and links. Call this first for an overview before looking at projects
-        or experience. Written by Samuel himself, so treat it as his own framing. A null
-        availability means he hasn't said, not that he is unavailable.
+        availability and links, written by Samuel himself. A null availability means he
+        hasn't said, not that he is unavailable.
         """)]
     public ProfileResult GetProfile() => profile.Value.ToResult(urls);
 
@@ -33,11 +32,11 @@ public sealed class PortfolioTools(
     [Description("""
         Lists Samuel's portfolio projects in the same order as the site (featured first),
         with role, summary, tech stack, years, linked employers and a url. Optional filters
-        combine with AND. Results are paged (pageSize at most 25); use hasMore and page to
-        continue. Summaries only: call get_project with a slug for the full write-up.
+        combine with AND. Results are paged (pageSize at most 25) and hasMore says whether
+        another page exists. Summaries only, without the full write-up.
         """)]
     public async Task<PagedResult<ProjectSummary>> ListProjects(
-        [Description("Only projects whose tech stack includes this exact technology, case-insensitive (for example \"C#\" or \"PostgreSQL\"). get_skills lists the names in use.")]
+        [Description("Only projects whose tech stack includes this exact technology, case-insensitive (for example \"C#\" or \"PostgreSQL\").")]
         [MaxLength(McpInput.MaxTextLength)]
         string? tech = null,
         [Description("Only projects active during this calendar year, for example 2023.")]
@@ -66,9 +65,9 @@ public sealed class PortfolioTools(
     [McpServerTool(Name = "get_project", Title = "Get a project",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("""
-        The full write-up of one project: everything list_projects returns plus the detailed
-        description and impact statement. Look it up by the slug (for example
-        "portfolio-chat") or the id from list_projects, get_skills or get_experience.
+        The full write-up of one project: role, summary, tech stack, years, linked employers
+        and url, plus the detailed description and impact statement. Looked up by slug (for
+        example "portfolio-chat") or GUID id, as they appear in other results.
         """)]
     public async Task<ProjectDetail> GetProject(
         [Description("The project's slug or its GUID id.")]
@@ -88,7 +87,7 @@ public sealed class PortfolioTools(
         Technologies Samuel has used, derived from his projects' tech stacks (there is no
         self-rated skill list). Each skill lists the projects and employers it appeared
         with, the project count, the first and last year seen, and whether it's in current
-        use. Most-used first. Use minProjects to drop one-off mentions.
+        use. Most-used first. minProjects drops one-off mentions.
         """)]
     public async Task<SkillsResult> GetSkills(
         [Description("Only skills used in at least this many projects, 1 to 100.")]
@@ -105,8 +104,8 @@ public sealed class PortfolioTools(
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("""
         Samuel's work history in the same order as the site: employer, title,
-        years, summary, achievements, and the projects done there (with slugs for
-        get_project). isCurrent marks the role he holds now.
+        years, summary, achievements, and the projects done there (with their slugs).
+        isCurrent marks the role he holds now.
         """)]
     public async Task<ExperienceResult> GetExperience(CancellationToken cancellationToken = default)
     {
