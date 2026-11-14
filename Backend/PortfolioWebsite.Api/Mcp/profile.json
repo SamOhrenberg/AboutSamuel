@@ -1,10 +1,15 @@
 {
   "McpProfile": {
     "Name": "Samuel Ohrenberg",
-    "Headline": "Software Engineer, Oklahoma City",
-    "Summary": "A solution-oriented programmer who loves solving problems.",
-    "CurrentFocus": [],
-    "Availability": null,
+    "Headline": "Software Engineer (.NET, Azure, AI), Oklahoma City",
+    "Summary": "Software engineer who builds .NET back ends and LLM features on Azure. This portfolio site is a working example: a RAG chat agent, a job-fit analyzer, an adversarial test harness and this MCP server.",
+    "CurrentFocus": [
+      "AI agents and RAG on Azure (LangGraph, Azure OpenAI, pgvector)",
+      ".NET 10 / ASP.NET Core APIs",
+      "Azure AI Engineer (AI-103) certification",
+      "MCP servers"
+    ],
+    "Availability": "Open to new full-time software engineering roles.",
     "Links": [
       { "Label": "Portfolio", "Url": "https://aboutsamuel.com" },
       { "Label": "GitHub", "Url": "https://github.com/SamOhrenberg" }

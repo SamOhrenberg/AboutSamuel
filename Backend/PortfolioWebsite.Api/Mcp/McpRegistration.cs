@@ -18,12 +18,16 @@ public sealed class McpOptions
     public string SiteBaseUrl { get; set; } = "https://aboutsamuel.com";
 }
 
-/// <summary>Per-IP fixed window on every request to /mcp (initialize, list and call alike).</summary>
+/// <summary>
+/// Per-IP fixed window on every request to /mcp (initialize, list and call alike). Hosted
+/// clients like Claude.ai and ChatGPT call from their own servers, so many recruiters can
+/// share one IP; a conversation is roughly 20 requests. This is a flood guard, not a quota.
+/// </summary>
 public sealed class McpRateLimitOptions
 {
     public const string SectionName = "Mcp:RateLimit";
 
-    public int PermitLimit { get; set; } = 60;
+    public int PermitLimit { get; set; } = 300;
     public int WindowSeconds { get; set; } = 60;
 }
 

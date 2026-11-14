@@ -16,8 +16,9 @@ public sealed class SemanticSearchOptions
     public bool Enabled { get; set; } = true;
 
     /// <summary>Embedding API calls per client IP per hour. A find_evidence batch counts once.
-    /// Cache hits don't count.</summary>
-    public int PerIpPerHour { get; set; } = 30;
+    /// Cache hits don't count. Generous because hosted AI clients share egress IPs across
+    /// users; it only stops one caller from spending the whole DailyCap.</summary>
+    public int PerIpPerHour { get; set; } = 300;
 
     /// <summary>Texts embedded per UTC day across all clients. This is the cost ceiling.</summary>
     public int DailyCap { get; set; } = 2000;
