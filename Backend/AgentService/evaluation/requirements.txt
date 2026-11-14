@@ -1,0 +1,4 @@
+# Separate venv: azure-ai-evaluation needs openai>=3, the app pins 1.58 for langchain-openai 0.2.14.
+#   python -m venv .venv-eval && .venv-eval/Scripts/pip install -r evaluation/requirements.txt
+azure-ai-evaluation==1.18.11
+azure-identity

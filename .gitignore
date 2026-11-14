@@ -5,6 +5,10 @@ Backend/PortfolioWebsite.Api/appsettings.json
 Logs
 *.pubxml.user
 .venv
+# azure-ai-evaluation needs a newer openai than the app, so it gets its own venv
+.venv-eval
+# Evaluation datasets and results (contain prompts and answers)
+Backend/AgentService/evaluation/results/
 .env
 **/__pycache__/
 # Google OAuth client secrets and tokens (recruiter triage)

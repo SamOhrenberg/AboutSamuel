@@ -55,11 +55,41 @@ async def generate_cases(overview: str) -> list[AdversarialCase]:
     return cases
 
 
+async def portfolio_overview() -> str:
+    """Full timeline and project list. SamuelLM's system prompt carries the same text."""
+    return format_portfolio_overview(await get_career_timeline(), await get_project_catalog())
+
+
 async def build_case_set() -> tuple[list[AdversarialCase], str]:
     """The fixed suite plus this run's generated variations, and the portfolio overview
     they were built from (the judge needs the same overview)."""
-    overview = format_portfolio_overview(await get_career_timeline(), await get_project_catalog())
+    overview = await portfolio_overview()
     return SUITE + await generate_cases(overview), overview
+
+
+def export_rows(verdicts: list, overview: str) -> list[dict]:
+    """One row per answered case, in the shape azure-ai-evaluation expects (query,
+    response, context), plus the custom judge's verdict to compare against.
+    Blocked and errored cases have no answer to grade, so they're left out.
+    Multi-turn cases keep only the final question; history is flagged, not sent."""
+    rows = []
+    for v in verdicts:
+        r = v.result
+        if r.blocked_by_content_filter or r.error or not r.answer.strip():
+            continue
+        rows.append({
+            "id": r.case.id,
+            "category": r.case.category,
+            "has_history": bool(r.case.history),
+            "query": r.case.prompt,
+            "response": r.answer,
+            # Everything SamuelLM had to work with: the overview from its system prompt
+            # plus what search_experience returned. The custom judge sees the same.
+            "context": "\n\n---\n\n".join([overview, *r.retrieved_context]),
+            "judge_verdict": v.verdict,
+            "judge_failure_type": v.failure_type,
+        })
+    return rows
 
 
 async def run_adversarial_suite(on_total=None, on_answered=None, on_judged=None) -> tuple[list, dict]:
@@ -102,7 +132,9 @@ if __name__ == "__main__":
     #   python -m agents.adversarial.agent
     #   python -m agents.adversarial.agent --run
     #   python -m agents.adversarial.agent --judge
+    # Add --export <file.jsonl> to --judge to write a dataset for evaluation/run_quality.py.
     import asyncio
+    import json
     import sys
 
     from agents.adversarial.judge import judge_model_name
@@ -112,6 +144,12 @@ if __name__ == "__main__":
     async def _judge() -> None:
         try:
             verdicts, summary = await run_adversarial_suite()
+            if "--export" in sys.argv:
+                path = sys.argv[sys.argv.index("--export") + 1]
+                rows = export_rows(verdicts, await portfolio_overview())
+                with open(path, "w", encoding="utf-8") as f:
+                    f.writelines(json.dumps(row) + "\n" for row in rows)
+                print(f"Exported {len(rows)} answered cases to {path}")
         finally:
             await close_pool()
         print(f"Judge: {judge_model_name()}")
