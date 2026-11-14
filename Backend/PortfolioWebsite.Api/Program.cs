@@ -57,6 +57,10 @@ namespace PortfolioWebsite.Api
                         // Azure SDK logs (forwarded by the Azure Monitor distro) include several
                         // MSAL lines per token fetch at Information. Warnings still come through.
                         .MinimumLevel.Override("Azure", LogEventLevel.Warning)
+                        // The MCP SDK logs every request and session event at Information
+                        // and below. McpToolObserver writes the one line per tool call we want.
+                        .MinimumLevel.Override("ModelContextProtocol", LogEventLevel.Warning)
+                        .Filter.ByExcluding(McpRegistration.IsSdkClientError)
                         .WriteTo.Console()
                         .Enrich.FromLogContext();
                 }, writeToProviders: true);
@@ -144,6 +148,8 @@ namespace PortfolioWebsite.Api
                                 PermitLimit = 5,
                                 QueueLimit = 0
                             }));
+                    // Public MCP server, per IP. Limits come from Mcp:RateLimit.
+                    options.AddPolicy(McpRegistration.RateLimitPolicy, McpRegistration.RateLimitPartition);
 
                     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 });

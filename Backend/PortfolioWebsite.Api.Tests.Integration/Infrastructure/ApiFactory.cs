@@ -82,9 +82,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("AzureOpenAI:Endpoint", "https://azure-openai.invalid/");
         builder.UseSetting("AgentService:Url", "http://agent-service.invalid/");
         // Every test request shares one client IP, so the per-IP limit would leak between
-        // tests. Its behaviour is covered by the unit tests.
+        // tests. Their behaviour is covered by the unit tests and McpHardeningTests (own host).
         builder.UseSetting("Mcp:SemanticSearch:PerIpPerHour", "100000");
         builder.UseSetting("Mcp:SemanticSearch:DailyCap", "100000");
+        builder.UseSetting("Mcp:RateLimit:PermitLimit", "100000");
         // Keep telemetry off even if the machine running the tests has this env var set.
         builder.UseSetting("APPLICATIONINSIGHTS_CONNECTION_STRING", "");
 

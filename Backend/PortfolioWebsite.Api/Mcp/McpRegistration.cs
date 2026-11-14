@@ -1,6 +1,12 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
+using Serilog.Events;
+using Serilog.Filters;
 
 namespace PortfolioWebsite.Api.Mcp;
 
@@ -12,10 +18,27 @@ public sealed class McpOptions
     public string SiteBaseUrl { get; set; } = "https://aboutsamuel.com";
 }
 
+/// <summary>Per-IP fixed window on every request to /mcp (initialize, list and call alike).</summary>
+public sealed class McpRateLimitOptions
+{
+    public const string SectionName = "Mcp:RateLimit";
+
+    public int PermitLimit { get; set; } = 60;
+    public int WindowSeconds { get; set; } = 60;
+}
+
 public static class McpRegistration
 {
     public const string ReadOnlyConnectionName = "PublicReadOnly";
     public const string Endpoint = "/mcp";
+    public const string RateLimitPolicy = "Mcp";
+
+    /// <summary>
+    /// The largest valid request is evaluate_candidate_fit with a 20,000 character job
+    /// description, about 20 KB of JSON for mostly ASCII text. 64 KB leaves room for
+    /// escaping and multi-byte characters without accepting arbitrary payloads.
+    /// </summary>
+    public const long MaxRequestBodyBytes = 64 * 1024;
     public const string ServerName = "aboutsamuel-portfolio";
     public const string ServerVersion = "1.0.0";
 
@@ -82,6 +105,14 @@ public static class McpRegistration
             .Validate(o => !string.IsNullOrWhiteSpace(o.Name), "McpProfile:Name must be set in Mcp/profile.json.")
             .ValidateOnStart();
 
+        builder.Services.AddOptions<McpRateLimitOptions>()
+            .Bind(builder.Configuration.GetSection(McpRateLimitOptions.SectionName))
+            .Validate(o => o.PermitLimit >= 1 && o.WindowSeconds >= 1,
+                "Mcp:RateLimit needs PermitLimit and WindowSeconds of at least 1.")
+            .ValidateOnStart();
+
+        builder.Services.AddSingleton<McpToolObserver>();
+
         builder.Services
             .AddMcpServer(options =>
             {
@@ -91,9 +122,47 @@ public static class McpRegistration
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<PortfolioTools>()
             .WithTools<PortfolioSearchTools>()
-            .WithPrompts([typeof(PortfolioPrompts)]);
+            .WithPrompts([typeof(PortfolioPrompts)])
+            .WithRequestFilters(filters => filters.AddCallToolFilter(McpToolObserver.Filter));
     }
 
+    private static readonly Func<LogEvent, bool> FromSdk = Matching.FromSource("ModelContextProtocol");
+
+    /// <summary>
+    /// True for the SDK's log events about an McpException: bad input, a missing slug, an
+    /// unknown tool. The SDK logs each at Error with a stack trace, and the messages echo the
+    /// client's arguments, so Program drops them. McpToolObserver still counts them as failed
+    /// calls. Any other exception from a tool is a real fault and keeps its log line.
+    /// </summary>
+    public static bool IsSdkClientError(LogEvent logEvent) =>
+        logEvent.Exception is McpException && FromSdk(logEvent);
+
+    /// <summary>The "Mcp" rate limiter policy: per client IP, limits from Mcp:RateLimit.</summary>
+    public static RateLimitPartition<string> RateLimitPartition(HttpContext context)
+    {
+        var options = context.RequestServices.GetRequiredService<IOptions<McpRateLimitOptions>>().Value;
+        return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = options.PermitLimit,
+                Window = TimeSpan.FromSeconds(options.WindowSeconds),
+                QueueLimit = 0,
+            });
+    }
+
+    /// <summary>
+    /// Maps /mcp with the rate limit and the body cap. The cap is applied twice: the metadata
+    /// makes Kestrel stop reading any body past the limit (chunked included), and the filter
+    /// turns a declared Content-Length over it into a 413 before the SDK reads anything. The
+    /// filter is also what the tests can see, since TestServer ignores the metadata.
+    /// </summary>
     public static IEndpointConventionBuilder MapPublicMcp(this IEndpointRouteBuilder endpoints) =>
-        endpoints.MapMcp(Endpoint);
+        endpoints.MapMcp(Endpoint)
+            .RequireRateLimiting(RateLimitPolicy)
+            .WithMetadata(new RequestSizeLimitAttribute(MaxRequestBodyBytes))
+            .AddEndpointFilter((context, next) =>
+                context.HttpContext.Request.ContentLength > MaxRequestBodyBytes
+                    ? ValueTask.FromResult<object?>(Results.StatusCode(StatusCodes.Status413PayloadTooLarge))
+                    : next(context));
 }

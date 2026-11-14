@@ -17,7 +17,7 @@ namespace PortfolioWebsite.Api.Tests.Integration.Mcp;
 [Collection(ApiCollection.Name)]
 public sealed class McpServerTests(ApiFactory factory) : IAsyncLifetime
 {
-    private static readonly string[] ToolNames = ["get_profile", "list_projects", "get_project", "get_skills", "get_experience",
+    internal static readonly string[] ToolNames = ["get_profile", "list_projects", "get_project", "get_skills", "get_experience",
         "search_portfolio", "find_evidence"];
     private const string SiteBaseUrl = "https://aboutsamuel.com";
 

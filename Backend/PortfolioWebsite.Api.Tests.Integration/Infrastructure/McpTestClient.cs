@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -9,9 +10,13 @@ namespace PortfolioWebsite.Api.Tests.Integration.Infrastructure;
 /// <summary>A real McpClient over Streamable HTTP to /mcp on the in-memory host.</summary>
 public static class McpTestClient
 {
-    public static Task<McpClient> ConnectAsync(ApiFactory factory)
+    /// <param name="clientIp">Sent as X-Forwarded-For, which the API trusts, so it becomes
+    /// RemoteIpAddress. Without it every test request shares the "unknown" partition.</param>
+    public static Task<McpClient> ConnectAsync(WebApplicationFactory<Program> factory, string? clientIp = null)
     {
         var http = factory.CreateClient();
+        if (clientIp is not null)
+            http.DefaultRequestHeaders.Add("X-Forwarded-For", clientIp);
         var transport = new HttpClientTransport(
             new HttpClientTransportOptions
             {

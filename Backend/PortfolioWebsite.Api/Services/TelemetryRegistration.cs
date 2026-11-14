@@ -2,6 +2,7 @@ using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Resources;
+using PortfolioWebsite.Api.Mcp;
 
 namespace PortfolioWebsite.Api.Services;
 
@@ -17,6 +18,7 @@ namespace PortfolioWebsite.Api.Services;
 ///   - Azure OpenAI chat calls (OpenAI.ChatClient): model, tokens, latency. OpenAI .NET 2.1
 ///     has no embedding spans and no content capture; embeddings still show as HTTP calls.
 ///   - Npgsql queries.
+///   - Public MCP tool calls: the mcp.tool.duration histogram (tags tool, success).
 ///
 /// App Insights has local auth off, so the exporter signs in with an Entra token
 /// (Monitoring Metrics Publisher), using the same credential chain as Azure OpenAI.
@@ -38,7 +40,7 @@ public static class TelemetryRegistration
             // service.name becomes cloud_RoleName: the node name on the App Insights map.
             .ConfigureResource(resource => resource.AddService(ServiceName))
             .WithTracing(tracing => tracing.AddSource("OpenAI.ChatClient", "Npgsql"))
-            .WithMetrics(metrics => metrics.AddMeter("OpenAI.ChatClient"));
+            .WithMetrics(metrics => metrics.AddMeter("OpenAI.ChatClient", McpToolObserver.MeterName));
 
         // Railway health checks aren't worth a trace each.
         builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(options =>
