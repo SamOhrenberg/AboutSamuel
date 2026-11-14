@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PortfolioWebsite.Api.Data;
+using PortfolioWebsite.Api.Mcp;
 using PortfolioWebsite.Api.Middlewares;
 using PortfolioWebsite.Api.Services;
 using Serilog;
@@ -154,6 +155,10 @@ namespace PortfolioWebsite.Api
 
                 builder.Services.AddScoped(sp =>
                     sp.GetRequiredService<IDbContextFactory<SqlDbContext>>().CreateDbContext());
+
+                if (!builder.AddPublicPortfolio())
+                    Log.Warning("ConnectionStrings:{Name} is not set; the public MCP data layer is " +
+                        "using DefaultConnection, which can write", McpRegistration.ReadOnlyConnectionName);
 
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();

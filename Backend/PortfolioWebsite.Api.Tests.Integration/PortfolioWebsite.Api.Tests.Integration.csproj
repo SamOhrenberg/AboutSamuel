@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The committed role script, applied to the test container exactly as in prod -->
+    <None Include="..\..\infra\sql\mcp-readonly-role.sql" Link="Sql\mcp-readonly-role.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\PortfolioWebsite.Api\PortfolioWebsite.Api.csproj" />
   </ItemGroup>
 
