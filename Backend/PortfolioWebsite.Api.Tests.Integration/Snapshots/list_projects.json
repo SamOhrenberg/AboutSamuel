@@ -12,7 +12,7 @@
     "type": "object",
     "properties": {
       "tech": {
-        "description": "Only projects whose tech stack includes this exact technology, case-insensitive (for example \"C#\" or \"PostgreSQL\"). get_skills lists the names in use.",
+        "description": "Only projects whose tech stack includes this exact technology, case-insensitive (for example \"C#\" or \"PostgreSQL\").",
         "type": [
           "string",
           "null"

@@ -55,10 +55,14 @@ public static class McpRegistration
         profile, projects, skills (derived from project tech stacks) and work history. Start
         with get_profile, then list_projects or get_experience, and get_project for depth.
         To look for a topic use search_portfolio; to check a list of requirements use
-        find_evidence. Every item has a url on aboutsamuel.com; cite it. The content is written by Samuel,
-        so report it as his own account, and say so when the tools have no evidence for
-        something rather than guessing. For a job description, use the
-        evaluate_candidate_fit prompt.
+        find_evidence. Search results are only candidates: read the snippets (and
+        get_project for depth) before concluding, and treat a requirement whose matches
+        are all off-topic as having no evidence. If a fulltext search finds nothing,
+        rephrase with concrete keywords. get_skills lists the technology names that
+        list_projects' tech filter accepts. Every item has a url on aboutsamuel.com; cite it.
+        The content is written by Samuel, so report it as his own account, and say so when
+        the tools have no evidence for something rather than guessing. For a job
+        description, use the evaluate_candidate_fit prompt.
         """;
 
     /// <summary>
