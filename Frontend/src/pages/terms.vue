@@ -2,7 +2,7 @@
   <div class="legal-page">
     <article class="legal-inner">
       <h1>Terms of Service</h1>
-      <p class="updated">Last updated October 6, 2026</p>
+      <p class="updated">Last updated November 13, 2026</p>
 
       <p>
         This is my personal portfolio site. By using it you agree to these terms. They're short, I promise.
@@ -28,6 +28,14 @@
         You're responsible for what you type into the chat, Job Fit, or the contact form. Don't submit anything you
         don't have the right to share, or anything confidential. See the
         <router-link to="/privacy">privacy policy</router-link> for what happens to it.
+      </p>
+
+      <h2>The MCP server</h2>
+      <p>
+        <router-link to="/mcp">The public MCP server</router-link> is free to use with any AI assistant. It's
+        read-only and rate limited, and I may change its tools, limits, or availability at any time. Your assistant
+        draws its own conclusions from what the tools return, so the same caution as above applies: check the
+        linked pages, or ask me.
       </p>
 
       <h2>Recruiter Triage</h2>

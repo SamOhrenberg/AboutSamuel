@@ -2,7 +2,7 @@
   <div class="legal-page">
     <article class="legal-inner">
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated November 10, 2026</p>
+      <p class="updated">Last updated November 13, 2026</p>
 
       <p>
         This is my personal portfolio site. I don't sell anything, run ads, or use analytics or tracking
@@ -27,6 +27,41 @@
         </li>
         <li>
           Don't put anything sensitive in the chat or a job description you wouldn't want me to read.
+        </li>
+      </ul>
+
+      <h2>The MCP server</h2>
+      <p>
+        <router-link to="/mcp">The public MCP server</router-link> at <code>https://api.aboutsamuel.com/mcp</code> lets
+        AI assistants like Claude or ChatGPT read my portfolio. It has no accounts, no sign-in, and no API keys, and
+        every tool is read-only: it can only return my own public portfolio content, never change anything.
+      </p>
+      <ul>
+        <li>
+          When your assistant searches (<code>search_portfolio</code>) or checks job requirements
+          (<code>find_evidence</code>), the search text is sent to Azure OpenAI (Microsoft) to turn it into an
+          embedding, which is only used to find matching content. No AI model generates text from it on my side,
+          and Microsoft doesn't use it to train their models.
+        </li>
+        <li>
+          That embedding is kept in server memory for up to an hour, under a hash of the search text, so
+          repeated searches are free. Search text isn't stored in my database or written to logs.
+        </li>
+        <li>
+          If your assistant uses the <code>evaluate_candidate_fit</code> prompt, the job description is put into
+          the prompt and sent straight back to your assistant. It isn't stored.
+        </li>
+        <li>
+          For each tool call I record which tool was called, whether it worked, and how long it took. That's it:
+          no arguments, no results, no IP address, no conversation content.
+        </li>
+        <li>
+          Your IP address is used in memory to enforce rate limits, and may appear in the technical logs described
+          below.
+        </li>
+        <li>
+          I never see your conversation with your assistant, only the tool calls it makes. What your assistant's
+          provider does with your conversation is covered by their privacy policy, not this one.
         </li>
       </ul>
 
@@ -126,5 +161,6 @@ p { margin: 0 0 0.9rem; }
 ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
 li { margin-bottom: 0.4rem; }
 a { color: rgb(var(--v-theme-secondary)); font-weight: 600; }
+code { font-size: 0.85em; padding: 0.05rem 0.3rem; border-radius: 4px; background: rgba(var(--v-theme-on-background), .08); }
 a:focus-visible { outline: 2px solid rgb(var(--v-theme-secondary)); outline-offset: 2px; }
 </style>
