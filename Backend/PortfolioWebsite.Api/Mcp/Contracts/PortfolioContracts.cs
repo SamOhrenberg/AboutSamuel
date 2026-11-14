@@ -1,0 +1,135 @@
+namespace PortfolioWebsite.Api.Mcp.Contracts;
+
+// Shapes returned to MCP clients. Separate from the site's DTOs on purpose: no IsActive,
+// DisplayOrder or embedding flags, and every item carries a url back to the site.
+// Years are the strings as entered; a null endYear means the item is ongoing (isCurrent).
+
+public sealed record ProjectRef(
+    string Slug,
+    Guid Id,
+    string Title,
+    string? StartYear,
+    string? EndYear,
+    string Url);
+
+public sealed record ExperienceRef(
+    Guid Id,
+    string Employer,
+    string Title,
+    string Url);
+
+public sealed record ProjectSummary(
+    string Slug,
+    Guid Id,
+    string Title,
+    string Role,
+    string Summary,
+    IReadOnlyList<string> TechStack,
+    string? StartYear,
+    string? EndYear,
+    bool IsCurrent,
+    bool Featured,
+    IReadOnlyList<ExperienceRef> Experiences,
+    string Url);
+
+public sealed record ProjectDetail(
+    string Slug,
+    Guid Id,
+    string Title,
+    string Role,
+    string Summary,
+    string? Detail,
+    string? ImpactStatement,
+    IReadOnlyList<string> TechStack,
+    string? StartYear,
+    string? EndYear,
+    bool IsCurrent,
+    bool Featured,
+    IReadOnlyList<ExperienceRef> Experiences,
+    string Url);
+
+public sealed record ExperienceItem(
+    Guid Id,
+    string Employer,
+    string Title,
+    string? StartYear,
+    string? EndYear,
+    bool IsCurrent,
+    string? Summary,
+    IReadOnlyList<string> Achievements,
+    IReadOnlyList<ProjectRef> Projects,
+    string Url);
+
+public sealed record SkillSummary(
+    string Name,
+    int ProjectCount,
+    int? FirstYear,
+    int? LastYear,
+    bool IsCurrent,
+    IReadOnlyList<ProjectRef> Projects,
+    IReadOnlyList<ExperienceRef> Employers);
+
+public sealed record ProjectQuery(
+    string? Tech = null,
+    int? Year = null,
+    bool FeaturedOnly = false,
+    int Page = 1,
+    int PageSize = 10);
+
+public sealed record PagedResult<T>(
+    IReadOnlyList<T> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    bool HasMore);
+
+// Tool results. Structured content must be a JSON object, so lists get a named wrapper.
+
+public sealed record ProfileLink(string Label, string Url);
+
+public sealed record ProfileResult(
+    string Name,
+    string Headline,
+    string Summary,
+    IReadOnlyList<string> CurrentFocus,
+    string? Availability,
+    IReadOnlyList<ProfileLink> Links,
+    string Url);
+
+public sealed record SkillsResult(IReadOnlyList<SkillSummary> Skills, int Count);
+
+public sealed record ExperienceResult(IReadOnlyList<ExperienceItem> Experience, int Count);
+
+// Search. Scores rank results within one response only: cosine similarity in semantic mode,
+// ts_rank in fulltext mode, so they aren't comparable across modes or calls.
+
+public static class SearchModes
+{
+    public const string Semantic = "semantic";
+    public const string FullText = "fulltext";
+}
+
+public static class SearchTypes
+{
+    public const string Project = "project";
+    public const string Experience = "experience";
+    public const string Note = "note";
+
+    public static readonly IReadOnlyList<string> All = [Project, Experience, Note];
+}
+
+/// <summary>One match. Slug is set for projects, for get_project.</summary>
+public sealed record SearchHit(
+    string Type,
+    Guid Id,
+    string? Slug,
+    string Title,
+    string Snippet,
+    double Score,
+    string Url);
+
+public sealed record SearchResult(string Query, string Mode, IReadOnlyList<SearchHit> Results, int Count);
+
+public sealed record RequirementEvidence(string Requirement, IReadOnlyList<SearchHit> Matches);
+
+public sealed record EvidenceResult(string Mode, IReadOnlyList<RequirementEvidence> Requirements);

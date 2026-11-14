@@ -1,0 +1,108 @@
+{
+  "name": "search_portfolio",
+  "title": "Search the portfolio",
+  "annotations": {
+    "title": "Search the portfolio",
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "description": "What to look for, in plain language, for example \"event-driven systems on Azure\". At most 300 characters.",
+        "type": "string",
+        "maxLength": 300
+      },
+      "limit": {
+        "description": "Maximum results, 1 to 10.",
+        "type": "integer",
+        "default": 5,
+        "minimum": 1,
+        "maximum": 10
+      },
+      "types": {
+        "description": "Only these result types: any of \"project\", \"experience\", \"note\". Omit for all.",
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "default": null,
+        "maxItems": 3
+      }
+    },
+    "required": [
+      "query"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string"
+      },
+      "mode": {
+        "type": "string"
+      },
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "slug": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "snippet": {
+              "type": "string"
+            },
+            "score": {
+              "type": "number"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "slug",
+            "title",
+            "snippet",
+            "score",
+            "url"
+          ]
+        }
+      },
+      "count": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "query",
+      "mode",
+      "results",
+      "count"
+    ]
+  }
+}

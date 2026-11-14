@@ -54,10 +54,12 @@ CREATE EXTENSION IF NOT EXISTS vector;
 Migrations run automatically on startup, locally and on Railway. To add one:
 
 ```
-dotnet ef migrations add <Name>
+dotnet ef migrations add <Name> --context SqlDbContext
 ```
 
-from this folder.
+from this folder. `--context` is required because there's a second context, `PublicPortfolioDbContext`, a read-only view of the public tables for the MCP server. It's excluded from migrations, so `SqlDbContext` still owns the whole schema.
+
+`ConnectionStrings:PublicReadOnly` is that context's connection, logging in as the `mcp_readonly` role from `infra/sql/mcp-readonly-role.sql` (run by hand, see the comment at the top). If it's unset, it falls back to `DefaultConnection` and logs a warning at startup.
 
 **Timezones:** write `DateTimeOffset` values as UTC (`DateTimeOffset.UtcNow` or `.ToUniversalTime()`). Npgsql rejects non-UTC offsets for `timestamptz`, which you'll only notice locally because Railway already runs in UTC.
 

@@ -1,0 +1,128 @@
+{
+  "name": "get_experience",
+  "title": "Get work history",
+  "annotations": {
+    "title": "Get work history",
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "experience": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "employer": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "startYear": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "endYear": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "isCurrent": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "achievements": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projects": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "slug": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "startYear": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "endYear": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "slug",
+                  "id",
+                  "title",
+                  "startYear",
+                  "endYear",
+                  "url"
+                ]
+              }
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "employer",
+            "title",
+            "startYear",
+            "endYear",
+            "isCurrent",
+            "summary",
+            "achievements",
+            "projects",
+            "url"
+          ]
+        }
+      },
+      "count": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "experience",
+      "count"
+    ]
+  }
+}

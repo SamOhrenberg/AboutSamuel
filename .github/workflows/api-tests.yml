@@ -1,0 +1,42 @@
+name: API tests
+
+on:
+  pull_request:
+    paths:
+      - 'Backend/**'
+      - '!Backend/AgentService/**'
+      - '.github/workflows/api-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Backend/**'
+      - '!Backend/AgentService/**'
+      - '.github/workflows/api-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Backend/PortfolioWebsite.Api.sln
+
+      - name: Build
+        run: dotnet build Backend/PortfolioWebsite.Api.sln --configuration Release --no-restore
+
+      # Integration tests start a pgvector container through Testcontainers;
+      # ubuntu-latest runners have Docker.
+      - name: Test
+        run: dotnet test Backend/PortfolioWebsite.Api.sln --configuration Release --no-build --logger "console;verbosity=normal"

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PortfolioWebsite.Api.Data;
+using PortfolioWebsite.Api.Mcp;
 using PortfolioWebsite.Api.Middlewares;
 using PortfolioWebsite.Api.Services;
 using Serilog;
@@ -56,6 +57,10 @@ namespace PortfolioWebsite.Api
                         // Azure SDK logs (forwarded by the Azure Monitor distro) include several
                         // MSAL lines per token fetch at Information. Warnings still come through.
                         .MinimumLevel.Override("Azure", LogEventLevel.Warning)
+                        // The MCP SDK logs every request and session event at Information
+                        // and below. McpToolObserver writes the one line per tool call we want.
+                        .MinimumLevel.Override("ModelContextProtocol", LogEventLevel.Warning)
+                        .Filter.ByExcluding(McpRegistration.IsSdkClientError)
                         .WriteTo.Console()
                         .Enrich.FromLogContext();
                 }, writeToProviders: true);
@@ -143,6 +148,8 @@ namespace PortfolioWebsite.Api
                                 PermitLimit = 5,
                                 QueueLimit = 0
                             }));
+                    // Public MCP server, per IP. Limits come from Mcp:RateLimit.
+                    options.AddPolicy(McpRegistration.RateLimitPolicy, McpRegistration.RateLimitPartition);
 
                     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 });
@@ -154,6 +161,11 @@ namespace PortfolioWebsite.Api
 
                 builder.Services.AddScoped(sp =>
                     sp.GetRequiredService<IDbContextFactory<SqlDbContext>>().CreateDbContext());
+
+                if (!builder.AddPublicPortfolio())
+                    Log.Warning("ConnectionStrings:{Name} is not set; the public MCP data layer is " +
+                        "using DefaultConnection, which can write", McpRegistration.ReadOnlyConnectionName);
+                builder.AddPublicMcpServer();
 
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();
@@ -188,6 +200,7 @@ namespace PortfolioWebsite.Api
                 app.UseAuthentication();
                 app.UseAuthorization();
                 app.MapControllers();
+                app.MapPublicMcp();
 
                 // Auto-migrate on startup
                 using (var scope = app.Services.CreateScope())
@@ -209,7 +222,9 @@ namespace PortfolioWebsite.Api
 
                 app.Run();
             }
-            catch (Exception ex)
+            // EF design-time tools (dotnet ef) build the host, then abort it on purpose with
+            // HostAbortedException. That's not a crash, so it shouldn't log as one.
+            catch (Exception ex) when (ex is not HostAbortedException)
             {
                 Log.Fatal(ex, "Host terminated unexpectedly during startup");
             }

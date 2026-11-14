@@ -1,0 +1,170 @@
+{
+  "name": "list_projects",
+  "title": "List projects",
+  "annotations": {
+    "title": "List projects",
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "tech": {
+        "description": "Only projects whose tech stack includes this exact technology, case-insensitive (for example \"C#\" or \"PostgreSQL\"). get_skills lists the names in use.",
+        "type": [
+          "string",
+          "null"
+        ],
+        "default": null,
+        "maxLength": 100
+      },
+      "year": {
+        "description": "Only projects active during this calendar year, for example 2023.",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "default": null,
+        "minimum": 1950,
+        "maximum": 2100
+      },
+      "featuredOnly": {
+        "description": "Only projects Samuel has marked as featured.",
+        "type": "boolean",
+        "default": false
+      },
+      "page": {
+        "description": "1-based page number.",
+        "type": "integer",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "pageSize": {
+        "description": "Items per page, 1 to 25.",
+        "type": "integer",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 25
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "slug": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "techStack": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "startYear": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "endYear": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "isCurrent": {
+              "type": "boolean"
+            },
+            "featured": {
+              "type": "boolean"
+            },
+            "experiences": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "employer": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "employer",
+                  "title",
+                  "url"
+                ]
+              }
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "slug",
+            "id",
+            "title",
+            "role",
+            "summary",
+            "techStack",
+            "startYear",
+            "endYear",
+            "isCurrent",
+            "featured",
+            "experiences",
+            "url"
+          ]
+        }
+      },
+      "page": {
+        "type": "integer"
+      },
+      "pageSize": {
+        "type": "integer"
+      },
+      "totalCount": {
+        "type": "integer"
+      },
+      "hasMore": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "items",
+      "page",
+      "pageSize",
+      "totalCount",
+      "hasMore"
+    ]
+  }
+}
