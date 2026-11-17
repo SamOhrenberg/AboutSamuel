@@ -27,6 +27,9 @@ public class SqlDbContext : DbContext
     public DbSet<ResumeFile> ResumeFiles { get; set; } = null!;
     public DbSet<ResumeAnalysis> ResumeAnalyses { get; set; } = null!;
     public DbSet<ResumeSuggestion> ResumeSuggestions { get; set; } = null!;
+    public DbSet<AdminMcpClient> AdminMcpClients { get; set; } = null!;
+    public DbSet<AdminMcpAuthorization> AdminMcpAuthorizations { get; set; } = null!;
+    public DbSet<AdminMcpRefreshToken> AdminMcpRefreshTokens { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -265,6 +268,31 @@ public class SqlDbContext : DbContext
             entity.Property(e => e.Changes).HasDefaultValue("{}");
             entity.Property(e => e.Status).HasDefaultValue("pending");
             entity.HasIndex(e => new { e.Status, e.ResumeAnalysisId });  // the review queue
+        });
+
+        // Admin MCP OAuth. Ids and secrets are made in code, never by the database.
+        modelBuilder.Entity<AdminMcpClient>(entity =>
+        {
+            entity.HasKey(e => e.AdminMcpClientId);
+            entity.Property(e => e.AdminMcpClientId).HasMaxLength(64).ValueGeneratedNever();
+            entity.Property(e => e.ClientName).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<AdminMcpAuthorization>(entity =>
+        {
+            entity.HasKey(e => e.AdminMcpAuthorizationId);
+            entity.Property(e => e.AdminMcpAuthorizationId).ValueGeneratedNever();
+            entity.HasIndex(e => e.ApprovalTokenHash).IsUnique();
+            entity.HasIndex(e => e.CodeHash).IsUnique();
+            entity.HasIndex(e => e.ExpiresAt);
+        });
+
+        modelBuilder.Entity<AdminMcpRefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.AdminMcpRefreshTokenId);
+            entity.Property(e => e.AdminMcpRefreshTokenId).ValueGeneratedNever();
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => e.FamilyId);
         });
 
     }

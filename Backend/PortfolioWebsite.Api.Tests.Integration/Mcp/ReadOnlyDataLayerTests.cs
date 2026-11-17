@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using PortfolioWebsite.Api.Data.Models;
@@ -114,6 +114,9 @@ public sealed class ReadOnlyDataLayerTests(ApiFactory factory) : IAsyncLifetime
     [InlineData("RecruiterEmails")]
     [InlineData("ResumeFiles")]
     [InlineData("JobFitRuns")]
+    [InlineData("AdminMcpClients")]
+    [InlineData("AdminMcpAuthorizations")]
+    [InlineData("AdminMcpRefreshTokens")]
     public async Task Role_cannot_read_private_tables(string table)
     {
         var error = await ExecuteAsReadOnlyRoleAsync($"""SELECT count(*) FROM "{table}" """, allowWrites: false);

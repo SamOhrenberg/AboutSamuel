@@ -1,4 +1,4 @@
-# PortfolioWebsite.Api
+﻿# PortfolioWebsite.Api
 
 The ASP.NET Core API behind aboutsamuel.com. It owns the database and everything the frontend talks to. For chat it's mostly a proxy now, since the actual LLM work moved to the [agent service](../AgentService/README.md).
 
@@ -179,6 +179,75 @@ npx @modelcontextprotocol/inspector
 
 In the Inspector, pick **Streamable HTTP**, use `http://localhost:5133/mcp` (the plain HTTP port, because Node doesn't trust the dev cert), and connect. Tools, the prompt, and each tool's input and output schemas are all there to poke at.
 
+## Admin MCP server
+
+A second MCP server at `/mcp/admin`, for me only, with the admin panel's powers: edit content, rebuild embeddings and the skill map, manage the resume and its analysis suggestions, review recruiter postings and triage settings, and read chat logs, Job Fit runs and adversarial results. Why it lives in this API and how it's kept apart from `/mcp` is in [ADR 0002](../../docs/adr/0002-admin-mcp-same-api.md). Everything lives in `AdminMcp/`, and the operations themselves are in `Services/Admin/`, which the admin controllers use too.
+
+```
+ Claude (web, apps, Code)
+        |  POST /mcp/admin + Bearer token
+        v
+ rate limiter "AdminMcp" -> AdminMcp policy (own JWT scheme, session not revoked) -> 1 MB cap -> MapMcp
+        |
+        v
+ ConfigureSessionOptions: /mcp/admin + admin token -> admin tools, instructions, identity
+        |
+        v
+ guard filters (admin_ tools only on /mcp/admin) + audit log
+        |
+        v
+ AdminContentTools / AdminOperationsTools / AdminActivityTools
+        |
+        v
+ Services/Admin (shared with the admin controllers) -> SqlDbContext, AgentServiceClient, Azure OpenAI
+```
+
+### Connecting
+
+In Claude: Customize > Connectors > Add custom connector, URL `https://api.aboutsamuel.com/mcp/admin`, no client id or secret. Claude registers itself and opens the sign-in page:
+
+1. The page shows an eight-character code and waits.
+2. An approval link arrives at `AdminSettings:AdminEmail`. Open it, type the code, approve.
+3. The waiting page notices and hands Claude the authorization code.
+
+Then, in the connector's settings, set every tool that isn't `admin_list_*` or `admin_get_*` to need approval. That's the guard against text from chat logs or recruiter emails talking the model into a change.
+
+Claude Code works too (`claude mcp add --transport http aboutsamuel-admin https://api.aboutsamuel.com/mcp/admin`), using a loopback redirect.
+
+### Separation from /mcp
+
+1. **Not registered.** The admin tools are built by `AdminToolCatalog` and never passed to `WithTools`. `ConfigureSessionOptions` swaps them in only for requests routed to `/mcp/admin` (marked with `AdminMcpEndpointMetadata`) by an admin MCP token.
+2. **Own auth.** The `AdminMcp` policy only accepts the `AdminMcpBearer` scheme: tokens signed with a key derived from `AdminSettings:JwtSecret` and with the audience `<PublicBaseUrl>/mcp/admin`. Panel tokens don't work here, and these don't work on the panel.
+3. **Filters.** Calling an `admin_` tool anywhere else is an unknown tool, and listings outside `/mcp/admin` drop them.
+
+`AdminMcpServerTests` checks `/mcp` before, after and interleaved with admin requests.
+
+### OAuth
+
+`AdminMcp/OAuth/` is a small authorization server for one user. Endpoints: `/.well-known/oauth-protected-resource/mcp/admin` (served by the SDK's `AddMcp` handler), `/.well-known/oauth-authorization-server`, and `/oauth/register`, `/oauth/authorize`, `/oauth/authorize/poll`, `/oauth/approve`, `/oauth/token`, `/oauth/revoke`.
+
+- **Registration** is open, but redirect URIs must be in `AdminMcp:AllowedRedirectUris` (Claude's callbacks) or loopback, if `AllowLoopbackRedirects`.
+- **Approval** is the magic-link idea plus a typed code: five wrong codes deny the sign-in, and the link is single use. GET only shows the page, so mail scanners can't approve.
+- **Tokens:** PKCE S256 required, access tokens `AccessTokenMinutes` (60), refresh tokens rotate and last `RefreshTokenDays` (30), sessions end after `SessionMaxDays` (90). A reused refresh token or a replayed code revokes its session. Revocation is checked on every request.
+- **Storage:** `AdminMcpClients`, `AdminMcpAuthorizations`, `AdminMcpRefreshTokens`, secrets as SHA-256 hashes. None are in a data-transfer group or the `mcp_readonly` grants.
+
+To end every session (lost phone, anything odd), `POST /admin/mcp/sessions/revoke` with a panel login. Rotating `AdminSettings:JwtSecret` also kills every access token, but refresh tokens would mint new ones, so revoke as well.
+
+### Tools
+
+All named `admin_*`. Reads (`admin_list_*`, `admin_get_*`) are annotated read-only; writes aren't, and updates, hides and deletes are destructive.
+
+- **Content:** projects (list, get, create, update, hide, restore, reorder), work experience (list, get, create, update, delete, reorder), information entries (list, get, create, update, delete). Updates are partial: fields left out don't change, an empty string clears a text field. Every write rebuilds that item's embedding.
+- **Operations:** missing embeddings, one embedding, the skill map; resume versions, extracted text, activating a version, running an analysis, approving (with optional overrides) or rejecting suggestions; recruiter stats, postings, review, merge, settings (partial update).
+- **Activity:** chat stats and sessions, Job Fit runs, adversarial runs (start, list, results). Adversarial results leave out the prompts and answers.
+
+Not here on purpose: data import/export and resume upload.
+
+### Limits and logging
+
+- `ToolRequestsPerMinute` (300) per IP on `/mcp/admin`, `OAuthRequestsPerMinute` (30) per IP on the OAuth endpoints, `PollsPerMinute` (60) on the poll, and `SignInsPerHour` (10) sign-ins across everyone, since each one emails me. The body cap is 1 MB.
+- Every admin tool call logs one line on the `PortfolioWebsite.Api.AdminMcp.Audit` category: tool, success, client id, session id, and for anything that isn't a read, the arguments (truncated to 4,000 characters). Unlike the public server this does log arguments. It's my own data and the point is an audit trail.
+
 ## Tests
 
 ```
@@ -188,7 +257,7 @@ dotnet test Backend/PortfolioWebsite.Api.sln
 from the repo root. Docker has to be running: the integration tests start a `pgvector/pgvector:pg17` container with Testcontainers, boot the real API against it (startup migrations included), and apply the real `mcp-readonly-role.sql`, so the MCP tests read through the actual read-only role. Embeddings are faked, so no Azure access is needed.
 
 - `PortfolioWebsite.Api.Tests.Unit`: the pure helpers, tool logic over fakes, the embedding provider's limits.
-- `PortfolioWebsite.Api.Tests.Integration`: the MCP server end to end with a real `McpClient`, the read-only layers, rate and size limits, and a check that running every tool leaves every table's row count and row versions (`xmin`) unchanged.
+- `PortfolioWebsite.Api.Tests.Integration`: the MCP server end to end with a real `McpClient`, the read-only layers, rate and size limits, and a check that running every tool leaves every table's row count and row versions (`xmin`) unchanged. `AdminMcp/` covers the admin server: the whole OAuth flow over HTTP (approval emails are captured by a fake mailer), separation from `/mcp`, the tools against the real database, and the admin controllers on the shared services.
 
 Each tool's advertised contract (annotations, input and output schemas) is snapshotted in `PortfolioWebsite.Api.Tests.Integration/Snapshots/`. If you change one on purpose, run with `MCP_UPDATE_SNAPSHOTS=1` once and commit the new files.
 
@@ -200,7 +269,7 @@ CI (`.github/workflows/api-tests.yml`) runs the same thing on PRs and pushes to 
 
 ## Admin
 
-Admin login is a magic link. `POST /admin/login` emails a link to `AdminSettings:AdminEmail` (rate limited to 5 an hour), and `POST /admin/verify` swaps the token for a JWT. Everything under `/admin/*` needs that JWT.
+Admin login is a magic link. `POST /admin/login` emails a link to `AdminSettings:AdminEmail` (rate limited to 5 an hour), and `POST /admin/verify` swaps the token for a JWT. Everything under `/admin/*` needs that JWT with the Admin role. The controllers are thin; the logic is in `Services/Admin/`, shared with the [admin MCP server](#admin-mcp-server).
 
 ## Deploying
 
