@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Hosting;
+﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
+using PortfolioWebsite.Api.AdminMcp.OAuth;
 using PortfolioWebsite.Api.Services;
 using Testcontainers.PostgreSql;
 
@@ -86,6 +87,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Mcp:SemanticSearch:PerIpPerHour", "100000");
         builder.UseSetting("Mcp:SemanticSearch:DailyCap", "100000");
         builder.UseSetting("Mcp:RateLimit:PermitLimit", "100000");
+        // The test server's origin, so issuer, resource and approval links point back at it.
+        // Sign-ins email Samuel, so prod allows a few an hour; tests run many.
+        builder.UseSetting("AdminMcp:PublicBaseUrl", "http://localhost");
+        builder.UseSetting("AdminMcp:SignInsPerHour", "100000");
+        builder.UseSetting("AdminMcp:OAuthRequestsPerMinute", "100000");
+        builder.UseSetting("AdminMcp:PollsPerMinute", "100000");
+        builder.UseSetting("AdminMcp:ToolRequestsPerMinute", "100000");
         // Keep telemetry off even if the machine running the tests has this env var set.
         builder.UseSetting("APPLICATIONINSIGHTS_CONNECTION_STRING", "");
 
@@ -93,6 +101,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             services.RemoveAll<IEmbeddingService>();
             services.AddSingleton<IEmbeddingService, FakeEmbeddingService>();
+            services.RemoveAll<IAdminMcpApprovalMailer>();
+            services.AddSingleton<IAdminMcpApprovalMailer, FakeApprovalMailer>();
         });
     }
 }

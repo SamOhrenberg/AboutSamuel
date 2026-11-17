@@ -1,157 +1,39 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using PortfolioWebsite.Api.Data;
-using PortfolioWebsite.Api.Data.Models;
 using PortfolioWebsite.Api.Dtos;
 using PortfolioWebsite.Api.Dtos.Admin;
-using System.Text.Json;
+using PortfolioWebsite.Api.Services.Admin;
 
 namespace PortfolioWebsite.Api.Controllers;
 
 [ApiController]
 [Route("admin/projects")]
 [Authorize(Roles = "Admin")]
-public class AdminProjectController(
-    ILogger<AdminProjectController> _logger,
-    SqlDbContext _db) : ControllerBase
+public class AdminProjectController(AdminProjectService _projects) : ControllerBase
 {
     [HttpGet]
-    public async Task<IEnumerable<ProjectDto>> GetAll()
-    {
-        _logger.LogInformation("Admin GET /admin/projects");
-
-        var projects = await _db.Projects
-            .Include(p => p.WorkExperiences)
-            .OrderBy(p => p.DisplayOrder)
-            .ToListAsync();
-
-        return projects.Select(ProjectDto.FromModel);
-    }
+    public async Task<IEnumerable<ProjectDto>> GetAll(CancellationToken ct) => await _projects.ListAsync(ct);
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] AdminProjectRequest request)
-    {
-        List<WorkExperience> workExperiences = [];
-        if (request.WorkExperienceIds.Count > 0)
-        {
-            workExperiences = await _db.WorkExperiences
-                .Where(w => request.WorkExperienceIds.Contains(w.WorkExperienceId))
-                .ToListAsync();
-
-            if (workExperiences.Count != request.WorkExperienceIds.Count)
-                return BadRequest(new { Message = "One or more WorkExperienceIds do not reference known work experiences." });
-        }
-
-        var project = MapToModel(request, new Project { ProjectId = Guid.NewGuid() });
-        project.WorkExperiences = workExperiences;
-
-        await _db.Projects.AddAsync(project);
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation("Admin created project {ProjectId}: {Title}", project.ProjectId, project.Title);
-        return Ok(ProjectDto.FromModel(project));
-    }
+    public async Task<IActionResult> Create([FromBody] AdminProjectRequest request, CancellationToken ct) =>
+        (await _projects.CreateAsync(request, ct)).ToActionResult(Ok);
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] AdminProjectRequest request)
-    {
-        var project = await _db.Projects
-            .Include(p => p.WorkExperiences)
-            .FirstOrDefaultAsync(p => p.ProjectId == id);
-
-        if (project is null) return NotFound();
-
-        List<WorkExperience> workExperiences = [];
-        if (request.WorkExperienceIds.Count > 0)
-        {
-            workExperiences = await _db.WorkExperiences
-                .Where(w => request.WorkExperienceIds.Contains(w.WorkExperienceId))
-                .ToListAsync();
-
-            if (workExperiences.Count != request.WorkExperienceIds.Count)
-                return BadRequest(new { Message = "One or more WorkExperienceIds do not reference known work experiences." });
-        }
-
-        MapToModel(request, project);
-
-        // Replace the collection — EF tracks the join table changes automatically
-        project.WorkExperiences.Clear();
-        foreach (var we in workExperiences)
-            project.WorkExperiences.Add(we);
-
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation("Admin updated project {ProjectId}", id);
-        return Ok(ProjectDto.FromModel(project));
-    }
+    public async Task<IActionResult> Update(Guid id, [FromBody] AdminProjectRequest request, CancellationToken ct) =>
+        (await _projects.UpdateAsync(id, request, ct)).ToActionResult(Ok);
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id)
-    {
-        var project = await _db.Projects.FindAsync(id);
-        if (project is null) return NotFound();
-
-        project.IsActive = false;
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation("Admin soft-deleted project {ProjectId}", id);
-        return NoContent();
-    }
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
+        (await _projects.DeleteAsync(id, ct)).ToActionResult(NoContent);
 
     [HttpPatch("{id:guid}/restore")]
-    public async Task<IActionResult> Restore(Guid id)
-    {
-        var project = await _db.Projects
-            .Include(p => p.WorkExperiences)
-            .FirstOrDefaultAsync(p => p.ProjectId == id);
-
-        if (project is null) return NotFound();
-
-        project.IsActive = true;
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation("Admin restored project {ProjectId}", id);
-        return Ok(ProjectDto.FromModel(project));
-    }
+    public async Task<IActionResult> Restore(Guid id, CancellationToken ct) =>
+        (await _projects.RestoreAsync(id, ct)).ToActionResult(Ok);
 
     [HttpPatch("reorder")]
-    public async Task<IActionResult> Reorder([FromBody] List<ProjectReorderItem> items)
+    public async Task<IActionResult> Reorder([FromBody] List<ProjectReorderItem> items, CancellationToken ct)
     {
-        var ids = items.Select(i => i.ProjectId).ToList();
-        var projects = await _db.Projects
-            .Where(p => ids.Contains(p.ProjectId))
-            .ToListAsync();
-
-        foreach (var item in items)
-        {
-            var project = projects.FirstOrDefault(p => p.ProjectId == item.ProjectId);
-            if (project is not null) project.DisplayOrder = item.DisplayOrder;
-        }
-
-        await _db.SaveChangesAsync();
+        await _projects.ReorderAsync(items, ct);
         return NoContent();
     }
-
-    private static Project MapToModel(AdminProjectRequest request, Project project)
-    {
-        project.Title = request.Title;
-        project.Role = request.Role;
-        project.Summary = request.Summary;
-        project.Detail = request.Detail;
-        project.ImpactStatement = request.ImpactStatement;
-        project.TechStack = JsonSerializer.Serialize(request.TechStack);
-        project.DisplayOrder = request.DisplayOrder;
-        project.IsFeatured = request.IsFeatured;
-        project.IsActive = request.IsActive;
-        project.StartYear = request.StartYear;
-        project.EndYear = request.EndYear;
-        return project;
-    }
-}
-
-public class ProjectReorderItem
-{
-    public Guid ProjectId { get; set; }
-    public int DisplayOrder { get; set; }
 }

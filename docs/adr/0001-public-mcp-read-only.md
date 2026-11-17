@@ -1,6 +1,6 @@
 # 1. The public MCP server is read-only, and admin tools get their own server
 
-- **Status:** Accepted
+- **Status:** Accepted. The admin server it anticipates is described in [ADR 0002](0002-admin-mcp-same-api.md).
 - **Date:** 2026-11-13
 
 ## Context

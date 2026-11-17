@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using PortfolioWebsite.Api.AdminMcp;
 using PortfolioWebsite.Api.Data;
 using PortfolioWebsite.Api.Mcp;
 using PortfolioWebsite.Api.Middlewares;
 using PortfolioWebsite.Api.Services;
+using PortfolioWebsite.Api.Services.Admin;
 using Serilog;
 using Serilog.Events;
 using System.Text;
@@ -108,7 +110,7 @@ namespace PortfolioWebsite.Api
                 var jwtSecret = builder.Configuration.GetValue<string>("AdminSettings:JwtSecret")
                     ?? throw new InvalidOperationException("AdminSettings:JwtSecret must be configured.");
 
-                builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                var authentication = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     .AddJwtBearer(options =>
                     {
                         options.TokenValidationParameters = new TokenValidationParameters
@@ -166,11 +168,13 @@ namespace PortfolioWebsite.Api
                     Log.Warning("ConnectionStrings:{Name} is not set; the public MCP data layer is " +
                         "using DefaultConnection, which can write", McpRegistration.ReadOnlyConnectionName);
                 builder.AddPublicMcpServer();
+                builder.AddAdminMcp(authentication);
 
                 builder.Services.AddScoped<ChatService>();
                 builder.Services.AddScoped<ContactService>();
                 builder.Services.AddScoped<AdminService>();
                 builder.Services.AddScoped<ResumeSuggestionApplier>();
+                builder.Services.AddAdminServices();
                 builder.Services.AddSingleton<AzureEmailService>();
 
                 // Behind Nginx / Railway reverse proxy
@@ -201,6 +205,7 @@ namespace PortfolioWebsite.Api
                 app.UseAuthorization();
                 app.MapControllers();
                 app.MapPublicMcp();
+                app.MapAdminMcp();
 
                 // Auto-migrate on startup
                 using (var scope = app.Services.CreateScope())
